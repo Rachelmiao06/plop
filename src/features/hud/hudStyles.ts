@@ -14,6 +14,11 @@ export const styles = {
   lines: "plop-hud-lines",
   toggle: "plop-hud-toggle",
   bump: "plop-hud-bump",
+  gain: "plop-hud-gain",
+  tag: "plop-hud-tag",
+  card: "plop-hud-card",
+  crown: "plop-hud-crown",
+  pick: "plop-hud-pick",
 } as const;
 
 export const hudCss = `
@@ -172,6 +177,81 @@ export const hudCss = `
   }
 }
 
+/* A throw's points flying up from the lane into the thrower's total: rises, lands squashed, sinks in. */
+.plop-hud-gain {
+  animation: plop-hud-gain var(--hud-gain) cubic-bezier(0.22, 0.9, 0.3, 1) both;
+  text-shadow:
+    0 0 2px var(--paper),
+    0 0 4px var(--paper),
+    0 0 7px var(--paper);
+}
+@keyframes plop-hud-gain {
+  0% {
+    opacity: 0;
+    transform: translate(var(--hud-dx), var(--hud-rise)) scale(0.7) rotate(-6deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--hud-dx) * 0.8), calc(var(--hud-rise) * 0.8)) scale(1.15) rotate(3deg);
+  }
+  60% {
+    transform: translate(0, -4px) scale(0.95, 1.12) rotate(-2deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.25, 0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+}
+
+/* The round tag under the panel: a little hello each new round. */
+.plop-hud-tag {
+  animation: plop-hud-tag 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes plop-hud-tag {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.8) rotate(-4deg);
+  }
+}
+
+/* The start and end cards: drop in like a paper note. */
+.plop-hud-card {
+  animation: plop-hud-card 560ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes plop-hud-card {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.92) rotate(-2deg);
+  }
+}
+
+/* The winner's crown bobs a little. */
+.plop-hud-crown {
+  animation: plop-hud-crown 1.8s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes plop-hud-crown {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(4deg);
+  }
+}
+
+/* A choice on the start card: springs when picked. */
+.plop-hud-pick {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.plop-hud-pick:active {
+  transform: scale(0.94) rotate(-2deg);
+}
+
 /* A little wiggle on toggle buttons when pressed. */
 .plop-hud-toggle:active {
   transform: scale(0.9) rotate(-4deg);
@@ -186,7 +266,12 @@ export const hudCss = `
   .plop-hud-pop,
   .plop-hud-bump,
   .plop-hud-toggle,
-  .plop-hud-toggle:active {
+  .plop-hud-toggle:active,
+  .plop-hud-tag,
+  .plop-hud-card,
+  .plop-hud-crown,
+  .plop-hud-pick,
+  .plop-hud-pick:active {
     animation: none;
     transition: none;
     transform: none;
@@ -194,6 +279,9 @@ export const hudCss = `
   /* Still show what happened, just without movement. */
   .plop-hud-plusOne {
     animation: plop-hud-fade var(--hud-fly) ease-out both;
+  }
+  .plop-hud-gain {
+    animation: plop-hud-fade var(--hud-gain) ease-out both;
   }
   .plop-hud-burst,
   .plop-hud-lines {

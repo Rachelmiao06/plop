@@ -10,6 +10,8 @@ import { type Vec2, clamp01, lerp } from "./vec";
 export type Ground = {
   /** How packed the snow is here: 0 untouched, 1 pressed hard. */
   packedAt(x: number, z: number): number;
+  /** Optional: how soft and deep the snow is here, 0 normal .. 1 a soft mound (`roll.soft`). */
+  softAt?(x: number, z: number): number;
 };
 
 /** Untouched snow everywhere (for checks, or before the snow is ready). */
@@ -81,7 +83,10 @@ export function stepRoll(
     lerp(1, r.dragOnPacked, packed) *
     lerp(1, r.dragBigShare, plan.size) *
     early;
-  state.speed = Math.max(0, state.speed - slowing * dt);
+  // A soft mound: its own slowing, not eased by `early`, heavier for a big ball.
+  const soft = ground.softAt ? clamp01(ground.softAt(state.position.x, state.position.z)) : 0;
+  const sinking = soft > 0 ? soft * r.soft.drag * lerp(1, r.soft.bigShare, plan.size) : 0;
+  state.speed = Math.max(0, state.speed - (slowing + sinking) * dt);
   if (state.speed < r.stopSpeed) {
     state.speed = 0;
     return false;
@@ -94,6 +99,24 @@ export function stepRoll(
   };
   state.rolled += move;
   return true;
+}
+
+/** How far past the sweet spot a pull of this power is: 0 at or below it, 1 at a full pull (`pull.sweet`). */
+export function pastSweet(power: number, feel: Feel): number {
+  const at = feel.pull.sweet.at;
+  return clamp01((power - at) / Math.max(1e-6, 1 - at));
+}
+
+/** The power (0..1) of a pull this long (0 = just past cancel). */
+export function powerOf(pulled: number, feel: Feel): number {
+  const { max, cancelBelow } = feel.pull;
+  return clamp01((Math.min(pulled, max) - cancelBelow) / Math.max(1e-6, max - cancelBelow));
+}
+
+/** The pull length that reaches the sweet spot. */
+export function sweetPull(feel: Feel): number {
+  const { max, cancelBelow, sweet } = feel.pull;
+  return cancelBelow + sweet.at * (max - cancelBelow);
 }
 
 /**
@@ -112,14 +135,16 @@ export function planRoll(
   beside: Vec2 = { x: 0, z: 0 },
 ): RollPlan | null {
   const pulled = Math.hypot(pull.x, pull.z);
-  const { max, cancelBelow } = feel.pull;
+  const { cancelBelow } = feel.pull;
   if (pulled < cancelBelow || pulled < 1e-6) return null;
 
   const direction = { x: -pull.x / pulled, z: -pull.z / pulled };
-  const power = clamp01((Math.min(pulled, max) - cancelBelow) / Math.max(1e-6, max - cancelBelow));
+  const power = powerOf(pulled, feel);
   const s = clamp01(size);
   const r = feel.roll;
-  const startSpeed = lerp(r.speedSmall, r.speedBig, s) * lerp(r.weakPull, 1, power);
+  // Past the sweet spot the ball is heavy and starts slower.
+  const heavy = lerp(1, feel.pull.sweet.speedAtFull, pastSweet(power, feel));
+  const startSpeed = lerp(r.speedSmall, r.speedBig, s) * lerp(r.weakPull, 1, power) * heavy;
   const start = { x: foot.x + pull.x + beside.x, z: foot.z + pull.z + beside.z };
 
   const state: RollState = { position: { ...start }, speed: startSpeed, rolled: 0, age: 0 };

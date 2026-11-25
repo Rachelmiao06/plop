@@ -273,8 +273,33 @@ export const OVERLAP = {
  * One pin in a formation, placed relative to the pin spot (bowling `lane.pinSpot`).
  * `dz` negative = further down the lane. `turn` = degrees to turn it (default: facing the line).
  */
-export type FormationPin = { prop: PropId; dx: number; dz: number; flip?: boolean; scale?: number; turn?: number };
-export type Formation = { id: string; label: string; pins: FormationPin[] };
+export type FormationPin = {
+  prop: PropId;
+  dx: number;
+  dz: number;
+  flip?: boolean;
+  scale?: number;
+  turn?: number;
+  /**
+   * A special cut-out (`SPECIALS`): `star` carries a little star doodle and is worth bonus points when it falls;
+   * `friend` is a friend watching (the white rabbit) who should be left standing: it scores nothing when knocked,
+   * and a small bonus when it is still standing after the throw. Plain pins leave it out.
+   */
+  kind?: "star" | "friend";
+};
+/** A soft snow mound on the lane (round sets from round 3): where (relative to the set, like pins) and how big. */
+export type Mound = { dx: number; dz: number; radius: number };
+export type Formation = {
+  id: string;
+  label: string;
+  pins: FormationPin[];
+  /** The whole set stands this far left (-) or right (+) of the lane's middle. Pins' `dx` are from there. */
+  shift?: number;
+  /** Soft snow mounds in front of the set that slow a slow, heavy ball (`Mound`). */
+  mounds?: Mound[];
+  /** One line under the round number in a match: what this set asks of the throw. */
+  note?: string;
+};
 
 /*
   Airy formations (Rachel: "far too crowded"). Rules, checked by overlap.ts on /dev/pins:
@@ -358,11 +383,144 @@ export const FORMATIONS: Formation[] = [
   },
 ];
 
+/*
+  Round sets (a match, docs/GAMEPLAY.md section 7c). Each asks a different shot so "full power straight at the
+  middle" is not always best (measured with `src/features/game/measure`, numbers in docs/TUNING.md):
+  - off to one side, with a star friend on the far corner (an angled shot from the other side gets it),
+  - two groups with a gap in the middle (a ball down the middle rolls through the gap),
+  - a long slanted row with a soft mound in front of its middle (a slow heavy ball sticks in it),
+  - a picnic: the white rabbit sits in front of a group and should be left alone,
+  - a snowy village with two mounds, the rabbit and a star.
+  Same airy rules as above (checked by overlap.ts on /dev/pins), and every card stays within about 1.9 of the
+  lane's middle (shift + dx + half its width), so a phone held upright shows the whole set.
+  The game's round order is `GAME.match.rounds`.
+*/
+export const ROUND_SETS: Formation[] = [
+  {
+    id: "round-corner",
+    label: "Off to the side",
+    note: "they're standing off to the right",
+    shift: 0.45,
+    // The triangle's places without its back-left card, so the set leans right; the star stands back right.
+    pins: [
+      { prop: "penguin-bag", dx: 0, dz: 0.7 },
+      { prop: "girl-earmuffs", dx: -0.55, dz: 0, scale: 0.95 },
+      { prop: "signpost-snowman", dx: 0.57, dz: 0, flip: true, scale: 0.9 },
+      { prop: "boy-snowman", dx: 0, dz: -0.8 },
+      { prop: "snowman-newspaper", dx: 1.13, dz: -0.75, flip: true, kind: "star" },
+    ],
+  },
+  {
+    id: "round-split",
+    label: "Two little groups",
+    note: "two groups, a gap in the middle",
+    pins: [
+      { prop: "penguin-bag", dx: -1.1, dz: 0.55 },
+      { prop: "girl-earmuffs", dx: -1.5, dz: -0.2, scale: 0.95 },
+      { prop: "pine-walking", dx: -0.92, dz: -0.6, flip: true },
+      { prop: "penguin-bag", dx: 1.15, dz: 0.55, flip: true, scale: 0.95 },
+      { prop: "snowman-newspaper", dx: 1.55, dz: -0.25, flip: true },
+      { prop: "flag-blue", dx: 0.95, dz: -0.85, scale: 0.85, kind: "star" },
+    ],
+  },
+  {
+    id: "round-slant",
+    label: "Slanted row and a snow mound",
+    note: "a soft snow mound in the way",
+    shift: -0.1,
+    mounds: [{ dx: 0.1, dz: 2.7, radius: 0.85 }],
+    // Like the domino row: each card just overlaps the next sideways, so a card knocked back and to the right tips the next.
+    pins: [
+      { prop: "penguin-bag", dx: -1.3, dz: 1.1 },
+      { prop: "girl-earmuffs", dx: -0.65, dz: 0.5 },
+      { prop: "snowman-newspaper", dx: 0, dz: -0.1, flip: true },
+      { prop: "pine-walking", dx: 0.65, dz: -0.7, flip: true },
+      { prop: "flag-blue", dx: 1.3, dz: -1.3, scale: 0.85, kind: "star" },
+    ],
+  },
+  {
+    id: "round-picnic",
+    label: "Bunny's picnic",
+    note: "let the bunny be",
+    shift: -0.2,
+    mounds: [{ dx: 1.55, dz: 2.4, radius: 0.75 }],
+    pins: [
+      { prop: "rabbit", dx: 0.0, dz: 1.05, kind: "friend" },
+      { prop: "pine-walking", dx: -0.72, dz: 0.3 },
+      { prop: "signpost-snowman", dx: 0.72, dz: 0.3, flip: true, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: -1.35, dz: -0.78, scale: 0.95 },
+      { prop: "snowman-newspaper", dx: 0.0, dz: -0.5 },
+      { prop: "boy-snowman", dx: 1.3, dz: -0.72, flip: true, kind: "star" },
+    ],
+  },
+  {
+    id: "round-village",
+    label: "Snowy village",
+    note: "mounds, a star and the bunny",
+    shift: 0.25,
+    mounds: [
+      { dx: -1.05, dz: 2.5, radius: 0.75 },
+      { dx: 1.0, dz: 2.9, radius: 0.7 },
+    ],
+    pins: [
+      { prop: "penguin-bag", dx: -0.55, dz: 0.95 },
+      { prop: "rabbit", dx: 0.5, dz: 1.0, kind: "friend" },
+      { prop: "signpost-snowman", dx: -1.2, dz: 0.3, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: 0.0, dz: 0.25, flip: true, scale: 0.95 },
+      { prop: "pine-walking", dx: 1.15, dz: 0.2, flip: true },
+      { prop: "snowman-newspaper", dx: -0.6, dz: -0.6 },
+      { prop: "bench-snowmen", dx: 0.65, dz: -0.95, kind: "star" },
+    ],
+  },
+];
+
+/** Every set the stage can show: the free-play formations and the round sets. */
+export const ALL_SETS: Formation[] = [...FORMATIONS, ...ROUND_SETS];
+
+/**
+ * The special cut-outs (`FormationPin.kind`). Points are added on top of the game's one point per card
+ * (`GAME.score` in the game feature); the pins report them in the result as `bonus`.
+ */
+export const SPECIALS = {
+  star: {
+    /** Extra points when the star friend falls (so it is worth 1 + this). */
+    bonus: 2,
+    /**
+     * The star doodle above its head (`public/assets/effects/star.webp`): size (scene units), how far above the
+     * card's top, how high it bobs and how fast (bobs per second), how far it rocks (degrees).
+     */
+    size: 0.3,
+    above: 0.12,
+    bob: 0.04,
+    bobSpeed: 0.7,
+    rock: 9,
+    /** Once its card is down, the star pops up this much bigger for a moment. */
+    pop: 0.45,
+  },
+  friend: {
+    /** Points when every friend is still standing after the throw. Knocked over, it simply scores nothing. */
+    bonus: 2,
+  },
+} as const;
+
+/**
+ * A soft snow mound on the lane: Rachel's snow-mound cut-out (`mound-snow`, the village's) standing as a thick
+ * card like the pins, `widthShare` of the mound's width across and sunk `sink` into the snow. The roll feels it
+ * as soft snow (`softAt`, bowling `FEEL.roll.soft`): full softness inside `core` of its radius, fading to nothing
+ * at its edge. When a ball ploughs through, the card squashes to `flatten` of its height (`flattenRate` per
+ * second) with a puff of snow, and stands up again for the next throw.
+ */
+export const MOUND = { core: 0.55, widthShare: 1.1, sink: 0.04, flatten: 0.35, flattenRate: 9, puff: 0.06 } as const;
+
 export const TEXT = {
   title: "Plop! pins (dev)",
   down: (n: number) => `${n} down!`,
   none: "Missed!",
   fullClear: "All down!",
+  /** Small lines under "N down!" for the special cut-outs. */
+  star: (points: number) => `star friend +${points}`,
+  friendSafe: (points: number) => `bunny's still cosy +${points}`,
+  friendBumped: "oops, sorry bunny!",
   count: (down: number, total: number) => `${down} / ${total} down`,
   reset: "Reset",
   nextSet: "Next set",

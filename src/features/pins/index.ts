@@ -1,5 +1,18 @@
 // Public surface of the pins feature. Import from "@/features/pins" only.
-export { PINS, FORMATIONS, TEXT, type Formation, type FormationPin, type Weight } from "./content";
+export {
+  PINS,
+  FORMATIONS,
+  ROUND_SETS,
+  ALL_SETS,
+  SPECIALS,
+  TEXT,
+  type Formation,
+  type FormationPin,
+  type Mound,
+  type Weight,
+} from "./content";
+export { countThrow, countedCards } from "./scoring";
+export { formationById, setCentre, softSnowFor } from "./layout";
 export {
   createPins,
   nextFormationId,

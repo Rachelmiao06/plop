@@ -5,7 +5,7 @@
 import { FEEL } from "@/features/bowling";
 import { propSettings, propWidth, type PropId } from "@/features/scenery";
 
-import { FORMATIONS, PINS, type Formation, type Weight } from "./content";
+import { ALL_SETS, MOUND, PINS, type Formation, type FormationPin, type Weight } from "./content";
 
 /* ---- The snow patch ---- */
 
@@ -62,6 +62,8 @@ export type PinSpec = {
   key: string;
   id: PropId;
   flip: boolean;
+  /** A special cut-out (star or friend), or undefined for a plain pin. */
+  kind: FormationPin["kind"];
   weight: Weight;
   /** Drawing size. */
   width: number;
@@ -81,13 +83,44 @@ function jitter(seed: number): number {
 }
 
 export function formationById(id: string): Formation {
-  return FORMATIONS.find((f) => f.id === id) ?? FORMATIONS[0];
+  return ALL_SETS.find((f) => f.id === id) ?? ALL_SETS[0];
+}
+
+/** Where the middle of a set stands on the lane (its `shift` sideways from the pin spot). */
+export function setCentre(formation: Formation): { x: number; z: number } {
+  const spot = FEEL.lane.pinSpot;
+  return { x: spot.x + (formation.shift ?? 0), z: spot.z };
+}
+
+/** A set's soft snow mounds on the lane (world positions). */
+export function moundsOf(formation: Formation): { x: number; z: number; radius: number }[] {
+  const c = setCentre(formation);
+  return (formation.mounds ?? []).map((m) => ({ x: c.x + m.dx, z: c.z + m.dz, radius: m.radius }));
+}
+
+/**
+ * How soft the snow is at a point because of a set's mounds (0 normal .. 1 soft), for the bowling roll
+ * (`Ground.softAt`). Null when the set has no mounds.
+ */
+export function softSnowFor(formation: Formation): ((x: number, z: number) => number) | null {
+  const mounds = moundsOf(formation);
+  if (!mounds.length) return null;
+  return (x, z) => {
+    let soft = 0;
+    for (const m of mounds) {
+      const d = Math.hypot(x - m.x, z - m.z) / m.radius;
+      if (d >= 1) continue;
+      const u = d <= MOUND.core ? 1 : 1 - (d - MOUND.core) / (1 - MOUND.core);
+      soft = Math.max(soft, u * u * (3 - 2 * u));
+    }
+    return soft;
+  };
 }
 
 /** Every pin of a formation with its sizes, colliders and home spot on the sampled ground. */
 export function buildPins(formation: Formation, ground: GroundPatch): PinSpec[] {
   const c = PINS.card;
-  const spot = FEEL.lane.pinSpot;
+  const spot = setCentre(formation);
   return formation.pins.map((p, i) => {
     const settings = propSettings(p.prop)!;
     const scale = p.scale ?? 1;
@@ -106,6 +139,7 @@ export function buildPins(formation: Formation, ground: GroundPatch): PinSpec[] 
       key: `${formation.id}-${i}-${p.prop}`,
       id: p.prop,
       flip: !!p.flip,
+      kind: p.kind,
       weight,
       width,
       height,
@@ -120,6 +154,6 @@ export function buildPins(formation: Formation, ground: GroundPatch): PinSpec[] 
 /** Every prop that is a pin in the scenery manifest (for loading their art up front). */
 export function pinPropIds(): PropId[] {
   const ids = new Set<PropId>();
-  for (const f of FORMATIONS) for (const p of f.pins) ids.add(p.prop);
+  for (const f of ALL_SETS) for (const p of f.pins) ids.add(p.prop);
   return [...ids];
 }

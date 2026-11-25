@@ -7,9 +7,11 @@
  *   <PinsPopup pins={pins} />
  *   pins.subscribe(e => { if (e.type === "result") ... });
  */
-import { FORMATIONS } from "./content";
+import { ALL_SETS, FORMATIONS } from "./content";
+import { formationById } from "./layout";
+import { countedCards, type PinsResult } from "./scoring";
 
-export type PinsResult = { down: number; total: number; fullClear: boolean };
+export type { PinsResult };
 
 export type PinsPhase =
   /** Standing, waiting for a throw. */
@@ -42,16 +44,29 @@ export type PinsState = {
   debug: boolean;
 };
 
-export type PinsCommand = { type: "reset" } | { type: "next" } | { type: "formation"; id: string };
+export type PinsCommand =
+  | { type: "reset" }
+  | { type: "next" }
+  | { type: "formation"; id: string }
+  /** After the result on show, change to this set instead of popping the cards back up. */
+  | { type: "after"; id: string };
+
+export type PinsOptions = {
+  /**
+   * After a full clear, change to the next set by itself (default true, free play). A match turns it off:
+   * the same set pops back up for the other player, and the game says when the next round's set comes.
+   */
+  autoNext?: boolean;
+};
 
 export type Pins = ReturnType<typeof createPins>;
 
-export function createPins(formation = FORMATIONS[0].id) {
+export function createPins(formation = FORMATIONS[0].id, options: PinsOptions = {}) {
   let state: PinsState = {
     formation,
     phase: "ready",
     down: 0,
-    total: FORMATIONS.find((f) => f.id === formation)?.pins.length ?? 0,
+    total: countedCards(formationById(formation)),
     last: null,
     debug: false,
   };
@@ -84,6 +99,13 @@ export function createPins(formation = FORMATIONS[0].id) {
     next: () => void commands.push({ type: "next" }),
     /** Change to this formation. */
     setFormation: (id: string) => void commands.push({ type: "formation", id }),
+    /**
+     * Once the result on show has been seen, change to this set instead of popping the cards back up (a new
+     * round). If the cards already stand, it changes now.
+     */
+    changeAfterResult: (id: string) => void commands.push({ type: "after", id }),
+    /** Free play changes set after a full clear; a match does not (`PinsOptions`). */
+    autoNext: options.autoNext ?? true,
     setDebug: (debug: boolean) => set({ debug }),
 
     /* ---- Used by the stage ---- */
@@ -101,6 +123,6 @@ export function createPins(formation = FORMATIONS[0].id) {
 
 /** The formation after this one (wraps around). */
 export function nextFormationId(id: string): string {
-  const i = FORMATIONS.findIndex((f) => f.id === id);
-  return FORMATIONS[(i + 1) % FORMATIONS.length].id;
+  const i = ALL_SETS.findIndex((f) => f.id === id);
+  return ALL_SETS[(i + 1) % ALL_SETS.length].id;
 }

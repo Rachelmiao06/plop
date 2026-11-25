@@ -34,6 +34,20 @@ const [pins] = useState(() => createPins());          // formation id optional
 
 Wiring the HUD later: on `knocked` pass `down`/`total` and a new `knock` id; on `result` add the score.
 
+## A match: round sets, special cut-outs, mounds
+
+- `ROUND_SETS` (content.ts) are the sets of a match, one per round; `ALL_SETS` is free play plus round sets (the
+  picker on `/dev/pins` shows them all). A set may have a `shift` (it stands left or right of the lane's middle),
+  `mounds` (soft snow in front of it) and a `note` (the words under "Round 2 / 3").
+- A pin may be `kind: "star"` (a star doodle above its head, `SPECIALS.star`; +2 when it falls) or
+  `kind: "friend"` (the white rabbit: never counted as a card; +2 if every friend is still standing, nothing taken
+  away when knocked). `scoring.ts` `countThrow` makes the result (`down`, `total`, `fullClear`, `stars`,
+  `friend`, `bonus`) for both the stage and the shot measure; "N down!" lists the specials under the count.
+- A mound is Rachel's `mound-snow` cut-out drawn as a thick card (like a pin). `softSnowFor(set)` gives the roll its
+  softness (`MOUND`); it squashes flat with a puff where a ball ploughs through and stands up again for the next throw.
+- `createPins(id, { autoNext: false })`: no new set after a full clear (the game decides). `pins.changeAfterResult(id)`:
+  once the "N down!" on show has been seen, change to that set instead of popping the cards back up (a new round).
+
 ## Formations
 
 Five to eight small friends per set, airy enough to read from the throwing view (Rachel: the first sets were one
@@ -83,7 +97,8 @@ Formation ids and exports are fixed; the game imports them.
 
 ## Files
 
-- `content.ts` every feel number, the formations (#25) and the text. Tune here.
+- `content.ts` every feel number, the formations (#25), the round sets, the special cut-outs and the text. Tune here.
+- `scoring.ts` what a throw scored at a set (shared with the shot measure in `src/features/game/measure`).
 - `overlap.ts`, `OverlapCheck.tsx` the readability check: each formation's cards projected through the live
   throwing-view camera; no card may hide more than `OVERLAP.maxHidden` (15%) of another. `/dev/pins` logs a table
   in development (or anywhere with `?overlap`, so a Vercel preview can be checked), and again when the window

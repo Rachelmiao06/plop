@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * The game's words and the one button over the scene: the first-time hint, the "Red Hat's turn!" note,
- * and "Put it down" (cancel a pull, also Escape).
+ * The game's words and the one button over the scene: the first-time hint, the special cut-outs' hint, the
+ * "Red Hat's turn!" / "Round 2 / 3" note, and "Put it down" (cancel a pull, also Escape).
  */
-import { useEffect, useSyncExternalStore, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formationById, type Pins } from "@/features/pins";
 
 import { cancelPull } from "./bowlingLink";
 import { GAME, TEXT } from "./content";
@@ -46,10 +47,10 @@ function Squiggle({ width }: { width: number }) {
 
 /** "hold Space or drag the snowman back": shown until the first throw, then fades (also while pulling). */
 export function GameHint({ game }: { game: Game }) {
-  const { throws, pulling } = useGame(game);
+  const { throws, pulling, phase } = useGame(game);
   const coarse = useSyncExternalStore(subscribeCoarse, () => window.matchMedia(coarseQuery).matches, () => false);
   // Out of the way while pulling (the growing ball sits right there); gone for good after the first throw.
-  const gone = throws > 0 || pulling;
+  const gone = throws > 0 || pulling || phase !== "playing";
   return (
     <div
       aria-hidden={gone}
@@ -60,23 +61,77 @@ export function GameHint({ game }: { game: Game }) {
         <p className="font-heading text-2xl leading-tight font-bold sm:text-3xl">{coarse ? TEXT.hintTouch : TEXT.hint}</p>
         <Squiggle width={coarse ? 200 : 260} />
         {!coarse && <p className="mt-1 font-heading text-lg leading-tight">{TEXT.hintMore}</p>}
+        <p className="mt-0.5 font-heading text-base leading-tight sm:text-lg">{TEXT.hintSweet}</p>
       </div>
     </div>
   );
 }
 
-/** "Red Hat's turn!" for a moment each time the turn passes. */
-export function TurnNote({ game }: { game: Game }) {
-  const { turnId, active } = useGame(game);
-  if (turnId === 0) return null;
+/**
+ * The first time a star friend or the bunny is in a set this visit, a tiny hand-drawn note says what it is worth.
+ * It goes away when the ball is thrown, or after a while.
+ */
+export function SpecialHint({ game, pins }: { game: Game; pins: Pins }) {
+  const { phase, throws } = useGame(game);
+  const { formation, phase: pinsPhase } = useSyncExternalStore(pins.subscribeState, pins.getState, pins.getState);
+  const explained = useRef(new Set<string>());
+  /** The kinds being explained, and the throw count when they appeared (the next throw hides them). */
+  const [showing, setShowing] = useState<{ kinds: ("star" | "friend")[]; at: number }>({ kinds: [], at: 0 });
+
+  useEffect(() => {
+    if (phase !== "playing" || pinsPhase !== "ready") return;
+    const kinds = new Set(formationById(formation).pins.map((p) => p.kind).filter((k): k is "star" | "friend" => !!k));
+    const fresh = [...kinds].filter((k) => !explained.current.has(k));
+    if (!fresh.length) return;
+    fresh.forEach((k) => explained.current.add(k));
+    // Shown from an effect on purpose: it reacts to a new set arriving, once.
+    setShowing({ kinds: fresh, at: game.getState().throws });
+    const t = setTimeout(() => setShowing({ kinds: [], at: 0 }), (GAME.timing.specialHintFor + GAME.timing.turnNoteFor) * 1000);
+    return () => clearTimeout(t);
+  }, [phase, pinsPhase, formation, game]);
+
+  if (!showing.kinds.length || throws > showing.at) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[8%] flex justify-center px-4" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-[42%] flex justify-center px-4 md:top-[15%]" aria-live="polite">
+      <div
+        className={`flex flex-col items-center gap-1 px-8 py-3 text-ink ${styles.wash} ${styles.note}`}
+        // After the round note that shows in the same place.
+        style={{ "--plop-note-for": `${GAME.timing.specialHintFor}s`, animationDelay: `${GAME.timing.turnNoteFor * 0.9}s` } as CSSProperties}
+      >
+        {showing.kinds.map((k) => (
+          <p key={k} className="flex items-center gap-2 font-heading text-xl leading-tight font-bold sm:text-2xl">
+            {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's doodle as a tiny icon */}
+            <img src={k === "star" ? "/assets/effects/star.webp" : "/assets/scenery/rabbit.webp"} alt="" className="h-8 w-auto" />
+            {k === "star" ? TEXT.special.star : TEXT.special.friend}
+          </p>
+        ))}
+        <Squiggle width={180} />
+      </div>
+    </div>
+  );
+}
+
+/** "Red Hat's turn!" for a moment each time the turn passes; "Round 2 / 3" and what the set asks when a round starts. */
+export function TurnNote({ game, pins }: { game: Game; pins: Pins }) {
+  const { turnId, active, phase, round, rounds, players } = useGame(game);
+  const { formation } = useSyncExternalStore(pins.subscribeState, pins.getState, pins.getState);
+  if (turnId === 0 || phase !== "playing") return null;
+  const newRound = active === 0;
+  const note = formationById(game.setFor(round)).note;
+  void formation; // the note follows the round, not the set on the snow (it may still be hopping in)
+  return (
+    <div
+      className={`pointer-events-none absolute inset-x-0 flex justify-center px-4 ${newRound ? "top-[42%] md:top-[15%]" : "bottom-[8%]"}`}
+      aria-live="polite"
+    >
       <p
         key={turnId}
         className={`px-10 py-4 font-heading text-3xl font-bold text-ink-deep sm:text-4xl ${styles.wash} ${styles.note}`}
         style={{ "--plop-note-for": `${GAME.timing.turnNoteFor}s` } as CSSProperties}
       >
-        {TEXT.turn(GAME.players[active].name)}
+        {newRound ? TEXT.round(round + 1, rounds) : TEXT.turn(GAME.players[active].name)}
+        {newRound && note && <span className="block text-center text-xl font-normal sm:text-2xl">{note}</span>}
+        {newRound && players === 2 && <span className="block text-center text-lg font-normal">{TEXT.turn(GAME.players[0].name)}</span>}
       </p>
     </div>
   );

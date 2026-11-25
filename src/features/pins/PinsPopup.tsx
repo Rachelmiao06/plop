@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from "react";
 
-import { PINS, TEXT } from "./content";
+import { PINS, SPECIALS, TEXT } from "./content";
 import type { Pins, PinsResult } from "./controller";
 import { playPop } from "./fwump";
 
@@ -49,6 +49,10 @@ const STYLE = `
   0% { transform: translate(-50%, -50%) scale(0) rotate(var(--turn)); opacity: 0; }
   55% { transform: translate(-50%, -50%) scale(1.2) rotate(var(--turn)); opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(1) rotate(var(--turn)); opacity: 1; }
+}
+@keyframes pins-doodle-line {
+  from { transform: scale(0.6) rotate(-4deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 @keyframes pins-float {
   0%, 100% { margin-top: 0; }
@@ -148,7 +152,35 @@ export function PinsPopup({ pins }: { pins: Pins }) {
         >
           {words}
         </p>
+        <SpecialNotes result={result} />
       </div>
+    </div>
+  );
+}
+
+/** Small handwritten lines under the count for the special cut-outs: a star friend down, the bunny left alone. */
+function SpecialNotes({ result }: { result: PinsResult }) {
+  const notes: { src: string; text: string }[] = [];
+  if (result.stars > 0) notes.push({ src: "/assets/effects/star.webp", text: TEXT.star(result.stars * SPECIALS.star.bonus) });
+  if (result.friend === "safe") notes.push({ src: "/assets/scenery/rabbit.webp", text: TEXT.friendSafe(SPECIALS.friend.bonus) });
+  if (result.friend === "bumped") notes.push({ src: "/assets/scenery/rabbit.webp", text: TEXT.friendBumped });
+  if (!notes.length) return null;
+  return (
+    <div className="relative z-[1] mt-1 flex flex-col items-center gap-0.5">
+      {notes.map((n, i) => (
+        <p
+          key={n.text}
+          className="flex items-center gap-1.5 font-heading text-xl leading-none font-bold text-ink sm:text-2xl"
+          style={{
+            textShadow: "0.06em 0 0 var(--paper), -0.06em 0 0 var(--paper), 0 0.06em 0 var(--paper), 0 -0.06em 0 var(--paper)",
+            animation: `pins-doodle-line 0.4s ${0.35 + i * 0.12}s cubic-bezier(.2,.9,.3,1.3) both`,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- tiny decorative doodle */}
+          <img src={n.src} alt="" className="h-[1.3em] w-auto" />
+          {n.text}
+        </p>
+      ))}
     </div>
   );
 }

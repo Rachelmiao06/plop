@@ -23,22 +23,34 @@ import {
   type RapierCollider,
   type RapierRigidBody,
 } from "@react-three/rapier";
-import { Euler, Quaternion, SphereGeometry, SRGBColorSpace, Vector3, type Group, type Mesh, type Texture } from "three";
+import {
+  Euler,
+  Quaternion,
+  SphereGeometry,
+  Sprite,
+  SpriteMaterial,
+  SRGBColorSpace,
+  Vector3,
+  type Group,
+  type Mesh,
+  type Texture,
+} from "three";
 
 import { playThump } from "@/lib/audio";
 import { haptic } from "@/lib/haptics";
 
 import type { BowlEvent, Bowling } from "@/features/bowling";
-import { propSrc } from "@/features/scenery";
+import { propSettings, propSrc, propWidth } from "@/features/scenery";
 import { standee3d } from "@/features/scenery/content";
 import { toonMaterial } from "@/features/scenery/three/materials";
 import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
 
 import { currentBowling, tapBowling } from "./ballTap";
-import { PINS } from "./content";
+import { MOUND, PINS, SPECIALS } from "./content";
 import { nextFormationId, type Pins, type PinsPhase } from "./controller";
 import { playFwump, unlockFwumpOnFirstTouch } from "./fwump";
-import { buildPins, formationById, pinPropIds, sampleGround, type PinSpec } from "./layout";
+import { buildPins, formationById, moundsOf, pinPropIds, sampleGround, type PinSpec } from "./layout";
+import { countThrow, countedCards } from "./scoring";
 import { PinCard, type PaperColors } from "./PinCard";
 
 /** Same as the bowling stage's ball limit. */
@@ -49,6 +61,12 @@ const DEG = Math.PI / 180;
 const UP = new Vector3(0, 1, 0);
 /** The heap under a fallen card: a soft half dome, scaled to size each frame (same shape as the scenery's mound). */
 const heapGeometry = new SphereGeometry(1, 20, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+/** The star doodle a star friend carries above its head (Rachel's effect art). */
+const STAR_SRC = "/assets/effects/star.webp";
+/** A soft mound on the lane is Rachel's snow-mound cut-out (the village's), as a thick card like the pins. */
+const MOUND_ART = "mound-snow";
+/** Its key among the pin textures (loaded together, so they share one Suspense and colour setup). */
+const STAR_KEY = "__star";
 /** The drawing light all paper shading comes from (same as the scenery look and PinCard). */
 const drawingLight = new Vector3(...standee3d.shading.from).normalize();
 
@@ -66,6 +84,8 @@ type PinRuntime = {
   squash: { q: number; v: number };
   /** How far the drawing of a fallen card is propped up off the snow (radians, drawing only). */
   lift: number;
+  /** When a star card went down (for its star's pop), on the pins clock. */
+  starAt?: number;
 };
 
 const MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -104,7 +124,10 @@ function readPaper(): PaperColors {
 }
 
 function usePinTextures(): Record<string, Texture> {
-  const urls = useMemo(() => Object.fromEntries(pinPropIds().map((id) => [id, propSrc(id)])), []);
+  const urls = useMemo(
+    () => ({ ...Object.fromEntries(pinPropIds().map((id) => [id, propSrc(id)])), [MOUND_ART]: propSrc(MOUND_ART), [STAR_KEY]: STAR_SRC }),
+    [],
+  );
   const textures = useTexture(urls);
   useMemo(() => {
     for (const tex of Object.values(textures)) {
@@ -161,7 +184,22 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   const textures = usePinTextures();
   /** The set on the snow, and whether it mounts hidden to hop in. */
   const [entry, setEntry] = useState(() => ({ id: pins.getState().formation, arrive: false }));
-  const specs = useMemo(() => buildPins(formationById(entry.id), ground), [entry.id, ground]);
+  const formation = useMemo(() => formationById(entry.id), [entry.id]);
+  const specs = useMemo(() => buildPins(formation, ground), [formation, ground]);
+  /** Cards that count (friends do not). */
+  const counted = useMemo(() => countedCards(formation), [formation]);
+  const mounds = useMemo(() => moundsOf(formation), [formation]);
+  const moundArt = useMemo(() => ({ width: propWidth(MOUND_ART), height: propSettings(MOUND_ART)?.height ?? 1 }), []);
+  /** Each mound's drawing, and how flat it is pressed (1 = full height) and how grown in (0..1). */
+  const moundMeshes = useRef<(Group | null)[]>([]);
+  const moundState = useRef<{ flat: number; grow: number; puffed: boolean }[]>([]);
+  // Drawn as is, like the cut-outs: no lighting, no tone mapping.
+  const starMaterial = useMemo(
+    () => new SpriteMaterial({ map: textures[STAR_KEY], toneMapped: false, transparent: true, depthWrite: false }),
+    [textures],
+  );
+  useEffect(() => () => starMaterial.dispose(), [starMaterial]);
+  const stars = useRef<(Sprite | null)[]>([]);
 
   const bodies = useRef<(RapierRigidBody | null)[]>([]);
   const visuals = useRef<(Group | null)[]>([]);
@@ -192,6 +230,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     throwBalls: new Set<number>(),
     /** A throw came in while the set was resetting or changing: count it once they stand. */
     pendingThrow: false,
+    /** The game asked for this set once the result on show has been seen (`changeAfterResult`). */
+    after: null as string | null,
     /** The set that is ducking out: once every card is under the snow, this one mounts. */
     nextFormation: null as string | null,
     /** The set that just mounted hidden and should hop in. */
@@ -222,8 +262,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       lift: 0,
     }));
     runtimeFor.current = entry.id;
-    if (!entry.arrive) pins.emit({ type: "ready", formation: entry.id, total: specs.length });
-  }, [specs, entry, pins]);
+    moundState.current = mounds.map(() => ({ flat: 1, grow: entry.arrive ? 0 : 1, puffed: false }));
+    if (!entry.arrive) pins.emit({ type: "ready", formation: entry.id, total: counted });
+  }, [specs, entry, pins, counted, mounds]);
 
   useEffect(() => {
     tapBowling();
@@ -266,7 +307,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     f.pendingThrow = false;
     f.hitThisThrow = false;
     clearCounts(runtime.current);
-    pins.emit({ type: "knocked", down: 0, total: specs.length });
+    pins.emit({ type: "knocked", down: 0, total: counted });
     setPhase("throw");
   };
 
@@ -286,7 +327,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       b.setLinvel({ x: 0, y: 0, z: 0 }, true);
       b.setAngvel({ x: 0, y: 0, z: 0 }, true);
     });
-    pins.emit({ type: "ready", formation: entry.id, total: specs.length });
+    pins.emit({ type: "ready", formation: entry.id, total: counted });
+    // The mounds are back to full height for the next throw.
+    moundState.current = moundState.current.map((m) => ({ ...m, flat: 1, puffed: false }));
     if (f.pendingThrow && f.activeBalls.size) startThrow();
     else {
       f.pendingThrow = false;
@@ -334,16 +377,26 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
 
   const finishThrow = () => {
     const f = flow.current;
-    const down = runtime.current.filter((rt) => rt.down).length;
-    const total = specs.length;
-    const fullClear = total > 0 && down === total;
+    const result = countThrow(formation, runtime.current.map((rt) => rt.down));
+    const { down, fullClear } = result;
     f.fullClear = fullClear;
     f.throwBalls.clear();
-    pins.emit({ type: "result", result: { down, total, fullClear } });
+    pins.emit({ type: "result", result });
     // The pop-up's beat you feel: a celebration on a full clear, a small double tap otherwise.
     if (fullClear) haptic("fullClear");
     else if (down > 0) haptic("down");
     setPhase("result");
+  };
+
+  /** The result has been seen: a new set (the game's next round, or free play after a full clear), or pop back up. */
+  const afterResult = () => {
+    const f = flow.current;
+    if (f.after) {
+      const id = f.after;
+      f.after = null;
+      startChange(id);
+    } else if (f.fullClear && pins.autoNext) startChange(nextFormationId(entry.id));
+    else startReset();
   };
 
   /* ---------------- bowling events ---------------- */
@@ -357,10 +410,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       else if (f.phase === "throw") f.clearAt = null;
       else {
         f.pendingThrow = true;
-        if (f.phase === "result") {
-          if (f.fullClear) startChange(nextFormationId(entry.id));
-          else startReset();
-        }
+        if (f.phase === "result") afterResult();
       }
     } else if (e.type === "stopped" || e.type === "removed") {
       f.activeBalls.delete(e.ballId);
@@ -572,7 +622,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     });
     if (f.phase !== "throw") return;
     if (newlyDown) {
-      pins.emit({ type: "knocked", down: runtime.current.filter((rt) => rt.down).length, total: specs.length });
+      pins.emit({ type: "knocked", down: runtime.current.filter((rt, i) => rt.down && specs[i]?.kind !== "friend").length, total: counted });
     }
     f.settledFor = moving ? 0 : f.settledFor + dt;
     const clear = ballsThrough();
@@ -673,6 +723,11 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       if (cmd.type === "reset" && (f.phase === "ready" || f.phase === "throw" || f.phase === "result")) startReset();
       if (cmd.type === "next" && f.phase !== "changing") startChange(nextFormationId(entry.id));
       if (cmd.type === "formation" && f.phase !== "changing" && cmd.id !== entry.id) startChange(cmd.id);
+      if (cmd.type === "after") {
+        // Standing and waiting: change now. Otherwise once the result has been seen.
+        if (f.phase === "ready" && cmd.id !== entry.id) startChange(cmd.id);
+        else if (f.phase !== "ready") f.after = cmd.id === entry.id ? null : cmd.id;
+      }
     }
 
     // A new set mounted hidden: hop it in once its bodies exist.
@@ -697,17 +752,15 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
 
     // Result shown long enough: reset, or a new set after a full clear.
     if (f.phase === "result") {
+      const changing = f.after !== null || (f.fullClear && pins.autoNext);
       const wait = f.fullClear ? PINS.nextSet.delayAfterFullClear : PINS.reset.delayAfterResult;
       const ballOnSpots =
-        !f.fullClear &&
+        !changing &&
         (f.game?.balls ?? []).some((ball) =>
           specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.plan.radius + s.card[0]),
         );
       const waited = f.clock - f.since;
-      if (waited > wait && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) {
-        if (f.fullClear) startChange(nextFormationId(entry.id));
-        else startReset();
-      }
+      if (waited > wait && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) afterResult();
     }
 
     // Animations (kinematic) and the boing on landing upright (drawing only).
@@ -786,6 +839,48 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         visual.rotation.z = 0;
         visual.scale.set(1, 1, 1);
       }
+    });
+
+    // The star friends: a gentle bob and rock above their heads, and a pop when their card goes down.
+    const st = SPECIALS.star;
+    specs.forEach((s, i) => {
+      const star = stars.current[i];
+      const rt = runtime.current[i];
+      if (!star || !rt) return;
+      const t = f.clock * st.bobSpeed * Math.PI * 2 + i;
+      const popped = rt.down ? 1 + st.pop * Math.exp(-6 * Math.max(0, f.clock - (rt.starAt ?? f.clock))) : 1;
+      if (rt.down && rt.starAt === undefined) rt.starAt = f.clock;
+      if (!rt.down) rt.starAt = undefined;
+      star.position.y = s.height + st.above + st.size / 2 + Math.sin(t) * st.bob * motion;
+      star.scale.setScalar(st.size * popped);
+      (star.material as SpriteMaterial).rotation = Math.sin(t * 0.5) * st.rock * DEG * motion;
+    });
+
+    // The soft mounds: grow in with a new set, sink away when it leaves, and press flat where a ball ploughs through.
+    mounds.forEach((m, k) => {
+      const mesh = moundMeshes.current[k];
+      const ms = moundState.current[k];
+      if (!mesh || !ms) return;
+      const leaving = f.phase === "changing" && f.nextFormation !== null;
+      const arriving = f.arriveFor === entry.id;
+      ms.grow += ((leaving || arriving ? 0 : 1) - ms.grow) * (1 - Math.exp(-6 * dt));
+      for (const ball of f.game?.balls ?? []) {
+        if (!f.throwBalls.has(ball.id) && !ball.rolling) continue;
+        if (Math.hypot(ball.position.x - m.x, ball.position.z - m.z) > m.radius + ball.plan.radius * 0.5) continue;
+        ms.flat += (MOUND.flatten - ms.flat) * (1 - Math.exp(-MOUND.flattenRate * dt));
+        if (!ms.puffed && ball.rolling) {
+          ms.puffed = true;
+          snow.kickUpSnow(m.x, m.z, m.radius * 0.8, {
+            amount: MOUND.puff * motion,
+            velocityX: ball.plan.direction.x * 2,
+            velocityZ: ball.plan.direction.z * 2,
+          });
+        }
+      }
+      const g = Math.max(0.001, ms.grow);
+      mesh.visible = ms.grow > 0.01;
+      mesh.position.set(m.x, snow.heightAt(m.x, m.z) - MOUND.sink, m.z);
+      mesh.scale.set(g, Math.max(0.001, g * ms.flat), g);
     });
 
     if (!animating) {
@@ -873,6 +968,23 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         />
       ))}
 
+      {mounds.map((m, k) => {
+        // As wide as the mound; height from the drawing's shape.
+        const width = m.radius * 2 * MOUND.widthShare;
+        const height = (width * moundArt.height) / moundArt.width;
+        return (
+          <group
+            key={`mound-${entry.id}-${k}`}
+            ref={(g) => {
+              moundMeshes.current[k] = g;
+            }}
+            visible={false}
+          >
+            <PinCard id={MOUND_ART} width={width} height={height} depth={Math.max(0.02, height * PINS.card.thicknessShare)} flip={k % 2 === 1} art={textures[MOUND_ART]} paper={paper} artOnBack={false} />
+          </group>
+        );
+      })}
+
       {specs.map((s, i) => {
         const w = PINS.weight[s.weight];
         const lift = PINS.card.sink; // colliders start at the snow; the drawing sinks a little into it
@@ -919,6 +1031,16 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
                 }}
               >
                 <PinCard id={s.id} width={s.width} height={s.height} depth={s.depth} flip={s.flip} art={textures[s.id]} paper={paper} artOnBack={PINS.card.artOnBack} />
+                {s.kind === "star" && (
+                  <sprite
+                    ref={(sp) => {
+                      stars.current[i] = sp;
+                    }}
+                    material={starMaterial}
+                    position={[0, s.height + SPECIALS.star.above + SPECIALS.star.size / 2, 0]}
+                    scale={SPECIALS.star.size}
+                  />
+                )}
               </group>
             </group>
           </RigidBody>
