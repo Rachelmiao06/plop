@@ -7,7 +7,7 @@ import { SRGBColorSpace, Vector3, type Group, type Texture } from "three";
 
 import { useSnow } from "@/features/snow-scene";
 
-import { propSrc, village, type PropId } from "../content";
+import { backdrop, propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
 import { Backdrop } from "./Backdrop";
 import { Flecks } from "./Flecks";
@@ -44,7 +44,10 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
           <Standees lane={lane} pivot={pivot} />
         </Suspense>
         <Suspense fallback={null}>
-          <Backdrop center={throwingView(lane).lookAt} />
+          <Backdrop
+            center={throwingView(lane).lookAt}
+            depth={Math.max(1, (lane.lineZ - lane.pinSpot.z) / backdrop.laneLength)}
+          />
         </Suspense>
         <Tracks lane={lane} />
       </Flecks>

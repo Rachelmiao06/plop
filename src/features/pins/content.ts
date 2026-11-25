@@ -59,9 +59,9 @@ export const PINS = {
   /** Speed limits, so nothing ever flies off absurdly. Checked after every physics step. */
   caps: {
     /** Fastest a card may slide, any direction (units per second). */
-    linear: 5.2,
+    linear: 5.8,
     /** Fastest a card may move upward (a hop, never a launch). */
-    up: 1.9,
+    up: 2.2,
     /** Fastest a card may spin (radians per second). */
     angular: 13,
   },
@@ -198,8 +198,12 @@ export const PINS = {
   hitStop: {
     seconds: 0.14,
     slowest: 0.12,
-    /** The impact thump under it: a share of the ball's size on the thump sound's scale. */
-    thump: 0.5,
+    /** A big ball holds a little longer and slower: up to `bigExtra` seconds more and `bigSlowest` at full size. */
+    bigExtra: 0.1,
+    bigSlowest: 0.07,
+    /** The impact thump under it, on the thump sound's size scale: `thump` plus `thumpPerSize` times the ball's size. */
+    thump: 0.32,
+    thumpPerSize: 0.68,
   },
 
   /**
@@ -207,7 +211,7 @@ export const PINS = {
    * push: a shove along the ball's way (per unit of mass, per unit of ball speed), a little lift, and a
    * tumble (spin that tips it over the way the ball goes, plus a touch of random twist).
    */
-  impact: { push: 0.11, lift: 0.18, tumble: 0.05, twist: 0.012 },
+  impact: { push: 0.13, lift: 0.24, tumble: 0.062, twist: 0.014 },
 
   /** With "reduce motion" on: the card squash keeps this share and the pop-up only fades (vibration and sound stay). */
   reducedMotion: 0.3,

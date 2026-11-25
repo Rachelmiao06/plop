@@ -23,6 +23,7 @@ export type Feedback = {
 
 export function connectFeedback(game: Bowling): Feedback {
   let crunching = false;
+  let later: ReturnType<typeof setTimeout> | undefined;
   let tickPhase = 0;
   const beats = { ticks: 0 };
 
@@ -41,7 +42,14 @@ export function connectFeedback(game: Bowling): Feedback {
       case "launched":
         // A soft push of air as the ball sets off; the crunch carries the roll.
         // The whoosh scales with how fast the ball leaves.
-        playWhoosh(clamp01(e.plan.startSpeed / b.whooshFullSpeed) * (0.45 + 0.55 * e.plan.power));
+        // Power you can hear: a low push-off thump, the whoosh, and a second whoosh layered on a strong pull.
+        const whoosh = clamp01(e.plan.startSpeed / b.whooshFullSpeed) * (0.45 + 0.55 * e.plan.power);
+        playThump(b.pushThump * e.plan.power);
+        playWhoosh(whoosh);
+        if (e.plan.power > b.whooshDoubleFrom) {
+          const again = whoosh * e.plan.power;
+          later = setTimeout(() => playWhoosh(again), b.whooshDoubleDelay * 1000);
+        }
         haptic("launch", e.plan.power);
         break;
     }
@@ -88,6 +96,7 @@ export function connectFeedback(game: Bowling): Feedback {
     },
     dispose() {
       off();
+      clearTimeout(later);
       stopCrunch();
     },
   };

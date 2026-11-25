@@ -527,8 +527,8 @@ export const village = {
   view: {
     lookAtShare: 0.45,
     lookAtHeight: 0.4,
-    pathAt: 0.15,
-    distance: 1.6,
+    pathAt: 0.1,
+    distance: 1.9,
     turn: 0,
   },
 
@@ -597,8 +597,12 @@ export const village = {
  * Colours: the sky is `--paper` blending toward `--snow-shadow` higher up; the art is drawn as is.
  */
 export const backdrop = {
-  /** Distance from the look-at point to the backdrop (scene units, on the game's lane), and how much of the circle it covers. */
+  /**
+   * Distance from the look-at point to the backdrop (scene units), and how much of the circle it covers. Set for a
+   * lane `laneLength` deep (line to pin spot); a deeper lane moves the wall back by the same share.
+   */
   radius: 9.6,
+  laneLength: 5.6,
   arc: 220, // degrees, centred straight back
   /**
    * On a phone held upright the score panel covers the top of the screen, so the backdrop comes this much

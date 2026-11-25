@@ -15,6 +15,7 @@ import {
   ShaderMaterial,
   SRGBColorSpace,
   type Texture,
+  Vector3,
 } from "three";
 
 import { useSnow } from "@/features/snow-scene";
@@ -65,6 +66,8 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
 type Props = {
   /** The point the backdrop curves round (the throwing view's look-at point). */
   center: [number, number, number];
+  /** How much deeper the game's lane is than the lane `backdrop.radius` was set for (1 = the same); the wall moves back by it. */
+  depth?: number;
 };
 
 /**
@@ -72,7 +75,9 @@ type Props = {
  * foot, and a few flat sky doodles drifting slowly. Fades out as the camera rises (see `backdrop` in content.ts).
  * Nothing here is lit: the sky is a blend of two tokens, the art is drawn exactly as drawn.
  */
-export function Backdrop({ center }: Props) {
+const look = new Vector3();
+
+export function Backdrop({ center, depth = 1 }: Props) {
   // On a phone held upright the backdrop comes a little closer and the hills grow (see `backdrop.portrait`).
   const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
   const narrow = Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
@@ -82,13 +87,13 @@ export function Backdrop({ center }: Props) {
     const lift = backdrop.hillsHeight * (grow - 1);
     return {
       ...backdrop,
-      radius: backdrop.radius + (p.radius - backdrop.radius) * narrow,
+      radius: (backdrop.radius + (p.radius - backdrop.radius) * narrow) * depth,
       hillsHeight: backdrop.hillsHeight * grow,
       tintFrom: backdrop.tintFrom + lift,
       sky: backdrop.sky.map((s) => ({ ...s, y: s.y + lift })),
       bird: { ...backdrop.bird, y: backdrop.bird.y + lift },
     };
-  }, [narrow]);
+  }, [narrow, depth]);
   const paper = usePaper();
   const snow = useSnow();
   const reduced = useReducedMotion();
@@ -227,10 +232,10 @@ export function Backdrop({ center }: Props) {
   useFrame(({ camera, clock }) => {
     const g = root.current;
     if (!g) return;
-    // Fade with the camera's height above the snow, seen from the middle of the scene.
-    const dx = camera.position.x - cx;
-    const dz = camera.position.z - cz;
-    const pitch = Math.atan2(camera.position.y - center[1], Math.hypot(dx, dz)) / DEG;
+    // Fade with how steeply the camera looks down at the snow (from the throwing view that is its height
+    // seen from the middle of the scene; a camera riding low behind the ball looks nearly level and keeps it).
+    camera.getWorldDirection(look);
+    const pitch = Math.asin(Math.min(Math.max(-look.y, -1), 1)) / DEG;
     const opacity = 1 - Math.min(Math.max((pitch - b.fadeFrom) / (b.fadeTo - b.fadeFrom), 0), 1);
     g.visible = opacity > 0.001;
     fade.uOpacity.value = opacity;

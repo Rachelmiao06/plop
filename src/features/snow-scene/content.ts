@@ -301,6 +301,17 @@ export const content = {
   },
 
   // Turning the view.
+  // Camera shots a feature asks for (setSnowCameraShot): how the camera glides back afterwards.
+  shots: {
+    // Spring rate (per second) of the glide back when a shot is cleared without a rate. About 2 = calm.
+    releaseRate: 2,
+    // When the player drags, scrolls or presses a key during an interruptible shot: a slightly quicker glide.
+    takeoverRate: 3.5,
+    // Field-of-view springs never go outside these (degrees), whatever a shot or a kick asks for.
+    fovMin: 14,
+    fovMax: 60,
+  },
+
   orbit: {
     // How far left and right the view may turn (degrees). Never behind the scene.
     yawLimit: 60,

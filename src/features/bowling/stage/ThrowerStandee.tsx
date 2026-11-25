@@ -185,13 +185,18 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
 
         // Release: stretch up and snap forward. Landing: squash, then the happy bounce.
         if (t.phase === "thrown" && s.phase !== "thrown") {
-          s.squash.speed -= L.hop.stretch * 14;
-          s.tiltX.speed -= 3;
+          // A stronger pull gives a bigger, snappier lunge (never less than `minShare` of it).
+          const power = game.balls[game.balls.length - 1]?.plan.power ?? 1;
+          const p = L.lunge.minShare + (1 - L.lunge.minShare) * power;
+          // The kick that peaks at about `distance` on a spring this stiff (14 was tuned at stiffness 60).
+          const kick = 14 * Math.sqrt(L.lunge.stiffness / 60) * p;
+          s.squash.speed -= L.hop.stretch * 14 * p;
+          s.tiltX.speed -= 3 * p;
           // Lunge after the ball, lean into it, a little roll of follow-through toward where it went.
-          s.lunge.speed -= L.lunge.distance * 14; // peaks at about `distance` on its spring
-          s.tiltX.speed -= L.lunge.lean * 14;
+          s.lunge.speed -= L.lunge.distance * kick;
+          s.tiltX.speed -= L.lunge.lean * kick;
           const side = Math.abs(s.pullX) > 0.05 ? Math.sign(s.pullX) : Math.sin(time * 7.1) >= 0 ? 1 : -1;
-          s.roll.speed += side * L.lunge.roll * 14;
+          s.roll.speed += side * L.lunge.roll * kick;
         }
         if (t.phase === "pulling") s.pullX = t.pull.x;
         s.phase = t.phase;

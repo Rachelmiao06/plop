@@ -372,8 +372,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           if (!f.hitThisThrow) {
             f.hitThisThrow = true;
             const h = PINS.hitStop;
-            f.game.hitStop(h.seconds, h.slowest);
-            playThump(ball.plan.size * h.thump);
+            const size = ball.plan.size;
+            f.game.hitStop(h.seconds + h.bigExtra * size, h.slowest + (h.bigSlowest - h.slowest) * size);
+            playThump(h.thump + h.thumpPerSize * size);
             haptic("hit", ball.plan.size);
           }
           return;
