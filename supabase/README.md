@@ -3,6 +3,11 @@
 Until these steps are done, the leaderboard runs in **demo mode**: it works, but scores are forgotten whenever
 the site redeploys. After them, scores are kept for good. About 10 minutes, all in the browser, no terminal.
 
+> **Already connected Supabase through Vercel → Storage (the Supabase integration)?** Then Vercel already has
+> `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for Production and Preview: do only **step 2** (make the table)
+> and **step 5** (check). Until step 2 is done the board says "the board is napping", and the server log says
+> `Could not find the table 'public.scores'`.
+
 ## 1. Make the Supabase project
 
 1. Go to <https://supabase.com> and sign up (GitHub sign-in is fine). The free plan is enough.
