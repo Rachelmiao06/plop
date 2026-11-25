@@ -11,3 +11,6 @@ export {
   type VillageProp,
 } from "./village";
 export { props, propSrc, propWidth, propSettings, effects, effectSrc, type PropId } from "./content";
+// The match's time of day (afternoon 0 → sunset 0.5 → evening 1). Shared with the snow and light; see timeOfDay.ts.
+export { getTimeOfDay, setTimeOfDay, subscribeTimeOfDay } from "./timeOfDay";
+export { SkyPanel } from "./SkyPanel";
