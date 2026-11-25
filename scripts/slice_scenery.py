@@ -1,28 +1,40 @@
 #!/usr/bin/env python3
-"""Cut the scenery sticker sheets into single transparent props.
+"""Cut scenery sticker sheets into single transparent props.
 
-Reads   art-source/scenery/sheet-*.png   (six objects each, white paper background)
-Writes  public/assets/scenery/<name>.webp (transparent, trimmed, base on the bottom edge)
-Prints  one line per prop with its pixel size, to copy into src/features/scenery/content.ts
+Every sheet is a grid of separate drawings on white paper. The list of sheets,
+their grid shape and the prop names live in art-source/scenery/sheets.json.
 
-Run from the repo root:   python3 scripts/slice_scenery.py
-Check sheets for the eye:  python3 scripts/slice_scenery.py --check <folder>
-Needs Pillow, numpy and scipy (already on this machine; nothing is added to package.json).
+  Re-cut everything (run from the repo root):
+      python3 scripts/slice_scenery.py
+  Add or replace one sheet (it is also recorded in sheets.json, so a full run repeats it):
+      python3 scripts/slice_scenery.py --sheet art-source/scenery/new.png --grid 2x2 --names tree,cottage,igloo,pine
+  Also write contact sheets on dark and snow-blue backgrounds for checking by eye:
+      ... --check <folder>
+
+Writes
+  public/assets/scenery/<name>.webp   transparent, trimmed, base on the bottom edge, long side <= 512 px
+  src/features/scenery/sizes.json     pixel size of every file, read by content.ts (no code change needed)
+  WebPs in public/assets/scenery/ that no sheet produces any more are deleted (listed in the output).
 
 How the background is removed
-  A colour key would eat the white snow, so only paper that is connected to the
-  sheet's edge is removed (a flood fill from the border with a small tolerance).
-  The brown outlines stop the flood. A few props have see-through gaps that are
-  fully fenced in by the drawing (between the fence rails, under the bench back,
-  between the sled runners); those are listed by hand in HOLES below.
-  The last one or two pixels next to the paper get a soft alpha taken from how
-  far their colour is from the paper, and the paper colour is subtracted from
-  them, so there is no white halo on dark or blue backgrounds.
+  A colour key would eat the white snow, so only paper connected to the sheet's
+  edge is removed: a flood fill from the border with a small tolerance.
+  Thin or unclosed outlines would let that fill leak into white insides, so the
+  ink lines are first thickened by `close_gap` pixels (closing any gap up to
+  about twice that wide), the fill runs around the thickened lines, and then it
+  grows back the same distance over paper only, so it reaches the real line again.
+  See-through gaps fully fenced in by the drawing (between fence rails) are not
+  reached by the fill; list a point inside each under "holes" in sheets.json.
+  The last pixel or two beside the paper gets a soft alpha from how far its colour
+  is from paper, and the paper colour is taken back out, so there is no white halo.
+
+Needs Pillow, numpy and scipy (already on this machine; nothing goes in package.json).
 """
 
 from __future__ import annotations
 
-import sys
+import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -31,108 +43,126 @@ from scipy import ndimage as ndi
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "art-source" / "scenery"
+CONFIG = SRC / "sheets.json"
 OUT = ROOT / "public" / "assets" / "scenery"
+SIZES = ROOT / "src" / "features" / "scenery" / "sizes.json"
 
-# Sheet file -> six names, reading order (top row left to right, then bottom row).
-SHEETS: dict[str, list[str]] = {
-    "sheet-1-buildings-trees.png": [
-        "tree-bare", "cottage", "igloo",
-        "pine-tall", "pine-medium", "pine-small",
-    ],
-    "sheet-2-village-props.png": [
-        "signpost", "flag", "bench",
-        "log-hollow", "street-lamp", "fence",
-    ],
-    "sheet-3-small-props.png": [
-        "berry-bush", "snow-mound", "snowball-pile",
-        "bucket", "radio", "sled",
-    ],
-    "sheet-4-friends.png": [
-        "snowman-sitting", "snowman-reading", "snowman-waving",
-        "penguin-standing", "penguin-sliding", "mailbox",
-    ],
-}
-
-# Fenced-in paper gaps to make transparent: prop name -> points (x, y) on the sheet.
-HOLES: dict[str, list[tuple[int, int]]] = {
-    "bench": [(1344, 304)],                              # under the backrest
-    "fence": [(1228, 854), (1335, 852)],                 # between the two rails, both sides
-    "sled": [(1173, 832), (1364, 855), (1235, 886)],     # under the deck, between the runners
-}
-
-# White highlights drawn without an outline that touch a hole: circles (x, y, radius) kept solid.
-KEEP: dict[str, list[tuple[int, int, int]]] = {
-    "sled": [(1178, 834, 6)],                            # shine on the tip of the front runner
-}
-
-TOLERANCE = 12     # how far (0-255, largest channel) a pixel may be from paper and still count as paper
-EDGE_RING = 2       # pixels next to the removed paper that get a soft alpha
-EDGE_FULL = 96      # colour distance from paper at which an edge pixel is fully opaque
-MIN_PIECE = 60      # loose specks smaller than this many pixels are dropped
-MARGIN = 8          # clear pixels kept on the left, right and top (none at the bottom)
+TOLERANCE = 12      # largest channel difference from paper that still counts as paper
+INK = 40            # difference from paper that counts as a drawn line when closing gaps
+CLOSE_GAP = 3       # default: outline gaps up to about twice this many pixels are closed
+POCKET_MAX = 600    # default: cut-off paper pockets up to this many pixels that touch the outside are removed
+EDGE_RING = 2      # pixels next to the removed paper that get a soft alpha
+EDGE_FULL = 96      # colour difference at which an edge pixel is fully opaque
+MIN_PIECE = 60      # default: loose specks smaller than this many pixels are dropped
+MARGIN = 8          # clear pixels on the left, right and top (none at the bottom)
 MAX_SIDE = 512      # long side limit; props are never enlarged
 WEBP_QUALITY = 90
 
+SQUARE = np.ones((3, 3), bool)
 
-def cut_sheet(path: Path, names: list[str]) -> dict[str, Image.Image]:
-    rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
+
+def disk(r: int) -> np.ndarray:
+    y, x = np.mgrid[-r : r + 1, -r : r + 1]
+    return x * x + y * y <= r * r
+
+
+def parse_grid(text: str) -> tuple[int, int]:
+    cols, rows = (int(v) for v in text.lower().split("x"))
+    return cols, rows
+
+
+def remove_background(rgb: np.ndarray, sheet: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Returns (alpha 0..1, colour with the paper taken out of soft edges)."""
     h, w, _ = rgb.shape
-
     border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]])
     paper = np.median(border, axis=0)
     dist = np.abs(rgb - paper).max(axis=2)
     paperlike = dist <= TOLERANCE
 
-    # Paper connected to the sheet edge.
-    labels, _ = ndi.label(paperlike)
+    # 1. Thicken the ink so small gaps in thin outlines are closed.
+    gap = int(sheet.get("close_gap", CLOSE_GAP))
+    walls = ndi.binary_dilation(dist > INK, structure=disk(gap)) if gap > 0 else dist > INK
+
+    # 2. Flood the paper from the border, around the thickened lines.
+    open_paper = paperlike & ~walls
+    labels, _ = ndi.label(open_paper)
     edge_ids = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
     outside = np.isin(labels, edge_ids[edge_ids > 0])
 
-    # Hand-listed fenced-in gaps.
-    for name, points in HOLES.items():
+    # 3. Grow back up to the real line, over paper only, no farther than the thickening.
+    for _ in range(gap + 1):
+        outside = ndi.binary_dilation(outside, structure=SQUARE) & paperlike
+
+    # 4. Narrow pockets of paper the thickened lines cut off from the outside (between
+    #    scarf tassels, in sharp corners) are still background when they are small and
+    #    touch it. A leak into a white inside through a gap would be large, so it stays.
+    pocket_max = int(sheet.get("pocket_max", POCKET_MAX))
+    left_over, n = ndi.label(paperlike & ~outside)
+    if n:
+        touching = np.unique(left_over[ndi.binary_dilation(outside, structure=SQUARE) & (left_over > 0)])
+        areas = ndi.sum(np.ones_like(left_over), left_over, index=touching)
+        small = touching[areas <= pocket_max]
+        outside |= np.isin(left_over, small)
+
+    # Hand-listed fenced-in see-through gaps.
+    names = sheet["names"]
+    all_paper, _ = ndi.label(paperlike)
+    for name, points in sheet.get("holes", {}).items():
         if name not in names:
-            continue
+            raise SystemExit(f"{sheet['file']}: hole for unknown prop {name!r}")
         for x, y in points:
-            lab = labels[y, x]
+            lab = all_paper[y, x]
             if lab == 0:
                 raise SystemExit(f"{name}: hole point ({x}, {y}) is not on paper")
-            outside |= labels == lab
+            outside |= all_paper == lab
     yy, xx = np.mgrid[0:h, 0:w]
-    for name, circles in KEEP.items():
-        if name not in names:
-            continue
+    for name, circles in sheet.get("keep", {}).items():
         for x, y, r in circles:
             outside &= (xx - x) ** 2 + (yy - y) ** 2 > r * r
 
-    # Soft edge: alpha from colour distance in a thin ring beside the removed paper.
+    # Soft edge beside the removed paper.
     alpha = np.where(outside, 0.0, 1.0).astype(np.float32)
-    ring = ndi.binary_dilation(outside, structure=np.ones((3, 3), bool), iterations=EDGE_RING) & ~outside
+    ring = ndi.binary_dilation(outside, structure=SQUARE, iterations=EDGE_RING) & ~outside
     alpha[ring] = np.clip(dist[ring] / EDGE_FULL, 0.0, 1.0)
 
-    # Take the paper colour back out of the half-transparent pixels.
     a = np.clip(alpha, 1e-3, 1.0)[..., None]
     clean = np.clip((rgb - (1.0 - a) * paper) / a, 0, 255)
     clean[alpha == 0] = 0
+    return alpha, clean
 
-    # Which solid piece belongs to which of the six cells.
+
+def cut_sheet(sheet: dict) -> dict[str, Image.Image]:
+    path = SRC / sheet["file"]
+    if not path.exists():
+        raise SystemExit(f"missing sheet: {path.relative_to(ROOT)}")
+    cols, rows = parse_grid(sheet["grid"])
+    names = sheet["names"]
+    if len(names) > cols * rows:
+        raise SystemExit(f"{sheet['file']}: {len(names)} names but only {cols * rows} cells")
+
+    rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
+    h, w, _ = rgb.shape
+    alpha, clean = remove_background(rgb, sheet)
+
+    # Each solid piece belongs to the cell its centre falls in.
     solid = alpha > 0.5
-    pieces, count = ndi.label(solid, structure=np.ones((3, 3), bool))
-    sizes = ndi.sum(solid, pieces, index=np.arange(1, count + 1))
-    centres = ndi.center_of_mass(solid, pieces, index=np.arange(1, count + 1))
+    pieces, count = ndi.label(solid, structure=SQUARE)
+    idx = np.arange(1, count + 1)
+    sizes = ndi.sum(solid, pieces, index=idx)
+    centres = ndi.center_of_mass(solid, pieces, index=idx)
+    min_piece = int(sheet.get("min_piece", MIN_PIECE))
     owner = np.full(count + 1, -1)
     for i, (size, (cy, cx)) in enumerate(zip(sizes, centres), start=1):
-        if size < MIN_PIECE:
-            continue
-        owner[i] = int(cy // (h / 2)) * 3 + int(cx // (w / 3))
+        if size >= min_piece:
+            owner[i] = min(int(cy // (h / rows)), rows - 1) * cols + min(int(cx // (w / cols)), cols - 1)
     cell_of = owner[pieces]
 
     out: dict[str, Image.Image] = {}
     for cell, name in enumerate(names):
         mine = cell_of == cell
         if not mine.any():
-            raise SystemExit(f"{name}: nothing found in its cell")
-        # Keep this prop's solid pieces plus the soft ring touching them.
-        keep = ndi.binary_dilation(mine, structure=np.ones((3, 3), bool), iterations=EDGE_RING + 1)
+            raise SystemExit(f"{name}: nothing found in its cell of {sheet['file']}")
+        keep = ndi.binary_dilation(mine, structure=SQUARE, iterations=EDGE_RING + 1)
         a_mine = np.where(keep, alpha, 0.0)
         ys, xs = np.nonzero(a_mine > 0.12)
         top, bottom, left, right = ys.min(), ys.max(), xs.min(), xs.max()
@@ -142,18 +172,17 @@ def cut_sheet(path: Path, names: list[str]) -> dict[str, Image.Image]:
         canvas = Image.new("RGBA", (crop.width + 2 * MARGIN, crop.height + MARGIN), (0, 0, 0, 0))
         canvas.paste(crop, (MARGIN, MARGIN))
 
-        long_side = max(canvas.size)
-        if long_side > MAX_SIDE:
-            scale = MAX_SIDE / long_side
+        if max(canvas.size) > MAX_SIDE:
+            scale = MAX_SIDE / max(canvas.size)
             size = (round(canvas.width * scale), round(canvas.height * scale))
-            # Resize with premultiplied alpha so no paper colour bleeds into the edge.
+            # Premultiplied resize so no paper colour bleeds into the edge.
             canvas = canvas.convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")
         out[name] = canvas
     return out
 
 
 def check_sheet(props: dict[str, Image.Image], colour: tuple[int, int, int], path: Path) -> None:
-    """A contact sheet of every prop on one flat colour, bases on a shared line per row."""
+    """Every prop on one flat colour, bases on a shared line per row."""
     names = list(props)
     cols, cell, pad = 6, 520, 12
     rows = -(-len(names) // cols)
@@ -167,28 +196,60 @@ def check_sheet(props: dict[str, Image.Image], colour: tuple[int, int, int], pat
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--sheet", help="one sheet image to add or replace (recorded in sheets.json)")
+    ap.add_argument("--grid", help="columns x rows, e.g. 2x2 (with --sheet)")
+    ap.add_argument("--names", help="comma-separated prop names in reading order (with --sheet)")
+    ap.add_argument("--close-gap", type=int, help="outline gap closing in px for this sheet (with --sheet)")
+    ap.add_argument("--check", metavar="FOLDER", help="write check images here")
+    args = ap.parse_args()
+
+    config = json.loads(CONFIG.read_text())
+    if args.sheet:
+        if not (args.grid and args.names):
+            raise SystemExit("--sheet needs --grid and --names")
+        src = Path(args.sheet).resolve()
+        if src.parent != SRC:
+            raise SystemExit(f"put the sheet in {SRC.relative_to(ROOT)}/ first")
+        entry = {"file": src.name, "grid": args.grid, "names": [n.strip() for n in args.names.split(",") if n.strip()]}
+        if args.close_gap is not None:
+            entry["close_gap"] = args.close_gap
+        config["sheets"] = [s for s in config["sheets"] if s["file"] != src.name] + [entry]
+        CONFIG.write_text(json.dumps(config, indent=2) + "\n")
+        print(f"recorded {src.name} in {CONFIG.relative_to(ROOT)}")
+
     props: dict[str, Image.Image] = {}
-    for filename, names in SHEETS.items():
-        props.update(cut_sheet(SRC / filename, names))
+    for sheet in config["sheets"]:
+        for name, im in cut_sheet(sheet).items():
+            if name in props:
+                raise SystemExit(f"prop name {name!r} is used twice")
+            props[name] = im
 
     OUT.mkdir(parents=True, exist_ok=True)
     total = 0
     for name, im in props.items():
         target = OUT / f"{name}.webp"
         im.save(target, "WEBP", quality=WEBP_QUALITY, alpha_quality=100, method=6, exact=False)
-        size = target.stat().st_size
-        total += size
-        print(f'{name:18s} {im.width:4d} x {im.height:4d}  {size / 1024:6.1f} KB')
+        total += target.stat().st_size
+        print(f"{name:18s} {im.width:4d} x {im.height:4d}  {target.stat().st_size / 1024:6.1f} KB")
+    for old in sorted(OUT.glob("*.webp")):
+        if old.stem not in props:
+            old.unlink()
+            print(f"deleted {old.name} (no sheet makes it any more)")
     print(f"{len(props)} props, {total / 1024:.0f} KB in {OUT.relative_to(ROOT)}")
 
-    if "--check" in sys.argv:
-        folder = Path(sys.argv[sys.argv.index("--check") + 1])
+    sizes = {name: {"w": im.width, "h": im.height} for name, im in sorted(props.items())}
+    SIZES.write_text(json.dumps(sizes, indent=2) + "\n")
+    print(f"pixel sizes written to {SIZES.relative_to(ROOT)}")
+
+    if args.check:
+        folder = Path(args.check)
         folder.mkdir(parents=True, exist_ok=True)
         check_sheet(props, (34, 34, 40), folder / "check-dark.png")
         check_sheet(props, (207, 225, 242), folder / "check-snow.png")
         for name, im in props.items():
             im.save(folder / f"{name}.png")
-        print(f"check sheets in {folder}")
+        print(f"check images in {folder}")
 
 
 if __name__ == "__main__":

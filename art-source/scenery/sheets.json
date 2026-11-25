@@ -1,0 +1,35 @@
+{
+  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60). Run: python3 scripts/slice_scenery.py",
+  "sheets": [
+    {
+      "file": "sheet-1-buildings-trees.png",
+      "grid": "3x2",
+      "names": ["tree-bare", "cottage", "igloo", "pine-tall", "pine-medium", "pine-small"]
+    },
+    {
+      "file": "sheet-2-village-props.png",
+      "grid": "3x2",
+      "names": ["signpost", "flag", "bench", "log-hollow", "street-lamp", "fence"],
+      "holes": {
+        "bench": [[1344, 304]],
+        "fence": [[1228, 854], [1335, 852]]
+      }
+    },
+    {
+      "file": "sheet-3-small-props.png",
+      "grid": "3x2",
+      "names": ["berry-bush", "snow-mound", "snowball-pile", "bucket", "radio", "sled"],
+      "holes": {
+        "sled": [[1173, 832], [1364, 855], [1235, 886]]
+      },
+      "keep": {
+        "sled": [[1178, 834, 6]]
+      }
+    },
+    {
+      "file": "sheet-4-friends.png",
+      "grid": "3x2",
+      "names": ["snowman-sitting", "snowman-reading", "snowman-waving", "penguin-standing", "penguin-sliding", "mailbox"]
+    }
+  ]
+}

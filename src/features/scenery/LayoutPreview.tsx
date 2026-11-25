@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { characters, layout, layoutRules, props, propWidth, type SceneryProp } from "./content";
+import { characters, layout, layoutRules, propPx, props, propSrc, propWidth, type SceneryProp } from "./content";
 
 const { area, lane } = layoutRules;
 /** Extra room above the back row so the tall props there are not cut off in the preview. */
@@ -44,6 +44,7 @@ export function LayoutPreview() {
           const p: SceneryProp = props[item.prop];
           const scale = item.scale ?? 1;
           const w = (propWidth(item.prop) * scale * THUMB) / spanX;
+          const px = propPx(item.prop) ?? { w: 1, h: 1 };
           return (
             <div
               key={`${item.prop}-${i}`}
@@ -52,16 +53,16 @@ export function LayoutPreview() {
                 left: `${left(item.x)}%`,
                 top: `${top(item.z)}%`,
                 width: `${w * 100}%`,
-                aspectRatio: `${p.px.w} / ${p.px.h}`,
+                aspectRatio: `${px.w} / ${px.h}`,
                 transform: "translate(-50%, -100%)",
               }}
               title={`${p.label} (${item.x}, ${item.z})`}
             >
               <Image
-                src={p.src}
+                src={propSrc(item.prop)}
                 alt={p.label}
-                width={p.px.w}
-                height={p.px.h}
+                width={px.w}
+                height={px.h}
                 unoptimized
                 loading="eager"
                 className={`h-full w-full ${item.flip ? "-scale-x-100" : ""}`}

@@ -1,0 +1,98 @@
+{
+  "bench": {
+    "w": 402,
+    "h": 307
+  },
+  "berry-bush": {
+    "w": 365,
+    "h": 281
+  },
+  "bucket": {
+    "w": 315,
+    "h": 306
+  },
+  "cottage": {
+    "w": 428,
+    "h": 383
+  },
+  "fence": {
+    "w": 390,
+    "h": 245
+  },
+  "flag": {
+    "w": 250,
+    "h": 363
+  },
+  "igloo": {
+    "w": 438,
+    "h": 323
+  },
+  "log-hollow": {
+    "w": 424,
+    "h": 281
+  },
+  "mailbox": {
+    "w": 304,
+    "h": 351
+  },
+  "penguin-sliding": {
+    "w": 384,
+    "h": 230
+  },
+  "penguin-standing": {
+    "w": 316,
+    "h": 328
+  },
+  "pine-medium": {
+    "w": 345,
+    "h": 376
+  },
+  "pine-small": {
+    "w": 362,
+    "h": 308
+  },
+  "pine-tall": {
+    "w": 296,
+    "h": 444
+  },
+  "radio": {
+    "w": 334,
+    "h": 330
+  },
+  "signpost": {
+    "w": 380,
+    "h": 359
+  },
+  "sled": {
+    "w": 429,
+    "h": 251
+  },
+  "snow-mound": {
+    "w": 380,
+    "h": 179
+  },
+  "snowball-pile": {
+    "w": 365,
+    "h": 299
+  },
+  "snowman-reading": {
+    "w": 344,
+    "h": 383
+  },
+  "snowman-sitting": {
+    "w": 320,
+    "h": 340
+  },
+  "snowman-waving": {
+    "w": 317,
+    "h": 404
+  },
+  "street-lamp": {
+    "w": 203,
+    "h": 385
+  },
+  "tree-bare": {
+    "w": 445,
+    "h": 436
+  }
+}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { layout, layoutProblems, props } from "@/features/scenery/content";
+import { layout, layoutProblems, propIds, props } from "@/features/scenery/content";
 import { LayoutPreview } from "@/features/scenery/LayoutPreview";
 import { PropSheet } from "@/features/scenery/PropSheet";
 
@@ -16,8 +16,10 @@ export default function SceneryPage() {
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-4xl font-bold">Scenery cut-outs</h1>
         <p className="text-sm">
-          {Object.keys(props).length} props, cut from Rachel&apos;s sticker sheets. Each stands upright in the
-          snow and turns to face the camera. One unit = one main character&apos;s height.
+          {propIds.length} props cut from Rachel&apos;s sticker sheets ({propIds.filter((id) => !("spare" in props[id])).length}{" "}
+          used in the layout, the rest spare). Each stands upright in the snow and turns to face the camera. One
+          unit = one main character&apos;s height. The art is provisional: a looser doodle set is coming, and new
+          files with the same names replace these with no code change.
         </p>
       </header>
 

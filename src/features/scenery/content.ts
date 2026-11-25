@@ -6,71 +6,89 @@
   Axes (same as Three.js): x to the right, z toward the default camera.
   Negative z is the back of the village. The play area is centred on (0, 0).
 
-  The pixel sizes below are printed by `python3 scripts/slice_scenery.py`;
-  re-run it and copy the numbers here if the art is ever re-cut.
+  Pixel sizes are read from sizes.json, which `python3 scripts/slice_scenery.py` rewrites.
 */
+
+import sizes from "./sizes.json";
 
 export type PropGroup = "big" | "tree" | "mid" | "small" | "friend";
 
+/** Settings per prop. The file is found by name; its pixel size comes from sizes.json. */
 export type SceneryProp = {
   /** Shown on /dev/scenery. */
   label: string;
-  /** Under /public. Transparent WebP; the bottom edge is where it meets the snow. */
-  src: string;
-  /** Pixel size of the file. */
-  px: { w: number; h: number };
   /** Height above the snow surface once planted, in scene units. */
   height: number;
   group: PropGroup;
   /** How far the base sinks below the snow surface, in scene units (hides the hard bottom edge). */
   sink: number;
+  /** Kept for later, but not used in the first layout. */
+  spare?: boolean;
 };
 
-const file = (name: string) => `/assets/scenery/${name}.webp`;
-
+/*
+  Props by name. The name is the file name in public/assets/scenery/ (`<name>.webp`), so when the art
+  is re-cut from new sheets the files are swapped with no code change, as long as the names stay.
+  The first layout uses only the short priority list; everything marked `spare` waits.
+  The art is provisional: Rachel is regenerating the sheets in a looser, thinner-lined doodle style.
+*/
 export const props = {
   // Big buildings and the old tree: back of the village.
-  "tree-bare": { label: "Bare tree with ornaments", src: file("tree-bare"), px: { w: 445, h: 436 }, height: 3.4, group: "big", sink: 0.08 },
-  cottage: { label: "Cottage", src: file("cottage"), px: { w: 428, h: 383 }, height: 3, group: "big", sink: 0.1 },
-  igloo: { label: "Igloo", src: file("igloo"), px: { w: 438, h: 323 }, height: 2.2, group: "big", sink: 0.1 },
+  "tree-bare": { label: "Bare tree with ornaments", height: 3.4, group: "big", sink: 0.08 },
+  cottage: { label: "Cottage", height: 3, group: "big", sink: 0.1 },
+  igloo: { label: "Igloo", height: 2.2, group: "big", sink: 0.1 },
 
   // Pines: frame the sides.
-  "pine-tall": { label: "Tall pine", src: file("pine-tall"), px: { w: 296, h: 444 }, height: 3, group: "tree", sink: 0.08 },
-  "pine-medium": { label: "Medium pine", src: file("pine-medium"), px: { w: 345, h: 376 }, height: 2.4, group: "tree", sink: 0.07 },
-  "pine-small": { label: "Small pine", src: file("pine-small"), px: { w: 362, h: 308 }, height: 1.7, group: "tree", sink: 0.06 },
+  "pine-tall": { label: "Tall pine", height: 3, group: "tree", sink: 0.08 },
+  "pine-medium": { label: "Medium pine", height: 2.4, group: "tree", sink: 0.07 },
+  "pine-small": { label: "Small pine", height: 1.7, group: "tree", sink: 0.06, spare: true },
 
   // Village furniture: middle distance.
-  signpost: { label: "Signpost", src: file("signpost"), px: { w: 380, h: 359 }, height: 1.3, group: "mid", sink: 0.06 },
-  flag: { label: "Flag", src: file("flag"), px: { w: 250, h: 363 }, height: 1.8, group: "mid", sink: 0.08 },
-  bench: { label: "Bench", src: file("bench"), px: { w: 402, h: 307 }, height: 0.9, group: "mid", sink: 0.04 },
-  "log-hollow": { label: "Hollow log", src: file("log-hollow"), px: { w: 424, h: 281 }, height: 0.9, group: "mid", sink: 0.06 },
-  "street-lamp": { label: "Street lamp", src: file("street-lamp"), px: { w: 203, h: 385 }, height: 1.8, group: "mid", sink: 0.07 },
-  fence: { label: "Fence", src: file("fence"), px: { w: 390, h: 245 }, height: 0.8, group: "mid", sink: 0.05 },
-  mailbox: { label: "Mailbox", src: file("mailbox"), px: { w: 304, h: 351 }, height: 1.1, group: "mid", sink: 0.05 },
+  signpost: { label: "Signpost", height: 1.3, group: "mid", sink: 0.06 },
+  flag: { label: "Flag", height: 1.8, group: "mid", sink: 0.08 },
+  bench: { label: "Bench", height: 0.9, group: "mid", sink: 0.04 },
+  "log-hollow": { label: "Hollow log", height: 0.9, group: "mid", sink: 0.06 },
+  "street-lamp": { label: "Street lamp", height: 1.8, group: "mid", sink: 0.07, spare: true },
+  fence: { label: "Fence", height: 0.8, group: "mid", sink: 0.05, spare: true },
+  mailbox: { label: "Mailbox", height: 1.1, group: "mid", sink: 0.05, spare: true },
 
-  // Small things: dotted around the edges.
-  "berry-bush": { label: "Berry bush", src: file("berry-bush"), px: { w: 365, h: 281 }, height: 0.8, group: "small", sink: 0.05 },
-  "snow-mound": { label: "Snow mound", src: file("snow-mound"), px: { w: 380, h: 179 }, height: 0.45, group: "small", sink: 0.08 },
-  "snowball-pile": { label: "Snowball pile", src: file("snowball-pile"), px: { w: 365, h: 299 }, height: 0.55, group: "small", sink: 0.04 },
-  bucket: { label: "Bucket", src: file("bucket"), px: { w: 315, h: 306 }, height: 0.4, group: "small", sink: 0.03 },
-  radio: { label: "Radio", src: file("radio"), px: { w: 334, h: 330 }, height: 0.45, group: "small", sink: 0.02 },
-  sled: { label: "Sled", src: file("sled"), px: { w: 429, h: 251 }, height: 0.45, group: "small", sink: 0.03 },
+  // Small things.
+  radio: { label: "Radio", height: 0.45, group: "small", sink: 0.02 },
+  bucket: { label: "Bucket", height: 0.4, group: "small", sink: 0.03 },
+  "berry-bush": { label: "Berry bush", height: 0.8, group: "small", sink: 0.05, spare: true },
+  "snow-mound": { label: "Snow mound", height: 0.45, group: "small", sink: 0.08, spare: true },
+  "snowball-pile": { label: "Snowball pile", height: 0.55, group: "small", sink: 0.04, spare: true },
+  sled: { label: "Sled", height: 0.45, group: "small", sink: 0.03, spare: true },
 
   // Little friends: decoration only, never targets.
-  "snowman-sitting": { label: "Snowman sitting (red scarf)", src: file("snowman-sitting"), px: { w: 320, h: 340 }, height: 0.65, group: "friend", sink: 0.04 },
-  "snowman-reading": { label: "Snowman reading", src: file("snowman-reading"), px: { w: 344, h: 383 }, height: 0.75, group: "friend", sink: 0.04 },
-  "snowman-waving": { label: "Snowman waving", src: file("snowman-waving"), px: { w: 317, h: 404 }, height: 0.8, group: "friend", sink: 0.04 },
-  "penguin-standing": { label: "Penguin standing", src: file("penguin-standing"), px: { w: 316, h: 328 }, height: 0.5, group: "friend", sink: 0.03 },
-  "penguin-sliding": { label: "Penguin sliding", src: file("penguin-sliding"), px: { w: 384, h: 230 }, height: 0.3, group: "friend", sink: 0.03 },
+  "snowman-sitting": { label: "Snowman sitting (red scarf)", height: 0.65, group: "friend", sink: 0.04 },
+  "snowman-reading": { label: "Snowman reading", height: 0.75, group: "friend", sink: 0.04 },
+  "penguin-standing": { label: "Penguin standing", height: 0.5, group: "friend", sink: 0.03 },
+  "penguin-sliding": { label: "Penguin sliding", height: 0.3, group: "friend", sink: 0.03 },
+  "snowman-waving": { label: "Snowman waving", height: 0.8, group: "friend", sink: 0.04, spare: true },
 } satisfies Record<string, SceneryProp>;
 
 export type PropId = keyof typeof props;
 
-/** Width in scene units, from the height and the file's shape. */
+export const propIds = Object.keys(props) as PropId[];
+
+/** Pixel sizes of the files, written by scripts/slice_scenery.py. */
+const pixelSizes: Record<string, { w: number; h: number } | undefined> = sizes;
+
+/** Where the file for a prop lives (under /public). */
+export const propSrc = (id: string) => `/assets/scenery/${id}.webp`;
+
+/** Pixel size of the prop's file, or undefined if no sheet has produced it yet. */
+export const propPx = (id: string) => pixelSizes[id];
+
+/** Width in scene units, from the height and the file's shape (square if the file is missing). */
 export function propWidth(id: PropId): number {
-  const p: SceneryProp = props[id];
-  return (p.height * p.px.w) / p.px.h;
+  const px = propPx(id);
+  return px ? (props[id].height * px.w) / px.h : props[id].height;
 }
+
+/** Files the slicer made that have no settings above yet (new names from new sheets). */
+export const filesWithoutSettings = Object.keys(pixelSizes).filter((name) => !(name in props));
 
 /* ------------------------------------------------------------------ */
 /* First village layout                                                 */
@@ -104,47 +122,35 @@ export type Placement = {
 };
 
 /*
-  A tidy little sticker-sheet village:
-  back row  — igloo, cottage with its mailbox, the big tree;
-  sides     — pines stepping down in size toward the front;
-  middle    — bench, signpost, lamp, log and fence behind the characters;
+  A small, airy village with lots of empty snow, built from the priority list only:
+  back row  — igloo, cottage, the big tree;
+  sides     — one tall pine on the left, one medium pine on the right;
+  middle    — signpost, flag, bench with the reading snowman, the hollow log with the radio beside it;
   front     — only small things and little friends near the edges.
 */
 export const layout: Placement[] = [
   // Back row
-  { prop: "igloo", x: -5.4, z: -5.6 },
-  { prop: "cottage", x: -1.2, z: -6.2 },
-  { prop: "mailbox", x: 1.2, z: -5.0 },
-  { prop: "tree-bare", x: 4.4, z: -5.8 },
+  { prop: "igloo", x: -5.6, z: -5.4 },
+  { prop: "cottage", x: -0.8, z: -6.2 },
+  { prop: "tree-bare", x: 4.6, z: -5.6 },
 
   // Pines framing the sides
-  { prop: "pine-tall", x: -8.2, z: -4.6 },
-  { prop: "pine-medium", x: -8.4, z: -1.6 },
-  { prop: "pine-small", x: -7.6, z: 0.6 },
-  { prop: "pine-tall", x: 8.2, z: -3.4, flip: true },
-  { prop: "pine-medium", x: 7.6, z: -6.2, flip: true },
-  { prop: "pine-small", x: 8.4, z: -0.6, flip: true },
+  { prop: "pine-tall", x: -8.2, z: -2.8 },
+  { prop: "pine-medium", x: 8.2, z: -3.2, flip: true },
 
-  // Middle: village furniture behind the characters
+  // Middle, behind the characters
   { prop: "signpost", x: -3.4, z: -3.2 },
-  { prop: "fence", x: -6.0, z: -2.6 },
-  { prop: "bench", x: 1.0, z: -3.4 },
-  { prop: "snowman-reading", x: 2.1, z: -3.0 },
-  { prop: "street-lamp", x: 3.8, z: -2.8 },
-  { prop: "log-hollow", x: 6.4, z: -1.8 },
-  { prop: "flag", x: -1.0, z: -2.4 },
+  { prop: "flag", x: -6.6, z: -0.8 },
+  { prop: "bench", x: 1.6, z: -3.4 },
+  { prop: "snowman-reading", x: 2.7, z: -3.0 },
+  { prop: "log-hollow", x: 6.2, z: -1.2 },
+  { prop: "radio", x: 7.2, z: -0.8 },
 
   // Edges and front: small things and little friends
-  { prop: "berry-bush", x: -6.4, z: 1.8 },
-  { prop: "snowman-sitting", x: -5.6, z: 2.8 },
-  { prop: "bucket", x: -4.2, z: 3.4 },
-  { prop: "snow-mound", x: 0, z: 3.8 },
-  { prop: "snowball-pile", x: 1.6, z: 3.4 },
-  { prop: "penguin-sliding", x: 4.4, z: 3.2 },
-  { prop: "penguin-standing", x: 5.6, z: 2.6 },
-  { prop: "sled", x: 6.8, z: 1.6 },
-  { prop: "snowman-waving", x: 6.2, z: -4.4, flip: true },
-  { prop: "radio", x: -2.4, z: -4.0 },
+  { prop: "snowman-sitting", x: -6.2, z: 2.0 },
+  { prop: "bucket", x: -4.8, z: 2.8 },
+  { prop: "penguin-sliding", x: 3.6, z: 3.2 },
+  { prop: "penguin-standing", x: 5.4, z: 2.4 },
 ];
 
 /** Plain-language problems with the layout; empty when every rule holds. */
@@ -163,6 +169,8 @@ export function layoutProblems(list: Placement[] = layout): string[] {
       problems.push(`${name} is ${h} tall in front of the characters`);
     if (item.x < area.minX || item.x > area.maxX || item.z < area.minZ || item.z > area.maxZ)
       problems.push(`${name} is outside the play area`);
+    if (p.spare) problems.push(`${name} is marked spare`);
+    if (!propPx(item.prop)) problems.push(`${name} has no file yet`);
   }
   return problems;
 }
