@@ -74,3 +74,6 @@ export function useSpring(target: number, stiffness: number, damping: number, in
 
   return value;
 }
+
+/** The match's time of day (0 afternoon → 1 evening), so the paper can stay readable on the evening snow. */
+export { useTimeOfDay as useEvening } from "@/features/snow-scene";

@@ -43,9 +43,8 @@ export const hudCss = `
   }
 }
 
-/* The active player's soft glow, breathing slowly. */
+/* The active player's crayon halo (HaloDoodle inside), breathing slowly. */
 .plop-hud-glow {
-  background: radial-gradient(circle, color-mix(in oklab, var(--butter) 85%, transparent) 0%, transparent 70%);
   animation: plop-hud-breathe 2.4s ease-in-out infinite;
 }
 @keyframes plop-hud-breathe {
@@ -132,7 +131,7 @@ export const hudCss = `
   }
 }
 
-/* Full-clear burst: star pops, lines flick outward, then all fade. */
+/* Full-clear burst: Rachel's star pops, her surprise lines spring up above it, then all fade. */
 .plop-hud-burst {
   animation: plop-hud-burst var(--hud-burst) ease-out both;
 }
@@ -163,11 +162,14 @@ export const hudCss = `
 @keyframes plop-hud-lines {
   0% {
     opacity: 0;
-    stroke-dashoffset: 10;
+    transform: translateY(6px) scale(0.6);
   }
   25% {
     opacity: 1;
-    stroke-dashoffset: 0;
+    transform: translateY(0) scale(1.08);
+  }
+  40% {
+    transform: scale(1);
   }
   75% {
     opacity: 1;

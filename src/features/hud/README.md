@@ -30,9 +30,17 @@ import { ScoreHud } from "@/features/hud";
   switches live in `src/lib/audio.ts`.
 - Feel numbers (spring, wobble, glass blur, timings) are in `content.ts`.
 
-Files: `ScoreHud` (layout), `ProgressBar`, `CornerToggles`, `Doodles` (faces, star, icons, pencil frame),
+Files: `ScoreHud` (layout), `ProgressBar`, `CornerToggles`, `Doodles` (faces, star, icons, pencil frame, paper fill, halo),
 `pencil.ts` (wobbly line maths), `hudStyles.ts` (keyframes, rendered as a scoped `<style>` because this
 project's Next config makes every `.css` file global, so CSS modules do not work).
 
-Stand-ins: snowman faces are simple drawings until the character art has face crops; the star and surprise
-lines are drawn here until PR #20's effect doodles land in `public/assets/effects/`.
+Paper, not glass (#31): the panels are mostly paper white (`glass.tint` 70, more by evening) with a faint `--ink`
+grain and a short hatched coloured-pencil wash inside (`PaperFill`, `content.paper`), cool `--snow-shadow` in the
+afternoon warming to `--butter` by evening (it reads the match's time of day from the snow scene). Pencil outlines
+swell and thin along the stroke (`content.pencil.pressure`, `darkness`); the bar's hatch has uneven gaps and
+lengths plus a light second layer (`content.bar.hatchMess`); the active player wears a `--butter` crayon ring
+(`HaloDoodle`, `content.halo`) instead of a gradient glow.
+
+Art: the faces are square crops of Rachel's thrower cut-outs (`public/assets/scenery/thrower-*.webp`, crop boxes in
+`Doodles.tsx`), the star and surprise lines are her effect doodles (`public/assets/effects/`). The crown is still a
+pencil stand-in until she draws one.

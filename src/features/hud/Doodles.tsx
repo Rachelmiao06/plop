@@ -4,14 +4,13 @@
  * Small hand-drawn pieces of the score display. Every line is warm-brown pencil
  * (var(--ink)); fills are token colours.
  *
- * STAND-INS: the snowman faces are simple drawings until Rachel's character art
- * has face crops, and the star and surprise lines are drawn here until the effect
- * doodles from PR #20 land in public/assets/effects/.
+ * The snowman faces are crops of Rachel's thrower cut-outs, and the star and surprise lines are her effect
+ * doodles (public/assets/effects/). The crown is still a pencil stand-in until she draws one.
  */
 import { useMemo, useRef } from "react";
 import { content, type SnowmanLook } from "./content";
-import { useSize } from "./hooks";
-import { pencilCircle, pencilRoundRect } from "./pencil";
+import { useEvening, useSize } from "./hooks";
+import { hatchStrokes, pencilCircle, pencilCircleStrokes, pencilRoundRect, pencilRoundRectStrokes } from "./pencil";
 import { styles } from "./hudStyles";
 
 const ink = "var(--ink)";
@@ -22,112 +21,190 @@ const stroke = {
   strokeLinejoin: "round",
 } as const;
 
-/** A wobbly pencil outline that fills its parent (the parent must be `relative`). */
+/**
+ * A wobbly pencil outline that fills its parent (the parent must be `relative`). The main line swells and thins
+ * along the stroke like a pencil pressed harder and lighter; a fainter second pass sits slightly off it.
+ */
 export function PencilFrame({ seed, radius, overshoot }: { seed: number; radius: number; overshoot?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const { w, h } = useSize(box);
+  const width = content.pencil.width;
   const [main, second] = useMemo(
-    () => [
-      pencilRoundRect(w, h, radius, seed, { overshoot }),
-      pencilRoundRect(w, h, radius, seed + 7, { overshoot: Math.min(4, overshoot ?? 4) }),
-    ],
-    [w, h, radius, seed, overshoot],
+    () =>
+      [
+        pencilRoundRectStrokes(w, h, radius, seed, width, { overshoot }),
+        pencilRoundRect(w, h, radius, seed + 7, { overshoot: Math.min(4, overshoot ?? 4) }),
+      ] as const,
+    [w, h, radius, seed, overshoot, width],
   );
   return (
     <div ref={box} aria-hidden className="pointer-events-none absolute inset-0">
       {w > 0 && (
         <svg width={w} height={h} className="absolute inset-0 overflow-visible">
-          <path d={second} fill="none" {...stroke} strokeWidth={content.pencil.width * 0.7} opacity={content.pencil.secondPass} />
-          <path d={main} fill="none" {...stroke} strokeWidth={content.pencil.width} />
+          <path d={second} fill="none" {...stroke} strokeWidth={width * 0.7} opacity={content.pencil.secondPass} />
+          {main.map((s, i) => (
+            <path key={i} d={s.d} fill="none" {...stroke} strokeWidth={s.width} opacity={s.opacity} />
+          ))}
         </svg>
       )}
     </div>
   );
 }
 
-/** A tiny snowman face. Stand-in until the character art has face crops. */
-export function SnowmanFace({ look, size = 36, seed = 1 }: { look: SnowmanLook; size?: number; seed?: number }) {
-  const colors = content.looks[look];
-  const head = useMemo(() => pencilCircle(20, 24, 12.5, seed, { wobble: 0.5 }), [seed]);
+/** A tile of fractal noise used as a mask; the colour comes from the --ink token. */
+const grainMask = (() => {
+  const { grainFrequency, grainTile } = content.paper;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${grainTile}' height='${grainTile}'>` +
+    `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${grainFrequency}' numOctaves='2' stitchTiles='stitch'/>` +
+    `<feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.7 -0.6'/></filter>` +
+    `<rect width='100%' height='100%' filter='url(%23n)'/></svg>`;
+  return `url("data:image/svg+xml;utf8,${svg}")`;
+})();
+
+/**
+ * The paper inside a panel or card (#31): a faint --ink grain and a light coloured-pencil wash, so it reads as
+ * paper first and glass second. Cool --snow-shadow in the afternoon, warming to --butter by evening, like paper
+ * under the lamps. Put it first inside a `relative` box that makes its own stacking context (the glass does).
+ */
+export function PaperFill({ seed }: { seed: number }) {
+  const box = useRef<HTMLDivElement>(null);
+  const { w, h } = useSize(box);
+  const evening = useEvening();
+  const p = content.paper;
+  // Short hatched bands, like shading with the side of a coloured pencil, not strokes running the full height.
+  const wash = useMemo(() => {
+    const bands = [];
+    for (let y = -4, i = 0; y < h; y += p.washBand * 0.8, i++) {
+      const strokes = hatchStrokes(w, p.washBand, seed * 31 + i, 1, p.washGap, p.washAngle);
+      bands.push(...strokes.map((s) => ({ ...s, y })));
+    }
+    return bands;
+  }, [w, h, seed, p.washGap, p.washAngle, p.washBand]);
+  const strokes = (color: string, opacity: number) =>
+    opacity > 0.01 && (
+      <g opacity={opacity}>
+        {wash.map((s, i) => (
+          <path
+            key={i}
+            d={s.d}
+            transform={`translate(0 ${s.y})`}
+            stroke={color}
+            strokeWidth={s.width * 1.3}
+            opacity={s.opacity}
+            strokeLinecap="round"
+            fill="none"
+          />
+        ))}
+      </g>
+    );
   return (
-    <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden className="overflow-visible">
-      <path d={head} fill="var(--paper)" {...stroke} />
-      {/* blush */}
-      <ellipse cx="11.6" cy="27.4" rx="2.1" ry="1.4" fill="var(--blush)" />
-      <ellipse cx="28.4" cy="27.4" rx="2.1" ry="1.4" fill="var(--blush)" />
-      {/* dot eyes, set far apart */}
-      <circle cx="14.2" cy="24.2" r="1.35" fill={ink} />
-      <circle cx="25.9" cy="24" r="1.35" fill={ink} />
-      {/* little smile */}
-      <path d="M17.6 28.1 C18.9 29.7 21.3 29.8 22.6 28" fill="none" {...stroke} strokeWidth={1.3} />
-      {look === "bucket" ? (
-        // A small tipped bucket.
-        <g transform="rotate(-9 20 10)">
+    <div ref={box} aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[inherit]">
+      {w > 0 && (
+        <svg width={w} height={h} className="absolute inset-0">
+          {strokes("var(--snow-shadow)", p.wash * (1 - evening))}
+          {strokes("var(--butter)", p.wash * evening)}
+        </svg>
+      )}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "var(--ink)",
+          opacity: p.grain,
+          maskImage: grainMask,
+          WebkitMaskImage: grainMask,
+          maskSize: `${p.grainTile}px ${p.grainTile}px`,
+          WebkitMaskSize: `${p.grainTile}px ${p.grainTile}px`,
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * The active player's halo: a --butter crayon ring scribbled a few times round, with a light crayon fill, instead
+ * of a smooth radial glow. Fills its parent (60 × 60 drawing units).
+ */
+export function HaloDoodle({ seed = 1 }: { seed?: number }) {
+  const { width, passes, fill } = content.halo;
+  const rings = useMemo(
+    () =>
+      Array.from({ length: passes }, (_, i) =>
+        pencilCircleStrokes(30 + (i % 2 ? 0.8 : -0.6), 30 + (i - 1) * 0.7, 25 - i * 1.6, seed * 7 + i * 3, width * (1 - i * 0.22), {
+          wobble: 1.4,
+          step: 6,
+        }),
+      ),
+    [seed, passes, width],
+  );
+  const inside = useMemo(() => pencilCircle(30, 30, 23, seed * 11, { wobble: 1.2, step: 7 }), [seed]);
+  return (
+    <svg viewBox="0 0 60 60" className="absolute inset-0 size-full overflow-visible" aria-hidden>
+      <path d={inside} fill="var(--butter)" opacity={fill} />
+      {rings.map((ring, r) =>
+        ring.map((s, i) => (
           <path
-            d="M13.2 13.1 L14.9 3.6 C18.1 2.9 22.2 2.9 25.3 3.5 L27.1 12.9 C22.6 13.9 17.7 13.9 13.2 13.1 Z"
-            fill={colors.hat}
-            {...stroke}
+            key={`${r}-${i}`}
+            d={s.d}
+            fill="none"
+            stroke="var(--butter)"
+            strokeWidth={s.width}
+            opacity={Math.min(1, s.opacity * (r === 0 ? 1 : 0.75))}
+            strokeLinecap="round"
           />
-          <path d="M14.4 6.4 C18.2 7 22.1 7 25.8 6.3" fill="none" {...stroke} strokeWidth={1} opacity={0.6} />
-          <path d="M25.6 4.6 C28.4 5.3 29.4 7.6 28.3 9.6" fill="none" {...stroke} strokeWidth={1.1} />
-        </g>
-      ) : (
-        // A knitted red hat with a pompom.
-        <g>
-          <path
-            d="M8.6 17.4 C9.3 10.4 14.1 6.6 20.2 6.5 C26.4 6.6 30.8 10.6 31.4 17.2 C24 15.6 16 15.7 8.6 17.4 Z"
-            fill={colors.hat}
-            {...stroke}
-          />
-          <path
-            d="M7.9 17.6 C15.9 15.3 24.4 15.2 32.1 17.3 L31.7 20.2 C24 18.4 16 18.5 8.2 20.6 Z"
-            fill={colors.hat}
-            {...stroke}
-          />
-          <path d="M14.6 10.6 L15.6 15.8 M20.1 8.8 L20.2 15.4 M25.6 10.4 L24.8 15.6" {...stroke} strokeWidth={0.9} opacity={0.55} />
-          <circle cx="20.3" cy="5.2" r="2.9" fill="var(--paper)" {...stroke} />
-        </g>
+        )),
       )}
     </svg>
   );
 }
 
-/** Stand-in star doodle (until PR #20's effect art lands). */
-export function StarDoodle({ size = 34 }: { size?: number }) {
+/**
+ * Head and hat of Rachel's thrower cut-out (`public/assets/scenery/thrower-*.webp`), cropped square. Crop boxes
+ * are in the source image's pixels: x, y, side, then the full image size.
+ */
+const FACE_ART: Record<SnowmanLook, { src: string; x: number; y: number; side: number; w: number; h: number }> = {
+  bucket: { src: "/assets/scenery/thrower-bucket.webp", x: 22, y: 0, side: 270, w: 309, h: 421 },
+  redHat: { src: "/assets/scenery/thrower-redhat.webp", x: 32, y: 8, side: 260, w: 323, h: 479 },
+};
+
+/** A snowman's head from Rachel's cut-out. `seed` is kept for callers and no longer used. */
+export function SnowmanFace({ look, size = 36 }: { look: SnowmanLook; size?: number; seed?: number }) {
+  const a = FACE_ART[look];
+  const k = size / a.side;
   return (
-    <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden className="overflow-visible">
-      <path
-        d="M20.4 4.2 C21.9 9 23.3 12.4 24.6 14.6 C28.6 14.9 32.4 15.2 35.6 15.9 C32.7 18.8 30.2 21.1 28.1 23 C29.1 27.4 29.8 31.4 30.1 35.1 C26.4 32.7 23.2 30.8 20.3 29.4 C16.9 31.3 13.6 33.3 10.2 35.4 C10.8 31.2 11.6 27.2 12.6 23.1 C9.8 20.7 7.2 18.4 4.6 15.8 C8.6 15.1 12.3 14.8 15.8 14.5 C17.4 11.2 18.8 7.8 20.4 4.2 Z"
-        fill="var(--butter)"
-        {...stroke}
-      />
-      <circle cx="16.6" cy="20.6" r="1.1" fill={ink} />
-      <circle cx="23.8" cy="20.4" r="1.1" fill={ink} />
-      <path d="M18.6 23.6 C19.6 24.6 21 24.6 21.9 23.5" fill="none" {...stroke} strokeWidth={1.1} />
-    </svg>
+    <span
+      aria-hidden
+      className="inline-block shrink-0 bg-no-repeat"
+      style={{
+        width: size,
+        height: size,
+        backgroundImage: `url(${a.src})`,
+        backgroundSize: `${a.w * k}px ${a.h * k}px`,
+        backgroundPosition: `${-a.x * k}px ${-a.y * k}px`,
+      }}
+    />
   );
 }
 
-/** Stand-in surprise lines: three short pencil flicks fanning out. */
-export function SurpriseLines({ size = 30, flip = false }: { size?: number; flip?: boolean }) {
+/** Rachel's star doodle. */
+export function StarDoodle({ size = 34 }: { size?: number }) {
+  // eslint-disable-next-line @next/next/no-img-element -- small decorative doodle
+  return <img src="/assets/effects/star.webp" alt="" aria-hidden width={size} height={(size * 178) / 205} draggable={false} />;
+}
+
+/** Rachel's surprise lines: three crayon flicks fanning up (set above the thing that surprised). */
+export function SurpriseLines({ size = 30 }: { size?: number }) {
   return (
-    <svg
-      viewBox="0 0 30 30"
-      width={size}
-      height={size}
+    // eslint-disable-next-line @next/next/no-img-element -- small decorative doodle
+    <img
+      src="/assets/effects/surprise-lines.webp"
+      alt=""
       aria-hidden
-      className="overflow-visible"
-      style={flip ? { transform: "scaleX(-1)" } : undefined}
-    >
-      <path
-        className={styles.lines}
-        d="M6.2 19.5 C9.4 18.6 12.1 18.1 15.2 18 M8.6 10.4 C11.4 12.1 13.6 13.6 16 15.6 M16.5 4.4 C17.3 7.6 17.7 10.2 18 13.2"
-        fill="none"
-        {...stroke}
-        strokeWidth={1.8}
-        strokeDasharray="12"
-      />
-    </svg>
+      width={size}
+      height={(size * 145) / 264}
+      draggable={false}
+      className={styles.lines}
+    />
   );
 }
 
