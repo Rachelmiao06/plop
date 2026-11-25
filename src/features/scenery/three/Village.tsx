@@ -9,10 +9,11 @@ import { useSnow } from "@/features/snow-scene";
 
 import { backdrop, propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
-import { Backdrop, FootBank } from "./Backdrop";
+import { Backdrop } from "./Backdrop";
 import { Flecks } from "./Flecks";
-import { ChimneySmoke, IceBeds, IceChunks, Icicles, WarmLights } from "./Atmosphere";
 import { Tracks } from "./Life";
+// Real light, smoke and ice (three/effects/README.md): these replace the doodle smoke and the painted lamp glow.
+import { ChimneySmoke, FootBank, IceBeds, IceChunks, Icicles, WarmLights } from "./effects/EffectsLayer";
 import { useReducedMotion } from "./motion";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
@@ -38,12 +39,11 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
     return { paper: token("--paper"), shade: token("--snow-shadow"), ink: token("--ink") };
   });
 
-  const reach = Math.max(0, (lane.lineZ - lane.pinSpot.z - backdrop.laneLength) * (1 - village.view.lookAtShare));
   return (
     <PaperContext value={paper}>
       <Flecks>
-        {/* Snow heaped before anything suspends, so the pins' physics ground already includes it. */}
-        <FootBank center={throwingView(lane).lookAt} reach={reach} />
+        {/* Effects: snow heaped before anything suspends, so the pins' physics ground already includes it. */}
+        <FootBank lane={lane} />
         <IceBeds lane={lane} />
         <Suspense fallback={null}>
           <Standees lane={lane} pivot={pivot} />
@@ -51,7 +51,7 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
         <Suspense fallback={null}>
           <Backdrop
             center={throwingView(lane).lookAt}
-            reach={reach}
+            reach={Math.max(0, (lane.lineZ - lane.pinSpot.z - backdrop.laneLength) * (1 - village.view.lookAtShare))}
           />
         </Suspense>
         <Tracks lane={lane} />
@@ -111,6 +111,7 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
           baseY={bases[i]}
           mound={false}
         >
+          {/* Effects fixed to the drawing: warm glow and icicles, from the prop's effect tags. */}
           <WarmLights id={p.id} width={p.width} height={p.height} />
           <Icicles id={p.id} width={p.width} height={p.height} />
         </ThickStandee>

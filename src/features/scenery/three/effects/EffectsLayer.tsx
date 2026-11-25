@@ -12,6 +12,7 @@ import {
   IcosahedronGeometry,
   type InstancedMesh,
   MeshStandardMaterial,
+  NormalBlending,
   Object3D,
   type PointLight,
   ShaderMaterial,
@@ -24,15 +25,16 @@ import {
 
 import { useSnow } from "@/features/snow-scene";
 
-import { atmosphere, standee3d, village, type PropId } from "../content";
-import { fitPoint, type GameLane, type VillageProp } from "../village";
-import { useReducedMotion } from "./motion";
+import { backdrop, standee3d, village, type PropId } from "../../content";
+import { throwingView, villageLayout, type GameLane, type VillageProp } from "../../village";
+import { useReducedMotion } from "../motion";
+import { effects, effectTags } from "./effects";
 
 /*
-  A little real-world effect on top of the paper village (Rachel, 2026-11-25): warm light from the lamp, the
-  lit window and the fairy lights; real smoke from the chimneys; clear ice hanging from the eaves and lying in
-  the snow. Everything is made in code; the drawings are untouched and stay unlit. Numbers: `atmosphere` in
-  content.ts. Colours: tokens read from globals.css at run time.
+  A little real-world effect on top of the paper village (Rachel, 2026-11-25): warm light, chimney smoke, clear ice.
+  Everything is made in code; the drawings are untouched and stay unlit. What goes where comes from each prop's
+  effect tags (`effectTags`), so the effects follow the layout. Numbers: `effects.ts`. Colours: tokens, read from
+  globals.css at run time.
 */
 
 /** The token colours these effects use, read once from globals.css (browser only). */
@@ -58,8 +60,8 @@ function seeded(seed: number) {
   };
 }
 
-/** Where a point on a drawing (shares of width and height) sits in the prop's own space, just in front of the art. */
-const onDrawing = (at: [number, number], width: number, height: number, forward = 0): [number, number, number] => [
+/** A point on a drawing (shares of width and height) in the prop's own space, `forward` units in front of the art. */
+const onDrawing = (at: readonly [number, number], width: number, height: number, forward = 0): [number, number, number] => [
   (at[0] - 0.5) * width,
   at[1] * height,
   (height * standee3d.thicknessShare) / 2 + 0.004 + forward,
@@ -70,22 +72,36 @@ const onDrawing = (at: [number, number], width: number, height: number, forward 
 /* ------------------------------------------------------------------ */
 
 let glowTex: CanvasTexture | null = null;
-/** A soft round glow, bright in the middle and falling off smoothly to nothing at the edge (white; tinted per use). */
+/**
+ * A crayon glow (white; tinted per use): bright in the middle, falling off in a few soft bands with paper grain and a
+ * slightly wobbly edge, never a smooth airbrush gradient.
+ */
 function glowTexture(): CanvasTexture {
   if (glowTex) return glowTex;
+  const l = effects.lights;
   const size = 128;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const g = canvas.getContext("2d")!;
-  const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  // A falloff close to 1 / (1 + r^2), cut smoothly to zero at the rim.
-  for (let i = 0; i <= 10; i++) {
-    const r = i / 10;
-    const a = (1 / (1 + 18 * r * r)) * (1 - r * r) ** 2;
-    grad.addColorStop(r, `rgba(255,255,255,${a.toFixed(3)})`);
+  const img = g.createImageData(size, size);
+  const rand = seeded(5);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = (x + 0.5) / size - 0.5;
+      const dy = (y + 0.5) / size - 0.5;
+      const a = Math.atan2(dy, dx);
+      const r = Math.hypot(dx, dy) * 2 * (1 + 0.05 * Math.sin(a * 5) + 0.03 * Math.sin(a * 11 + 1.3));
+      const lit = Math.max(0, 1 - r);
+      const banded = Math.floor(lit * l.bands + 0.65) / l.bands;
+      const soft = lit + (banded - lit) * l.banding;
+      const grain = 1 - l.grain / 2 + l.grain * rand();
+      const alpha = Math.min(1, soft ** 1.25 * grain);
+      const i = (y * size + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+      img.data[i + 3] = Math.round(alpha * 255);
+    }
   }
-  g.fillStyle = grad;
-  g.fillRect(0, 0, size, size);
+  g.putImageData(img, 0, 0);
   glowTex = new CanvasTexture(canvas);
   glowTex.colorSpace = SRGBColorSpace;
   return glowTex;
@@ -94,78 +110,100 @@ function glowTexture(): CanvasTexture {
 /** The warm light colour: `--butter`, softened toward `--paper`. */
 function warmColor(): Color {
   const t = tokens();
-  return new Color(t.butter).lerp(new Color(t.paper), atmosphere.warmSoftening);
+  return new Color(t.butter).lerp(new Color(t.paper), effects.lights.warmSoftening);
 }
 
 /**
- * The warm lights on one prop (`atmosphere.lights`), drawn inside the prop's own turning group so they turn and
- * sway with the drawing: a halo per bulb and one real point light that warms the lit snow (never the cut-outs,
- * which are unlit paper). The halo flickers a tiny bit; with reduced motion it holds still.
+ * The warm lights on one prop (its `emitsLight` tag), drawn inside the prop's own turning group so they turn and
+ * sway with the drawing: halos per point in the prop's style, and a real point light on the snow if the prop is in
+ * `effects.lights.pointLights`. Halos breathe a tiny bit; with reduced motion they hold still.
  */
 export function WarmLights({ id, width, height }: { id: PropId; width: number; height: number }) {
-  const spec = atmosphere.lights.find((l) => l.prop === id);
+  const points = effectTags(id).emitsLight;
+  const l = effects.lights;
+  const style = l.lamps.includes(id) ? l.styles.lamp : (points?.length ?? 0) >= 3 ? l.styles.bulbs : l.styles.window;
+  const lightSpec = l.pointLights[id];
   const reduced = useReducedMotion();
   const color = useMemo(() => warmColor(), []);
-  const materials = useMemo(
+  // One entry per halo: which point, front or behind, and its own material (opacity changes per frame).
+  const halos = useMemo(
     () =>
-      (spec?.at ?? []).map(
-        () =>
-          new SpriteMaterial({
-            map: glowTexture(),
-            color,
-            blending: AdditiveBlending,
-            transparent: true,
-            depthWrite: false,
-            toneMapped: false,
-            opacity: spec?.halo.strength ?? 0,
-          }),
+      (points ?? []).flatMap((at, i) =>
+        (["front", "behind"] as const).flatMap((place) => {
+          const h = style[place];
+          if (!h) return [];
+          return [
+            {
+              key: `${i}-${place}`,
+              at,
+              h,
+              i,
+              place,
+              material: new SpriteMaterial({
+                map: glowTexture(),
+                color,
+                blending: place === "front" ? AdditiveBlending : NormalBlending,
+                transparent: true,
+                depthWrite: false,
+                toneMapped: false,
+                opacity: h.strength,
+              }),
+            },
+          ];
+        }),
       ),
-    [spec, color],
+    [points, style, color],
   );
-  useEffect(() => () => materials.forEach((m) => m.dispose()), [materials]);
+  useEffect(() => () => halos.forEach((h) => h.material.dispose()), [halos]);
   const light = useRef<PointLight>(null);
   const seed = useMemo(() => (id.length * 7.31) % 6.28, [id]);
 
   useFrame(({ clock }) => {
-    if (!spec) return;
     const t = clock.elapsedTime;
-    materials.forEach((m, i) => {
+    halos.forEach((halo) => {
+      const { h, i } = halo;
       // Two slow waves and a faster small one: a candle-like breath, never a strobe.
       const f = reduced
         ? 0
-        : Math.sin(t * spec.halo.speed * 6.28 + seed + i * 1.9) * 0.5 +
-          Math.sin(t * spec.halo.speed * 2.7 + seed * 2 + i) * 0.35 +
-          Math.sin(t * spec.halo.speed * 13.1 + i * 4.1) * 0.15;
-      m.opacity = spec.halo.strength * (1 + spec.halo.flicker * f);
+        : Math.sin(t * h.speed * 6.28 + seed + i * 1.9) * 0.5 +
+          Math.sin(t * h.speed * 2.7 + seed * 2 + i) * 0.35 +
+          Math.sin(t * h.speed * 13.1 + i * 4.1) * 0.15;
+      halo.material.opacity = h.strength * (1 + h.flicker * f);
     });
-    if (light.current && !reduced) {
-      light.current.intensity = spec.light.intensity * (1 + spec.halo.flicker * 0.5 * Math.sin(t * spec.halo.speed * 6.28 + seed));
+    if (light.current && lightSpec && !reduced) {
+      light.current.intensity = lightSpec.intensity * (1 + style.front.flicker * 0.5 * Math.sin(t * style.front.speed * 6.28 + seed));
     }
   });
 
-  if (!spec) return null;
-  // The point light sits at the middle of the bulbs, a little in front of the drawing.
-  const mid = spec.at.reduce((s, p) => [s[0] + p[0] / spec.at.length, s[1] + p[1] / spec.at.length], [0, 0]) as [number, number];
+  if (!points || points.length === 0) return null;
+  const mid = points.reduce((s, p) => [s[0] + p[0] / points.length, s[1] + p[1] / points.length], [0, 0]) as [number, number];
+  const depth = height * standee3d.thicknessShare;
   return (
     <>
-      {spec.at.map((at, i) => (
-        <sprite
-          key={i}
-          material={materials[i]}
-          position={onDrawing(at, width, height, 0.03)}
-          scale={[spec.halo.size, spec.halo.size, 1]}
-          renderOrder={5}
-          raycast={() => null}
+      {halos.map(({ key, at, h, place, material }) => {
+        const [x, y, z] = onDrawing(at, width, height, 0.03);
+        return (
+          <sprite
+            key={key}
+            material={material}
+            // Behind: just behind the cut-out's back, so the drawing stays crisp in front of the glow.
+            position={[x, y, place === "front" ? z : -depth / 2 - 0.04]}
+            scale={[h.size, h.size, 1]}
+            renderOrder={place === "front" ? 5 : -1}
+            raycast={() => null}
+          />
+        );
+      })}
+      {lightSpec && (
+        <pointLight
+          ref={light}
+          color={color}
+          intensity={lightSpec.intensity}
+          distance={lightSpec.distance}
+          decay={2}
+          position={onDrawing(mid, width, height, l.lightForward)}
         />
-      ))}
-      <pointLight
-        ref={light}
-        color={color}
-        intensity={spec.light.intensity}
-        distance={spec.light.distance}
-        decay={2}
-        position={onDrawing(mid, width, height, atmosphere.lightForward)}
-      />
+      )}
     </>
   );
 }
@@ -175,12 +213,11 @@ export function WarmLights({ id, width, height }: { id: PropId; width: number; h
 /* ------------------------------------------------------------------ */
 
 /**
- * A soft smoke puff: a few overlapping round blobs, off-white `--paper` with a faint `--snow-shadow` shade on the
- * lower side (and, if `atmosphere.smoke.outline` > 0, a faint `--ink` rim like a pencil line). `variant` changes
- * the blob layout.
+ * A soft smoke puff: a few overlapping round blobs, `--paper` tinted toward `--snow-shadow`, shaded underneath (and,
+ * if `effects.smoke.outline` > 0, a faint `--ink` rim). `variant` changes the blob layout.
  */
 function puffTexture(variant: number): CanvasTexture {
-  const s = atmosphere.smoke;
+  const s = effects.smoke;
   const t = tokens();
   const size = 128;
   const canvas = document.createElement("canvas");
@@ -204,7 +241,7 @@ function puffTexture(variant: number): CanvasTexture {
     sg.fillStyle = grad;
     sg.fillRect(0, 0, size, size);
   }
-  // The colour: paper on top, shading to the pale-blue shadow token underneath.
+  // The colour: tinted paper on top, shading further toward the pale-blue shadow token underneath.
   const col = g.createLinearGradient(0, size * 0.25, 0, size * 0.85);
   const paper = new Color(t.paper);
   col.addColorStop(0, paper.clone().lerp(new Color(t.shade), s.tint).getStyle());
@@ -230,19 +267,19 @@ function puffTexture(variant: number): CanvasTexture {
 }
 
 /**
- * Real smoke from each cottage chimney (`village.chimneys`): a few soft puffs, each rising, drifting sideways with
- * a gentle wind, growing and fading out, one after another. With reduced motion it rises `reducedSlowdown` times slower.
+ * Real smoke from every placed prop with a `chimneyAt` tag: a few soft puffs, each rising, drifting sideways with a
+ * gentle wind, growing and fading out, one after another. With reduced motion it rises `reducedSlowdown` times slower.
  */
 export function ChimneySmoke({ placed }: { placed: (VillageProp & { baseY: number })[] }) {
-  const s = atmosphere.smoke;
+  const s = effects.smoke;
   const reduced = useReducedMotion();
   const chimneys = useMemo(
     () =>
       placed.flatMap((p) => {
-        const share = village.chimneys[p.id];
-        if (share === undefined) return [];
-        const along = (share - 0.5) * p.width * (p.flip ? -1 : 1);
-        return [{ key: p.key, x: p.x + along, y: p.baseY + p.height * 0.97, z: p.z - 0.02, scale: p.scale }];
+        const at = effectTags(p.id).chimneyAt;
+        if (!at) return [];
+        const along = (at[0] - 0.5) * p.width * (p.flip ? -1 : 1);
+        return [{ key: p.key, x: p.x + along, y: p.baseY + p.height * at[1], z: p.z - 0.02, scale: p.scale }];
       }),
     [placed],
   );
@@ -265,12 +302,7 @@ export function ChimneySmoke({ placed }: { placed: (VillageProp & { baseY: numbe
       ),
     [chimneys, textures, s.puffsPerChimney],
   );
-  useEffect(
-    () => () => {
-      puffs.forEach((p) => p.material.dispose());
-    },
-    [puffs],
-  );
+  useEffect(() => () => puffs.forEach((p) => p.material.dispose()), [puffs]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const refs = useRef<(Sprite | null)[]>([]);
 
@@ -327,7 +359,7 @@ let iceMat: ShaderMaterial | null = null;
 function iceMaterial(): ShaderMaterial {
   if (iceMat) return iceMat;
   const t = tokens();
-  const a = atmosphere.ice;
+  const a = effects.ice;
   iceMat = new ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -431,7 +463,7 @@ function icicleGeometry(): ConeGeometry {
   const rand = seeded(9);
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
-    // A little wobble along the length, more near the top where water refroze in rings.
+    // A little wobble along the length, like water refrozen in rings.
     const wob = 1 + (rand() - 0.5) * 0.25 + Math.sin(y * 19) * 0.06;
     pos.setX(i, pos.getX(i) * wob);
     pos.setZ(i, pos.getZ(i) * wob);
@@ -442,27 +474,31 @@ function icicleGeometry(): ConeGeometry {
 }
 
 /**
- * Icicles hanging from one prop's eaves (`atmosphere.ice.icicles`), drawn inside the prop's turning group so they
- * stay on the drawing. One instanced mesh per prop.
+ * Icicles hanging along one prop's `icicleEdge` tags, drawn inside the prop's turning group so they stay on the
+ * drawing. One per `icicleSpacing` of edge, the longest in the middle. One instanced mesh per prop.
  */
 export function Icicles({ id, width, height }: { id: PropId; width: number; height: number }) {
-  const rows = atmosphere.ice.icicles.filter((r) => r.prop === id);
-  const count = rows.reduce((n, r) => n + r.count, 0);
+  const edges = effectTags(id).icicleEdge;
+  const a = effects.ice;
+  const counts = useMemo(
+    () => (edges ?? []).map(([x0, y0, x1, y1]) => Math.max(1, Math.round(Math.hypot((x1 - x0) * width, (y1 - y0) * height) / a.icicleSpacing))),
+    [edges, width, height, a.icicleSpacing],
+  );
+  const count = counts.reduce((n, c) => n + c, 0);
   const mesh = useRef<InstancedMesh>(null);
   useIceSun();
   useEffect(() => {
     const m = mesh.current;
-    if (!m || count === 0) return;
-    const a = atmosphere.ice;
+    if (!m || !edges || count === 0) return;
     const rand = seeded(id.length * 13 + count);
     const o = new Object3D();
     let k = 0;
-    for (const r of rows) {
-      for (let i = 0; i < r.count; i++) {
-        // Evenly along the eave with a little jitter; the longest ones in the middle, like real eaves.
-        const s = r.count === 1 ? 0.5 : (i + 0.15 + rand() * 0.7) / r.count;
-        const at: [number, number] = [r.from[0] + (r.to[0] - r.from[0]) * s, r.from[1] + (r.to[1] - r.from[1]) * s];
-        const [x, y, z] = onDrawing(at, width, height, 0.008);
+    edges.forEach(([x0, y0, x1, y1], e) => {
+      const n = counts[e];
+      for (let i = 0; i < n; i++) {
+        // Evenly along the edge with a little jitter; the longest ones in the middle, like real eaves.
+        const s = n === 1 ? 0.5 : (i + 0.15 + rand() * 0.7) / n;
+        const [x, y, z] = onDrawing([x0 + (x1 - x0) * s, y0 + (y1 - y0) * s], width, height, 0.008);
         const middle = 1 - Math.abs(s - 0.5) * 1.2;
         const len = a.icicleLength[0] + (a.icicleLength[1] - a.icicleLength[0]) * (0.35 * rand() + 0.65 * middle * rand());
         const w = a.icicleWidth * (0.75 + rand() * 0.5) * Math.min(1, len / 0.12 + 0.3);
@@ -472,12 +508,13 @@ export function Icicles({ id, width, height }: { id: PropId; width: number; heig
         o.updateMatrix();
         m.setMatrixAt(k++, o.matrix);
       }
-    }
+    });
     m.instanceMatrix.needsUpdate = true;
-  }, [rows, count, id, width, height]);
+  }, [edges, counts, count, id, width, height, a]);
   if (count === 0) return null;
   return (
     <instancedMesh
+      key={count}
       ref={mesh}
       args={[icicleGeometry(), iceMaterial(), count]}
       frustumCulled={false}
@@ -485,6 +522,26 @@ export function Icicles({ id, width, height }: { id: PropId; width: number; heig
       raycast={() => null}
     />
   );
+}
+
+/** Where each ice chunk lies: next to every placed copy of its `near` prop, in scene units. */
+function chunkSpots(lane: GameLane) {
+  const placed = villageLayout(lane);
+  return effects.ice.chunks.flatMap((c, i) =>
+    placed.filter((p) => p.id === c.near).map((p, k) => ({ ...c, x: p.x + c.dx, z: p.z + c.dz, seed: 101 + i * 7 + k * 3 })),
+  );
+}
+
+/**
+ * The small heaps of real snow the ice chunks sit in. Render outside any Suspense (Village does), so they are made
+ * before anything samples the snow (the pins' physics ground).
+ */
+export function IceBeds({ lane }: { lane: GameLane }) {
+  const snow = useSnow();
+  useMemo(() => {
+    for (const c of chunkSpots(lane)) snow.heapSnow(c.x, c.z, c.size * 0.9, c.size * 0.8, c.size * 0.22);
+  }, [snow, lane]);
+  return null;
 }
 
 /** A chunk of ice: a faceted, slightly squashed lump (flat-shaded so each facet catches light on its own). */
@@ -506,36 +563,18 @@ function chunkGeometry(seed: number): IcosahedronGeometry {
 
 const capGeometry = new SphereGeometry(0.5, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2);
 
-/**
- * The small heaps of real snow the ice chunks sit in. Render outside any Suspense (Village does), so they are
- * made before anything samples the snow (the pins' physics ground).
- */
-export function IceBeds({ lane }: { lane: GameLane }) {
-  const snow = useSnow();
-  useMemo(() => {
-    for (const c of atmosphere.ice.chunks) {
-      const [x, z] = fitPoint(c.x, c.z, lane);
-      snow.heapSnow(x, z, c.size * 0.9, c.size * 0.8, c.size * 0.22);
-    }
-  }, [snow, lane]);
-  return null;
-}
-
-/**
- * Chunks of clear ice lying in the snow by the frozen pond and the igloo (`atmosphere.ice.chunks`), each a little
- * sunk in a small heap of real snow with a dab of snow on top.
- */
+/** Chunks of clear ice lying in the snow beside their `near` props, a little sunk, with a dab of snow on top. */
 export function IceChunks({ lane }: { lane: GameLane }) {
   const snow = useSnow();
   useIceSun();
-  const a = atmosphere.ice;
+  const a = effects.ice;
   const chunks = useMemo(
     () =>
-      a.chunks.map((c, i) => {
-        const [x, z] = fitPoint(c.x, c.z, lane);
-        const y = snow.heightAt(x, z) - c.size * a.chunkSink * 0.5;
-        return { ...c, x, y, z, geometry: chunkGeometry(101 + i * 7) };
-      }),
+      chunkSpots(lane).map((c) => ({
+        ...c,
+        y: snow.heightAt(c.x, c.z) - c.size * a.chunkSink * 0.5,
+        geometry: chunkGeometry(c.seed),
+      })),
     [a, lane, snow],
   );
   const capMaterial = useMemo(() => {
@@ -566,4 +605,43 @@ export function IceChunks({ lane }: { lane: GameLane }) {
       ))}
     </>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Snow banked at the backdrop's foot (#51)                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Real snow banked up against the foot of the paper hills: a row of soft, uneven heaps of real snow just in front of
+ * them, along the middle of the arc, so from a low view the hills sink into lit snow instead of meeting it in a hard
+ * straight line. Follows the backdrop's own placement (`backdrop` in content.ts and `Backdrop.tsx`: round the throwing
+ * view's look-at point, moved back on a longer lane, closer on a phone held upright). Render it outside any Suspense
+ * (Village does), so the heaps exist before anything samples the snow. Heaps never stack, so a resize is harmless.
+ */
+export function FootBank({ lane }: { lane: GameLane }) {
+  const snow = useSnow();
+  const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
+  const narrow = Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
+  useMemo(() => {
+    const f = effects.footBank;
+    const [cx, , cz] = throwingView(lane).lookAt;
+    const reach = Math.max(0, (lane.lineZ - lane.pinSpot.z - backdrop.laneLength) * (1 - village.view.lookAtShare));
+    const wall = backdrop.radius + (backdrop.portrait.radius - backdrop.radius) * narrow + reach;
+    const arc = ((backdrop.arc * Math.PI) / 180) * f.arcShare;
+    const r = wall - 0.05 - f.inset;
+    const steps = Math.max(2, Math.round((r * arc) / f.spacing));
+    // Uneven on purpose (size, spacing and distance vary, the same on every load), so from high up it reads as
+    // drifted snow, not a row of matching lumps.
+    const rnd = (i: number, k: number) => {
+      const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    for (let i = 0; i <= steps; i++) {
+      const a = Math.PI - arc / 2 + (arc * (i + (rnd(i, 1) - 0.5) * f.jitter)) / steps;
+      const k = 1 - f.vary / 2 + f.vary * rnd(i, 2);
+      const d = r + (rnd(i, 3) - 0.5) * f.jitter * f.radiusZ;
+      snow.heapSnow(cx + d * Math.sin(a), cz + d * Math.cos(a), f.radiusX * k, f.radiusZ * (0.8 + 0.4 * rnd(i, 4)), f.height * k);
+    }
+  }, [snow, lane, narrow]);
+  return null;
 }

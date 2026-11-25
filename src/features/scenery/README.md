@@ -169,7 +169,7 @@ Files: `village.ts` (fitting, blockers, checks, throwing view; no drawing), `thr
 The throwing view looks about 13° below the horizon at the top of the screen, so the real horizon never shows and
 the snow used to run on, empty, behind the village. Now the scene is built in layers like a paper theatre:
 
-- **The street lamp** stands part way down the left of the lane, with a warm `--butter` light: a soft halo on its glass and a real point light that warms the lit snow round its foot (`WarmLights` in `three/Atmosphere.tsx`, `atmosphere.lights`; this replaced the first painted glow, a banded halo and a flat warm patch, when Rachel asked for real light). The crayon fence is no longer placed (it clashed with the doodle set); pines and bushes frame the near corners.
+- **The street lamp** stands part way down the left of the lane, with a warm `--butter` light: a halo just behind its glass and a warm patch on the snow, laid in crayon-like bands with paper grain, breathing gently (`LampGlow` in `three/Life.tsx`, `village.lampGlow`). The crayon fence is no longer placed (it clashed with the doodle set); pines and bushes frame the near corners.
 - **Sky and far hills (`three/Backdrop.tsx`, `backdrop` in `content.ts`):** a curved paper wall stands just behind the
   village (radius 9.6 round the throwing view's look-at point on a 5.6-unit lane, `backdrop.laneLength`; on a longer
   lane `Village` passes a `reach` so the wall moves back with the pins; 220° of arc), `--paper` blending toward `--snow-shadow`
@@ -181,8 +181,8 @@ the snow used to run on, empty, behind the village. Now the scene is built in la
   so the game's camera riding low behind the ball keeps the sky). On a phone held upright it comes a little closer and the hills grow (`backdrop.portrait`) so they
   show under the score panel. No change to the snow scene was needed.
 - **Village:** the red cottage, cocoa stall and fairy lights join the home cluster and the far end; the snowman family
-  watches from the lane's edge by the igloo; real smoke rises from both cottages
-  (`ChimneySmoke` in `three/Atmosphere.tsx`, chimney spots in `village.chimneys`; see below).
+  watches from the lane's edge by the igloo; chimney smoke (Rachel's puff doodle) rises from both cottages
+  (`ChimneySmoke` in `three/Life.tsx`, chimney spots in `village.chimneys`).
 - **Middle:** frozen pond by the sliding penguin, a snowy stump with the red bird on it (`lift`), the rabbit by the
   bush, a snowball pile near the line. The calm snow behind the pins is unchanged.
 - **Near corners:** the street lamp, a short pine and a bush at the left, the fence and a bush at the right (desktop
@@ -195,39 +195,3 @@ the snow used to run on, empty, behind the village. Now the scene is built in la
 
 The panorama is cut by the slicer with two new per-sheet options: `seal` (lines that close the hills' open ends for the
 background fill only) and `max_side` (keeps its full 2126 px width). Screenshots: `review/scene-38-*.webp`.
-
-## Real light, smoke and ice (`three/Atmosphere.tsx`, `atmosphere` in `content.ts`)
-
-Rachel (2026-11-25): the snow is real, the characters and props are her paper drawings, and a little real-world
-effect on top is welcome. All of it is made in code; no drawing is changed and the cut-outs stay unlit.
-
-- **Warm light** (`atmosphere.lights`): the street lamp, the red cottage's yellow window and the five fairy-light bulbs
-  each get a soft halo (a camera-facing glow sprite, added on top, never tone mapped) that breathes a tiny bit, and one
-  real point light per prop that warms the lit snow around it (the lamp strongly, the others faintly). Colour:
-  `--butter` softened toward `--paper`. Positions are shares of the drawing, found from the yellow paint in the files.
-- **Smoke** (`atmosphere.smoke`): six soft puffs per chimney rise, drift sideways in a gentle wind, grow and fade, one
-  after another. Each puff is a few overlapping soft blobs drawn on a small canvas: `--paper` tinted toward
-  `--snow-shadow` (paper-white smoke vanished against the paper sky), shaded underneath. It replaces the drawn smoke
-  doodle (`chimney-smoke`, kept as a spare): the real puffs read more natural next to the paper houses. An `--ink` rim is
-  available (`outline`) but off: it looked like a sticker.
-- **Ice** (`atmosphere.ice`): icicles along the igloo's window and door arches, the cottage eaves and the lamp's cap
-  (instanced, faceted, slightly uneven cones), and chunks of clear ice by the frozen pond and the igloo, each sunk in a
-  small heap of real snow with a dab of snow on top. One cheap shader fakes the transmission: nearly clear and lightly
-  tinted in the middle, deeper `--sky-blue` toward the edges, a sky reflection and bright fresnel rim at grazing angles,
-  one sharp sun glint and tiny facets that flash as the view moves. No screen-space transmission (it would draw the scene
-  twice).
-- **Reduced motion:** no flicker, smoke rises three times slower.
-- **Snow bank at the backdrop foot** (`atmosphere.footBank`, `FootBank` in `three/Backdrop.tsx`, #51): a row of soft,
-  uneven heaps of real snow just in front of the paper hills, so the low view has no hard line where the hills meet the
-  snow. Kept low and broad so it reads as a drift from the high view, and only along the middle half of the arc that
-  the low view looks at (`arcShare`): every heap makes fine snow tiles, and a bank round the whole arc cost about
-  15 fps in the high view.
-- Heaps that other features sample (the pins' physics ground) are made by `FootBank` and `IceBeds`, which `Village`
-  renders outside any Suspense, so they exist before the pins sample the snow.
-- `ThickStandee` takes `children`: anything fixed to the drawing (in the art's own space, origin bottom centre),
-  turning and swaying with it.
-
-Cost (headless Chrome with the GPU, 1200×750 at 2× and 390×844 at 3×): 60 fps in the throwing, high, low and side
-views and during a throw. The three point lights on the snow are the main cost on a weak phone (not measured on a real phone
-yet). If one struggles, drop the window's and fairy lights' point lights; their halos cost almost nothing.
-Screenshots: `review/atmosphere-vs-rachel.webp`, `review/review-45-51-before-after.webp`, `review/review-49-buttons.webp`.
