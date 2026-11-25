@@ -18,7 +18,11 @@ formations come later (#7, #25, #26) and build on this page; the faint dashed ri
 - `pointer.ts` mouse, trackpad and touch: press the thrower, drag sideways to slide or back to pull, let go to throw.
 - `feedback.ts` sound (through `src/lib/audio.ts`) and vibration. `haptics.ts` is the vibration wrapper, **temporary home** until a shared `src/lib/haptics.ts` (a later issue). Android vibrates; iPhones and computers ignore it.
 - `checks.ts` quick checks of the key rules, no test framework. The test page runs them once in development (browser console).
-- `stage/BowlingStage.tsx` draws it all on the real snow (render inside `<SnowScene>`). `stage/look.ts` token colours and the placeholder textures. `stage/BowlingHint.tsx` the help line.
+- `stage/BowlingStage.tsx` draws it all on the real snow (render inside `<SnowScene>`). `stage/look.ts` reads the token colours. `stage/BowlingHint.tsx` the help line.
+- `stage/ThrowerStandee.tsx` the thrower: Rachel's bucket snowman (player one) or red-hat snowman (player two) as the scenery feature's thick paper standee, with idle wobble and breath, a shuffling slide, lean back and crouch while pulling (leaning toward the ball's side), a strain shiver at full charge, a stretchy hop and a happy bounce. Built from scenery's `bodyGeometry`, `artGeometry`, `toonMaterial`, `artMaterial` (deep imports, like pins' `PinCard`); scenery could export a `StandeeBody` for both.
+- `stage/snowballLook.ts` the drawn ball: flat `--paper`, a hatched `--snow-shadow` side fixed to the drawing light, paper fibres, pencil arcs and crumbs fixed to the ball so it visibly turns, and an uneven `--ink` outline shell (about the cut-outs' line weight). Never lit or glossy.
+- `stage/clumps.ts` clumps of snow that fall off big rolling balls and plop into the snow (a tiny `punchCrater`).
+- Look and motion numbers: `LOOK` in `content.ts`. Screenshots next to the source art: `review/`.
 
 ## Units and directions
 
@@ -36,6 +40,9 @@ snow scene's play view (see "Camera" below).
 - Release shorter than `pull.cancelBelow` cancels (the ball crumbles).
 - Roll: start speed from size (small = quick, big = slow) times pull strength; it slows in fresh snow and runs further on packed tracks (`roll.dragOnPacked`); big balls plough on (`roll.dragBigShare`). Stops below `roll.stopSpeed`, rests `roll.restTime`, then is removed.
 - Who is throwing is just a name: `bowling.setThrower("two")` between throws. Turns are #26.
+  The drawing follows it: `"two"` shows the red-hat snowman, anything else the bucket snowman.
+  Or pass `<BowlingStage thrower="one" | "two" />` (applied as soon as the thrower is ready); test pages take `?thrower=two`.
+  `<BowlingStage onGame={game => …} />` hands out the running game (what pins' `ballTap.ts` waits for).
 
 ## Plugging in (what `BowlingStage` does)
 
