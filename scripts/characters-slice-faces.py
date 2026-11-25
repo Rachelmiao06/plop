@@ -1,7 +1,8 @@
 """Slice the six snowman faces out of Rachel's expression sheet.
 
 Reads  art-source/characters/expressions-sheet.png (3 x 2 grid of faces on white)
-Writes public/assets/characters/face-<name>.png, 256 x 256, transparent.
+Writes public/assets/characters/face-<name>.png, 256 x 256, transparent,
+and small JPEG copies of the three reference sheets for the /dev/characters page.
 
 The strokes are exported in plain white with the ink darkness as alpha, so the
 component tints them with a theme token (the face colour is never baked into a file).
@@ -56,6 +57,14 @@ def main() -> None:
         target = OUT / f"face-{name}.png"
         face.save(target, optimize=True)
         print(f"{target.relative_to(ROOT)}  centre=({cx},{cy})  {target.stat().st_size // 1024} KB")
+
+    # Small copies of the reference sheets, shown beside the 3D snowmen for comparison.
+    for name in ["bucket-four-views", "redhat-four-views", "expressions-sheet"]:
+        sheet = Image.open(ROOT / f"art-source/characters/{name}.png").convert("RGB")
+        sheet.thumbnail((900, 900), Image.LANCZOS)
+        target = OUT / f"reference-{name}.jpg"
+        sheet.save(target, quality=82, optimize=True)
+        print(f"{target.relative_to(ROOT)}  {target.stat().st_size // 1024} KB")
 
 
 if __name__ == "__main__":
