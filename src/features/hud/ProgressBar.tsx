@@ -115,16 +115,16 @@ export function ProgressBar({ down, total, color, knock }: Props) {
       {burstId > 0 && (
         <div
           key={burstId}
-          className="pointer-events-none absolute top-1/2 right-0 flex translate-x-1/3 -translate-y-1/2 items-center"
+          className="pointer-events-none absolute top-0 right-0 flex -translate-y-3/4 items-center"
           style={{ "--hud-burst": `${content.burst.duration}ms` } as CSSProperties}
         >
-          <div className="absolute -top-6 -left-6">
+          <div className="absolute -top-2 -left-7">
             <SurpriseLines size={30} flip />
           </div>
           <div className={styles.burst}>
             <StarDoodle size={44} />
           </div>
-          <div className="absolute -top-6 -right-6">
+          <div className="absolute -top-2 -right-7">
             <SurpriseLines size={30} />
           </div>
         </div>
