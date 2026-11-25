@@ -18,3 +18,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · Headings use Gaegu (handwritten), small text uses Nunito (round, easy to read). Corners are generous and round (`--radius` 1.25rem).
 - 2026-11-24 · Light theme only. The dark variant resolves to the same colours so the page never turns black.
 - 2026-11-24 · Style notes for future art: outline about 1.5% of the character's height, with a slight hand wobble and round caps; coloured-pencil hatch fills, no gradients; characters about two heads tall, dot eyes, a short arc mouth, pink blush.
+- 2026-11-24 · Look comes first: hand-drawn feel, cuteness and matching the design tokens are the acceptance bar for every visual change, checked against Rachel's reference art. Recorded in CLAUDE.md.
