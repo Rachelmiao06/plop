@@ -48,7 +48,8 @@ export function useSceneReady() {
   useEffect(() => {
     let raf = 0;
     const look = () => {
-      if (document.querySelector("canvas")) {
+      // The scene's canvas, not the loading strip's own little one.
+      if (document.querySelector("canvas:not([data-loading-strip])")) {
         raf = requestAnimationFrame(() => {
           raf = requestAnimationFrame(() => setPainted(true));
         });

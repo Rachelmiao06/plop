@@ -295,8 +295,9 @@ export type Placement = {
   /** Stands this high above the snow instead of in it (the red bird on the stump). Default 0. */
   lift?: number;
   /**
-   * Only on this kind of screen. "portrait": a phone held upright (narrower than `village.portraitAspect`), which
-   * sees only the lane, so a few small cut-outs stand low in its bottom corners. Default: every screen.
+   * Only on this kind of screen ("portrait": narrower than `village.portraitAspect`). Default: every screen. Unused
+   * for now: Rachel did not like characters floating in the foreground corners; a phone held upright simply sees
+   * less of the sides.
    */
   view?: "portrait" | "landscape";
 };
@@ -310,13 +311,13 @@ export type Placement = {
   the outer edge so the side and high views show a village, not a clump.
   far     — the village square: the decorated Christmas tree is the landmark back left of the calm snow, with the
             cocoa corner beside it (the tree-stump café and the cocoa stall side by side, the fairy lights strung in
-            front) and the red cottage at the end of the row; the big tree with the snowmen anchors the back right.
-  left    — homes: the blue cottage and the snow cottage with the cat side by side a little in front of the pins,
+            front, the cocoa mug and the otter queuing at the café) and the red cottage at the end of the row; the big tree with the snowmen anchors the back right.
+  left    — homes: the blue cottage (the red sled resting by its door) and the snow cottage with the cat side by side a little in front of the pins,
             far enough forward that their roofs stay below the back row (nothing hides the café). Nearer the thrower the frozen pond with the sliding penguin, the doodle street lamp
             beside it, a snowy stump with the red bird, the rabbit by the bush, and the bench with the sleeping
             cat as a quiet detail at the far edge.
-  right   — the igloo and the snowman family watching from the lane's edge, the otter with its cocoa watching too,
-            the skier, and the post office near the thrower (the penguins posting a letter); the mice with their
+  right   — the igloo and the snowman family watching from the lane's edge, the skier, and the post office near the
+            thrower (the penguins posting a letter, the mouse with its letter queuing behind them); the mice with their
             lantern and sled sit quietly at the outer edge past the igloo.
   near    — short pines and bushes low and wide of the thrower, framing the bottom corners without covering the
             lane (desktop only; a phone held upright is too narrow to see them).
@@ -329,6 +330,10 @@ export const layout: Placement[] = [
   { prop: "cafe-stump", x: -4.55, z: -10.45, side: "far" },
   { prop: "cocoa-stall", x: -6.2, z: -10.95, side: "far" },
   { prop: "fairy-lights", x: -3.3, z: -9.15, scale: 0.9, side: "far" },
+  // queuing for cocoa at the tree-stump café, side by side and touching its base (Rachel: small characters never
+  // stand alone in open snow; each is a little moment beside the thing it belongs with)
+  { prop: "mug-cocoa", x: -4.95, z: -10.0, scale: 1.25, flip: true, side: "far" },
+  { prop: "otter-cocoa", x: -4.4, z: -9.95, scale: 1.25, flip: true, side: "far" },
   { prop: "tree-snowmen", x: 4.0, z: -10.6, side: "far" },
   { prop: "pine-snow-short", x: 5.7, z: -9.6, flip: true, side: "far" },
   { prop: "pine-snow-tall", x: 6.6, z: -11.3, scale: 0.9, side: "far" },
@@ -339,9 +344,9 @@ export const layout: Placement[] = [
   { prop: "cottage-red", x: -7.2, z: -10.2, scale: 0.95, side: "left" },
   { prop: "cottage-blue", x: -3.75, z: -5.6, side: "left" },
   { prop: "cottage-snow", x: -5.55, z: -5.6, scale: 0.95, side: "left" },
+  { prop: "sled-red", x: -3.9, z: -5.15, scale: 1.2, side: "left" },
   { prop: "pine-snow-tall", x: -7.6, z: -7.4, scale: 0.85, flip: true, side: "left" },
   { prop: "bush-snow", x: -2.65, z: -4.55, scale: 0.8, side: "left" },
-  { prop: "mug-cocoa", x: -2.45, z: -6.45, scale: 0.9, side: "left" },
   { prop: "rabbit", x: -3.1, z: -4.35, flip: true, side: "left" },
   // the pond corner, with the street lamp lighting the snow (its light: `three/effects/`)
   { prop: "pond-frozen", x: -3.55, z: -3.7, scale: 1.15, side: "left" },
@@ -359,12 +364,11 @@ export const layout: Placement[] = [
   { prop: "pine-snow-short", x: 3.9, z: -8.3, scale: 1.1, flip: true, side: "right" },
   { prop: "snowman-family", x: 2.75, z: -6.75, flip: true, side: "right" },
   { prop: "mice-lantern", x: 5.85, z: -7.0, flip: true, side: "right" },
-  { prop: "otter-cocoa", x: 2.55, z: -4.35, side: "right" },
   { prop: "pine-snow-tall", x: 4.85, z: -3.9, scale: 0.9, flip: true, side: "right" },
   { prop: "skier", x: 2.6, z: -3.0, side: "right" },
   { prop: "penguins-postbox", x: 3.6, z: -1.75, side: "right" },
+  { prop: "mouse-letter", x: 2.85, z: -1.6, scale: 1.1, side: "right" },
   { prop: "snowballs", x: 2.75, z: -0.6, side: "right" },
-  { prop: "mouse-letter", x: 4.4, z: -1.05, flip: true, side: "right" },
   { prop: "pine-snow-tall", x: 7.4, z: -6.0, scale: 0.85, side: "right" },
   { prop: "bush-snow", x: 6.4, z: -2.9, scale: 0.8, flip: true, side: "right" },
 
@@ -374,13 +378,6 @@ export const layout: Placement[] = [
   { prop: "bush-snow", x: -3.3, z: 2.15, scale: 0.7, side: "left" },
   { prop: "pine-snow-short", x: 3.85, z: 1.85, scale: 0.9, side: "right" },
   { prop: "bush-snow", x: 3.7, z: 0.7, scale: 0.85, flip: true, side: "right" },
-
-  // A phone held upright sees only the lane, so a few small friends stand low in its bottom corners, in front of
-  // the line and wide of the pull (all under the near height limit, so they never cover the thrower or the pins).
-  { prop: "mug-cocoa", x: -0.36, z: 1.7, scale: 0.85, view: "portrait", side: "left" },
-  { prop: "sled-red", x: -0.3, z: 2.15, scale: 0.9, view: "portrait", side: "left" },
-  { prop: "otter-cocoa", x: 0.5, z: 1.75, scale: 0.9, flip: true, view: "portrait", side: "right" },
-  { prop: "mouse-letter", x: 0.38, z: 2.2, view: "portrait", side: "right" },
 ];
 
 /**
