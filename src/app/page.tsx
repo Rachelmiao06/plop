@@ -1,9 +1,5 @@
-import { SnowScene } from "@/features/snow-scene";
+import { Game } from "@/features/game";
 
 export default function Home() {
-  return (
-    <main className="h-dvh w-full overflow-hidden">
-      <SnowScene />
-    </main>
-  );
+  return <Game />;
 }
