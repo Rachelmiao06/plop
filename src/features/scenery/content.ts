@@ -422,3 +422,55 @@ export const standee3d = {
     maxTurn: 60,
   },
 };
+
+/* ------------------------------------------------------------------ */
+/* The village on the real snow (<Village />, /dev/village)             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Feel settings for the village standing in the real snow scene. The layout above was drawn for the
+ * `lane` above (line at z = 0, pins at z = -6.5, thrower sliding 1.6 either way); `villageLayout()` fits it
+ * onto the game's own lane (the bowling feature's line, pin spot and slide width) without changing it.
+ */
+export const village = {
+  /** Soft heap of real snow round each base (the snow scene's heapSnow), so the prop stands in the snow. */
+  mound: {
+    /** Half-width of the heap as a share of the prop's drawn width (the heap is wider than the base edge). */
+    widthShare: 0.42,
+    /** Half-depth front to back, in scene units. */
+    depth: 0.32,
+    /** Height in the middle: this much, plus `heightPerUnit` per unit of prop height. */
+    height: 0.035,
+    heightPerUnit: 0.018,
+  },
+
+  /** Big props a ball bursts on later: a short round post at the base. */
+  blockers: {
+    groups: ["big", "tree"] as PropGroup[],
+    /** Radius as a share of the prop's drawn width (the README's "propWidth / 3"). */
+    radiusShare: 1 / 3,
+  },
+
+  /** Side props move out by this much more than the thrower's extra slide room, to keep the roll lane open. */
+  sideMargin: 0,
+
+  /**
+   * The throwing view for the snow scene camera (useSnowCameraView): behind and above the line, looking
+   * down the lane. The point looked at sits `lookAtShare` of the way from the line to the pin spot.
+   * `pathAt` 0.15 is about 24 degrees above the snow on the camera path; `distance` pulls it back so the
+   * pulled-back ball near the camera and the far end of the village both fit (22 degree lens).
+   */
+  view: {
+    lookAtShare: 0.45,
+    lookAtHeight: 0.4,
+    pathAt: 0.15,
+    distance: 1.6,
+    turn: 0,
+  },
+
+  /** How dark the sun's shadows are while the village is shown (1 = the snow scene's own deep blue). */
+  shadowStrength: 0.55,
+
+  /** For the sight-line check: how tall the pins are that must stay visible from the throwing view. */
+  pinSightHeight: 0.5,
+};

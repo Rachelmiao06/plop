@@ -42,6 +42,14 @@ export type SnowApi = {
   heightAt: (x: number, z: number) => number;
   /** How packed the snow is at this point: 0 untouched, 1 pressed hard. */
   packedAt: (x: number, z: number) => number;
+  /**
+   * Heap a soft, slightly lumpy mound of snow here, `radiusX` wide either
+   * side and `radiusZ` front to back, `height` tall in the middle. It
+   * becomes part of the untouched snow: it can be pressed and cratered, and
+   * fresh snowfall settles back to it instead of flattening it. Heaps that
+   * overlap take the taller of the two, never stack. For scenery bases.
+   */
+  heapSnow: (x: number, z: number, radiusX: number, radiusZ: number, height: number) => void;
 };
 
 /** Options for a fresh snowfall. */
@@ -185,6 +193,8 @@ export class SnowTile {
   freshDone = 0;
   freshLength = 1;
   freshRegion: FreshRegion | null = null;
+  /** Holds a heap of snow (heapSnow): never freed, or the plain snow would show without it. */
+  keep = false;
 
   constructor(tx: number, tz: number) {
     const g = content.ground;
@@ -338,6 +348,35 @@ export class SnowField implements SnowApi {
   packedAt = (x: number, z: number): number => {
     const tile = this.tileAt(x, z);
     return tile ? clamp01(tile.sample(tile.pressed, x, z)) : 0;
+  };
+
+  heapSnow = (x: number, z: number, radiusX: number, radiusZ: number, height: number): void => {
+    const rx = Math.max(radiusX, this.cell * 2);
+    const rz = Math.max(radiusZ, this.cell * 2);
+    if (!(height > 0)) return;
+    const reach = Math.max(rx, rz) + this.cell * 2;
+    this.ensureTiles(x - reach, x + reach, z - reach, z + reach);
+    for (const { tile, i0, i1, j0, j1 } of this.spans(x - rx, x + rx, z - rz, z + rz)) {
+      const { cols, height: now, base } = tile;
+      tile.keep = true;
+      for (let j = j0; j <= j1; j++) {
+        const dz = (tile.zAt(j) - z) / rz;
+        for (let i = i0; i <= i1; i++) {
+          const dx = (tile.xAt(i) - x) / rx;
+          const q = Math.sqrt(dx * dx + dz * dz);
+          if (q >= 1) continue;
+          // Soft round hump, a little lumpy round its edge like heaped snow.
+          const lump = 0.82 + 0.36 * smoothNoise(Math.atan2(dz, dx) * 1.6 + x * 3.1, z * 2.7);
+          const bump = height * (0.5 + 0.5 * Math.cos(Math.PI * Math.min(q * lump, 1)));
+          const k = j * cols + i;
+          const heap = base[k] - baseHeightAt(tile.xAt(i), tile.zAt(j));
+          if (bump <= heap) continue;
+          base[k] += bump - heap;
+          now[k] += bump - heap;
+        }
+      }
+      tile.markDirty(i0, i1, j0, j1);
+    }
   };
 
   pressGroove = (
@@ -750,6 +789,11 @@ export class SnowField implements SnowApi {
       height.set(base);
       pressed.fill(0);
       this.freeTile(tile);
+      if (tile.keep) {
+        tile.freshStart = null;
+        tile.freshDone = 0;
+        tile.markDirty(0, cols - 1, 0, rows - 1);
+      }
       return;
     }
 
@@ -854,6 +898,8 @@ export class SnowField implements SnowApi {
   }
 
   private freeTile(tile: SnowTile): void {
+    // A tile holding a heap stays (smooth, but not the plain snow's shape).
+    if (tile.keep) return;
     const key = this.key(tile.tx, tile.tz);
     if (this.tiles.get(key) !== tile) return;
     this.tiles.delete(key);
