@@ -151,7 +151,9 @@ export function createKeyboardInput(
             delta = Math.atan2(Math.sin(delta), Math.cos(delta)); // shortest way round
             pad.angle += delta * ease(feel.keyboard.steerRate, seconds);
           }
-          pad.pulled = Math.min(feel.pull.max, pad.pulled + feel.keyboard.pullSpeed * seconds);
+          // Aim a little past full pull (into the rubber band) so the lagging ball truly reaches it.
+          const limit = feel.pull.max + feel.pull.rubberBand * feel.keyboard.pushPastFull;
+          pad.pulled = Math.min(limit, pad.pulled + feel.keyboard.pullSpeed * seconds);
         }
         const a = pad.angle ?? 0;
         const pulled = pad.angle === null ? 0 : pad.pulled;

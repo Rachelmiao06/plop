@@ -18,3 +18,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · Headings use Gaegu (handwritten), small text uses Nunito (round, easy to read). Corners are generous and round (`--radius` 1.25rem).
 - 2026-11-24 · Light theme only. The dark variant resolves to the same colours so the page never turns black.
 - 2026-11-24 · Style notes for future art: outline about 1.5% of the character's height, with a slight hand wobble and round caps; coloured-pencil hatch fills, no gradients; characters about two heads tall, dot eyes, a short arc mouth, pink blush.
+- 2026-11-24 · Slingshot aim and power come from where the snowball is (it lags the finger), not from the finger, and the preview and the flight use one function (`computeArc`). What you see is exactly what you throw; changing either breaks "lands on the preview ring".

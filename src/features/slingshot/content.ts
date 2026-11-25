@@ -69,6 +69,11 @@ export const FEEL = {
      * comes up the aim is frozen, so lifting W then A does not swing the shot.
      */
     letGoWindow: 0.07,
+    /**
+     * Holding on at full pull keeps pushing this share of the way into the rubber band,
+     * so the ball (which lags behind) really reaches full charge. 0 = stop exactly at full.
+     */
+    pushPastFull: 0.5,
   },
 
   /** The flight. Small balls: fast and flat. Big balls: slower and higher. */
@@ -80,10 +85,10 @@ export const FEEL = {
     rangeCurve: 1,
     /** Speed along the ground for the smallest and the biggest ball. */
     speedSmall: 11,
-    speedBig: 7,
+    speedBig: 8,
     /** Top of the arc, as a share of the distance flown, for the smallest and the biggest ball. */
-    heightSmall: 0.12,
-    heightBig: 0.32,
+    heightSmall: 0.1,
+    heightBig: 0.25,
   },
 
   impact: {
