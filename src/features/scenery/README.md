@@ -80,3 +80,32 @@ Only props in `layout` are placed; `spare` ones, the `character` model and `deca
 
 Ideas for later, not done: a pale blue blob shadow (`--snow-shadow`) under each prop; a small sway on the flag
 and pines; snow piling up at the base where the prop meets the ground.
+
+## Thick standees in 3D (`/dev/scenery-3d`)
+
+A test of the look Rachel approved, on plain flat snow, before the real snow scene merges.
+Switches on the page turn each part on and off; `?view=default|side|high` and `?look=full|flat|billboard|fixed`
+pick the starting camera and look (handy for sharing a link).
+
+- **Thickness:** `scripts/trace_standees.py` traces each standee's alpha silhouette with OpenCV, simplifies it
+  and writes `outlines.json` (about 2,000 points for all 19, cached; nothing is traced at load). The page extrudes it
+  `thicknessShare` of the prop's height (3.5%). Front: the art card. Sides and back: cream paper (`--paper` token)
+  with a faint brown line (`--ink`) along both edges, drawn in the side material's shader.
+- **Shadow:** the thick body casts the true silhouette; with thickness off, the flat card casts it through an
+  alpha-tested depth material. Shadows are pale (`light.shadowIntensity`) and blue because only the cool sky lights them.
+- **Sunk into the snow:** the base sits `sink` below the surface with a small white mound (a flattened half sphere).
+  **On the real snow, use the snow scene's API instead** (raise the snow around each base with its mound/press
+  tools in `src/features/snow-scene/`) so the heap is part of the snow and takes footprints and craters.
+- **Pillow shading:** `public/assets/scenery/normals/<name>.webp`, baked by the same script from a distance field
+  (thicker in the middle, curving down at the silhouette). The art material keeps the drawn colours mostly as they are
+  (`pillow.artGlow`, no tone mapping) and lets the low sun add only a faint light and shade side (`pillow.litShare`).
+- **Half-turn:** each prop turns `turn.fraction` of the camera's swing around the village, capped at `turn.cap`
+  degrees, on a spring (`turn.stiffness`, `turn.damping`). Swing the view to the side and the edges show; the art
+  never collapses to a line. "Billboard" is the old always-face-the-camera behaviour, "Fixed" never turns.
+- **Small life:** `sway.props` sway gently; clicking a prop (stand-in for a snowball hit) wobbles it and shakes
+  `wobble.flecks` snow flecks loose (`three/Flecks.tsx`).
+
+Files: `three/standeeGeometry.ts` (outline to extruded body), `three/ThickStandee.tsx` (one prop),
+`three/VillageCanvas.tsx` (scene, lights, camera), `three/Village3D.tsx` (page UI), `three/treatment.ts` (switches).
+Light and snow colours copy the snow scene's settings in PR #17; keep them in step until part 2 moves this into it.
+Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.

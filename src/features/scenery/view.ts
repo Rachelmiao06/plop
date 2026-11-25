@@ -70,3 +70,10 @@ export function groundFootprint(): [number, number][] {
     [halfWidthAt(near), near],
   ];
 }
+
+/** Where the default camera sits, `level` times its normal distance away. Looks at (0, targetHeight, 0). */
+export function defaultCameraPosition(level = 1): [number, number, number] {
+  return [0, targetHeight + distance * level * sinE, distance * level * cosE];
+}
+
+export const cameraTarget: [number, number, number] = [0, targetHeight, 0];

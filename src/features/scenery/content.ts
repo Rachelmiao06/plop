@@ -279,3 +279,105 @@ export function layoutProblems(list: Placement[] = layout): string[] {
   }
   return problems;
 }
+
+/* ------------------------------------------------------------------ */
+/* Thick standees in 3D (/dev/scenery-3d)                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Feel settings for the "half-turning thick standee" look. Tune here, not in the components.
+ * Light and snow colours copy the snow scene in PR #17 (src/features/snow-scene/content.ts) so the
+ * test page looks like the real thing; keep them in step. Paper colours come from the design tokens.
+ */
+export const standee3d = {
+  /** Depth of the cut-out, as a share of the prop's height. */
+  thicknessShare: 0.035,
+
+  /** Half-turn toward the camera when it orbits. */
+  turn: {
+    /** Share of the camera's swing around the village that each prop follows. */
+    fraction: 0.5,
+    /** Largest turn away from the home facing, in degrees. */
+    cap: 30,
+    /** Spring: higher stiffness = quicker; damping keeps it from bouncing. */
+    stiffness: 30,
+    damping: 9,
+  },
+
+  /** Soft "pillow" volume from the silhouette's normal map. */
+  pillow: {
+    /** Strength of the normal map. 0 = flat. */
+    normalScale: 0.9,
+    /** How much of the drawn colour shows on its own, unlit, so lighting only adds a faint light and shade side. */
+    artGlow: 0.8,
+    /** How much the lights add on top. */
+    litShare: 0.26,
+  },
+
+  /** Soft mound of snow around each base (a stand-in for the real snow's API, see README). */
+  mound: {
+    /** Mound width as a share of the prop's width. */
+    widthShare: 0.62,
+    /** Mound depth front to back, in scene units. */
+    depth: 0.3,
+    height: 0.05,
+    /** A touch brighter than the flat ground so it reads as a soft heap, not a shadow. */
+    glow: 0.45,
+  },
+
+  /** Gentle sway in the wind. */
+  sway: {
+    props: ["tree-snowmen", "pine-snow-tall", "pine-snow-short", "flag-blue"] as PropId[],
+    /** Degrees either way. */
+    angle: 1.4,
+    /** Swings per second. */
+    speed: 0.35,
+  },
+
+  /** Wobble when clicked (stand-in for a snowball hit), with snow flecks falling off. */
+  wobble: {
+    angle: 9, // degrees at the start
+    frequency: 2.6, // wobbles per second
+    decay: 2.8, // how fast it settles (per second)
+    squash: 0.06, // a little squash at the start
+    flecks: 14, // how many flecks fall
+    fleckSize: 0.035,
+    fleckLife: 1.3, // seconds
+  },
+
+  light: {
+    sunElevation: 24, // degrees above the horizon
+    sunAzimuth: 128, // 0 = from the right, 90 = from behind the scene toward the viewer
+    sunStrength: 5,
+    skyStrength: 1.7,
+    /** A little brighter than the snow scene's 1.0: this flat test ground has none of the real snow's shading. */
+    exposure: 1.2,
+    shadowMapSize: 2048,
+    shadowSoftness: 5,
+    shadowArea: 12,
+    shadowBias: -0.0004,
+    shadowNormalBias: 0.02,
+    /** How dark shadows get (0 = none, 1 = full). Pale, so they read soft blue. */
+    shadowIntensity: 0.55,
+  },
+
+  colors: {
+    snow: "#dfe7f2",
+    sun: "#ffe2bd",
+    skyFill: "#a9c8ff",
+    groundBounce: "#dfe6f5",
+    fog: "#e3eaf5",
+    fleck: "#ffffff",
+  },
+
+  /** Light haze: fog density (exponential). */
+  hazeDensity: 0.012,
+
+  /** Free camera limits on the test page. */
+  camera: {
+    minDistance: 3,
+    maxDistance: 40,
+    /** Lowest the camera may go, in degrees above the ground. */
+    minElevation: 6,
+  },
+};
