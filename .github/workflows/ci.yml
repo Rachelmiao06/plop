@@ -18,3 +18,17 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+
+  # Builds, starts the production server and fetches every page, the icons and the share card
+  # (scripts/smoke.mjs). Fails if a page does not answer 200 or the server logs an error.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/smoke.mjs
