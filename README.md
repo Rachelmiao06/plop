@@ -27,6 +27,32 @@ win, nothing to sign up for: it is about how it feels in the hand.
 - **Fresh snow** (button or **N**): new snow falls and smooths every groove away.
 - The corner buttons switch the music and the sound effects on and off.
 
+## Sharing in WeChat
+
+The round paper-plane button at the bottom left shares the game: the system share sheet where the browser has one,
+"link copied!" where it does not, and inside WeChat a little note pointing to the top-right **···** menu (WeChat does
+not let a page open its share menu by itself).
+
+**What works today (no account, no setup):**
+
+- The link opens and plays inside WeChat's own browser on iPhone and Android: the 3D snow, dragging the snowman,
+  sound after the first tap (iPhones only make sound after a tap anyway), and vibration on Android (iPhones have none).
+- Sending the link from WeChat's ··· menu. The chat card uses what WeChat can read without an Official Account: the
+  title "Plop!", the description, and a square picture of the snowmen (the first image on the page). WeChat versions
+  differ: some show this picture and text, some show only the title and a plain link icon. That is WeChat's choice.
+- Other apps (iMessage, Slack, X, Discord, Telegram…) show the full share card with the art.
+
+**What a full rich WeChat card would need** (title, text and picture you choose, every time):
+
+1. A domain of our own (`*.vercel.app` addresses are often slow or blocked in mainland China, and WeChat may warn
+   before opening them).
+2. ICP filing (备案) for that domain, which in practice means hosting it in mainland China, not only on Vercel.
+3. A verified WeChat Official Account (认证公众号), with the domain added as its JS-SDK safe domain (JS接口安全域名).
+4. A small server endpoint that signs the JS-SDK config with the account's secret, then `wx.updateAppMessageShareData`
+   on the page. That adds a key to keep secret and code that runs on a server.
+
+None of this was tested inside WeChat itself (it cannot be run here); it follows WeChat's known webview rules.
+
 ## Test pages (`/dev/*`)
 
 Small pages for checking one part at a time. Not linked from the game and hidden from search engines.

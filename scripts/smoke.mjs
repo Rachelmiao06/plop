@@ -8,8 +8,9 @@
  *    and fetches it: it must answer 200 with HTML that has the "Plop!" title and no Next.js error page.
  * 4. Reads the home page's <head> and fetches the icons and the share card it points to: each must answer 200
  *    with an image.
- * 5. Fetches a page that does not exist: it must answer 404.
- * 6. Fails if the server printed an error while doing all this.
+ * 5. Checks the first image in the home page body is the WeChat share image (at least 300 px) and loads.
+ * 6. Fetches a page that does not exist: it must answer 404.
+ * 7. Fails if the server printed an error while doing all this.
  *
  * It does NOT run the page in a browser: client-side JavaScript errors, WebGL, the 3D scene, the loading screen
  * fading out and any interaction are not covered. It only proves the server can render every page.
@@ -156,6 +157,20 @@ async function main() {
       } catch (e) {
         fail(`${label} did not answer (${e.message})`);
       }
+    }
+
+    // WeChat (no Official Account) takes the first <img> in <body> of at least 300 x 300 for its chat card.
+    console.log("\nWeChat card image (first image in the home page body):");
+    const first = home.split(/<body[^>]*>/)[1]?.match(/<img\b[^>]*>/)?.[0] ?? "";
+    const src = first.match(/\ssrc="([^"]+)"/)?.[1];
+    const width = Number(first.match(/\swidth="(\d+)"/)?.[1] ?? 0);
+    if (!first.includes("data-wechat-share-image") || !src) fail("the first image in <body> is not the WeChat share image");
+    else if (width < 300) fail(`WeChat share image is ${width}px wide, needs at least 300`);
+    else {
+      const res = await get(base + src);
+      await res.arrayBuffer();
+      if (res.status === 200) pass(`${src} (${width}px, first image)`);
+      else fail(`WeChat share image ${src} answered ${res.status}`);
     }
 
     console.log("\nMissing page:");
