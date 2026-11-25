@@ -133,6 +133,8 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     stoppedAt: null as number | null,
     settledFor: 0,
     activeBalls: new Set<number>(),
+    /** Balls thrown in the throw being counted; only these (and rolling ones) push cards. */
+    throwBalls: new Set<number>(),
     /** A throw came in while the set was resetting or changing: count it once they stand. */
     pendingThrow: false,
     /** The set that is ducking out: once every card is under the snow, this one mounts. */
@@ -177,7 +179,11 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     pins.emit({ type: "phase", phase });
   };
 
-  const toKinematic = (b: RapierRigidBody) => b.setBodyType(rapier.RigidBodyType.KinematicPositionBased, true);
+  const toKinematic = (b: RapierRigidBody) => {
+    // CCD would stop an animated card at the snow it starts lying on, freezing it half way.
+    b.enableCcd(false);
+    b.setBodyType(rapier.RigidBodyType.KinematicPositionBased, true);
+  };
 
   const poseOf = (b: RapierRigidBody): Pose => {
     const t = b.translation();
@@ -199,6 +205,19 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
   /** Everything stands again (after a reset or a new set). */
   const standReady = () => {
     const f = flow.current;
+    // Every card goes back to the physics together, so one still hopping never knocks a settled one.
+    specs.forEach((_, i) => {
+      const b = bodies.current[i];
+      if (!b || b.isDynamic() || runtime.current[i]?.hidden) return;
+      const t = b.nextTranslation();
+      const q = b.nextRotation();
+      b.setBodyType(rapier.RigidBodyType.Dynamic, true);
+      b.enableCcd(true);
+      b.setTranslation(t, true);
+      b.setRotation(q, true);
+      b.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      b.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    });
     pins.emit({ type: "ready", formation: entry.id, total: specs.length });
     if (f.pendingThrow && f.activeBalls.size) startThrow();
     else {
@@ -217,10 +236,11 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
       if (!b || !rt || rt.anim) return;
       const from = poseOf(b);
       const to = homePose(s);
+      // Everyone holds still while the fallen pop back, so nothing is knocked on the way.
+      toKinematic(b);
       // Only cards that moved pop back; untouched ones stay put.
       if (from.p.distanceTo(to.p) < 0.03 && from.q.angleTo(to.q) < 3 * DEG) return;
-      toKinematic(b);
-      rt.anim = { kind: "reset", start: f.clock + order++ * r.stagger, duration: r.time, from, to };
+      rt.anim = { kind: "reset", start: f.clock + 0.05 + order++ * r.stagger, duration: r.time, from, to };
     });
     setPhase("resetting");
     if (order === 0) standReady();
@@ -250,6 +270,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     const total = specs.length;
     const fullClear = total > 0 && down === total;
     f.fullClear = fullClear;
+    f.throwBalls.clear();
     pins.emit({ type: "result", result: { down, total, fullClear } });
     setPhase("result");
   };
@@ -260,6 +281,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     const f = flow.current;
     if (e.type === "launched") {
       f.activeBalls.add(e.ballId);
+      f.throwBalls.add(e.ballId);
       if (f.phase === "ready") startThrow();
       else if (f.phase === "throw") f.stoppedAt = null;
       else {
@@ -333,6 +355,9 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
       const fade = ball.rolling ? 1 : clamp01((game.feel.roll.restTime - ball.restAge) / PINS.ball.fadeTime);
       const r = ball.plan.radius * fade;
       collider.setRadius(Math.max(0.005, r * PINS.ball.radiusShare));
+      // Only a rolling ball, or one still part of the throw being counted, pushes cards.
+      const pushes = ball.rolling || (f.phase === "throw" && f.throwBalls.has(ball.id));
+      if (collider.isSensor() === pushes) collider.setSensor(!pushes);
       let ground = snow.heightAt(ball.position.x, ball.position.z);
       if (!ball.rolling) {
         if (!f.restY.has(ball.id)) f.restY.set(ball.id, ground);
@@ -446,7 +471,13 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     // Result shown long enough: reset, or a new set after a full clear.
     if (f.phase === "result") {
       const wait = f.fullClear ? PINS.nextSet.delayAfterFullClear : PINS.reset.delayAfterResult;
-      if (f.clock - f.since > wait) {
+      const ballOnSpots =
+        !f.fullClear &&
+        (f.game?.balls ?? []).some((ball) =>
+          specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.plan.radius + s.card[0]),
+        );
+      const waited = f.clock - f.since;
+      if (waited > wait && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) {
         if (f.fullClear) startChange(nextFormationId(entry.id));
         else startReset();
       }
@@ -483,6 +514,8 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
             scratch.p.y += n.hop * Math.abs(Math.sin(Math.PI * n.hops * u)) * (1 - 0.5 * u);
             scratch.q.copy(a.to.q);
           }
+          // A sleeping body ignores kinematic targets, and a still kinematic body falls asleep: keep it awake.
+          b.wakeUp();
           b.setNextKinematicTranslation(scratch.p);
           b.setNextKinematicRotation(scratch.q);
           if (t >= 1) {
@@ -491,11 +524,9 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
               rt.hidden = true;
               visual.visible = false;
             } else {
-              b.setBodyType(rapier.RigidBodyType.Dynamic, true);
-              b.setTranslation(a.to.p, true);
-              b.setRotation(a.to.q, true);
-              b.setLinvel({ x: 0, y: 0, z: 0 }, true);
-              b.setAngvel({ x: 0, y: 0, z: 0 }, true);
+              // Stays kinematic, exactly home, until every card has landed (see standReady).
+              b.setNextKinematicTranslation(a.to.p);
+              b.setNextKinematicRotation(a.to.q);
               rt.boingAt = f.clock;
               rt.down = false;
               rt.landed = false;
@@ -533,7 +564,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
 
     if (process.env.NODE_ENV !== "production") {
       // Handy from the browser console while tuning: window.__pins.runtime
-      (window as unknown as { __pins?: unknown }).__pins = { flow: f, runtime: runtime.current, bodies: bodies.current, specs, entry };
+      (window as unknown as { __pins?: unknown }).__pins = { flow: f, runtime: runtime.current, bodies: bodies.current, visuals: visuals.current, specs, entry };
     }
 
     // Development check: the physics ground lines up with the drawn snow.
@@ -629,7 +660,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
               }}
               visible={!entry.arrive}
             >
-              <PinCard id={s.id} width={s.width} height={s.height} depth={s.depth} flip={s.flip} art={textures[s.id]} paper={paper} />
+              <PinCard id={s.id} width={s.width} height={s.height} depth={s.depth} flip={s.flip} art={textures[s.id]} paper={paper} artOnBack={PINS.card.artOnBack} />
             </group>
           </RigidBody>
         );

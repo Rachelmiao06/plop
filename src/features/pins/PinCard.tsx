@@ -30,9 +30,11 @@ type Props = {
   flip?: boolean;
   art: Texture;
   paper: PaperColors;
+  /** Also draw the art on the back (mirrored). */
+  artOnBack?: boolean;
 };
 
-export const PinCard = forwardRef<Group, Props>(function PinCard({ id, width, height, depth, flip, art, paper }, ref) {
+export const PinCard = forwardRef<Group, Props>(function PinCard({ id, width, height, depth, flip, art, paper, artOnBack }, ref) {
   const body = useMemo(() => bodyGeometry(id, width, height, depth), [id, width, height, depth]);
   const card = useMemo(() => artGeometry(width, height), [width, height]);
   const materials = useMemo(() => {
@@ -76,6 +78,9 @@ export const PinCard = forwardRef<Group, Props>(function PinCard({ id, width, he
       <group scale-x={flip ? -1 : 1}>
         {body && <mesh geometry={body} material={[materials.cap, materials.side]} castShadow />}
         <mesh geometry={card} material={materials.art} position-z={body ? depth / 2 + 0.002 : 0} castShadow={!body} />
+        {body && artOnBack && (
+          <mesh geometry={card} material={materials.art} position-z={-depth / 2 - 0.002} rotation-y={Math.PI} />
+        )}
       </group>
     </group>
   );

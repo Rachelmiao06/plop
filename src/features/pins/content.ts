@@ -36,6 +36,11 @@ export const PINS = {
     footHeight: 0.05,
     /** The base sits this far into the snow while standing, so it looks planted. */
     sink: 0.015,
+    /**
+     * Draw the art on the back too (mirrored, as if seen through the paper), so a card that lands face-down
+     * still shows its character instead of a blank white shape.
+     */
+    artOnBack: true,
     /** Pins face the throwing line; a tiny random turn per pin keeps them from looking machine-placed. */
     yawJitterDegrees: 4,
   },
@@ -124,6 +129,12 @@ export const PINS = {
   reset: {
     /** Seconds the "N down!" shows before the reset starts. */
     delayAfterResult: 1.9,
+    /**
+     * A ball resting on the spots (it lingers a few seconds before it melts away) would knock the cards
+     * straight over again, so the reset waits for it, at most this many extra seconds. After that the cards
+     * pop up anyway; a resting ball no longer pushes once the throw is counted.
+     */
+    waitForBallMax: 4.5,
     /** Seconds each card takes to pop back. */
     time: 0.6,
     /** Delay between one card and the next (seconds), so they pop up in a little wave. */
