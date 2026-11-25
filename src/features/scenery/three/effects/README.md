@@ -7,8 +7,7 @@ effect on top is welcome. All of it is made in code; no drawing is changed and t
 - Mounted from `../Village.tsx` with these lines only: the import of `ChimneySmoke, FootBank, IceBeds, IceChunks,
   Icicles, WarmLights`; `<FootBank lane>` and `<IceBeds lane>` at the top of `<Flecks>` (outside Suspense);
   `<WarmLights>` and `<Icicles>` as children of each `<ThickStandee>`; `<ChimneySmoke placed>` and `<IceChunks lane>`
-  after the standees. They replace `ChimneySmoke` (the drawn smoke doodle) and `LampGlow` (the painted lamp glow) in
-  `../Life.tsx`, which are no longer mounted and can be deleted.
+  after the standees. (They replaced the first drawn smoke doodle and painted lamp glow, now deleted.)
 - `ThickStandee` takes `children`: anything fixed to the drawing (art space, origin bottom centre, mirrored with
   `flip`), turning and swaying with it.
 

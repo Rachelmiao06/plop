@@ -60,8 +60,8 @@ export type SceneryProp = {
   motion?: "loop";
   /*
     Tags for the scene effects (lamp light, chimney smoke, ice), which attach to props by these.
-    Points on the drawing are shares of its width (from the left) and height (from the foot), like
-    `village.chimneys`; flip mirrors them with the drawing. Optional: a prop without a tag gets no effect.
+    Points on the drawing are shares of its width (from the left) and height (from the foot); flip mirrors them
+    with the drawing (numbers and code in `three/effects/`). Optional: a prop without a tag gets no effect.
   */
   /** Warm lights drawn on the prop (lamp glass, lantern, lit window, bulbs): one point each. */
   emitsLight?: [number, number][];
@@ -343,7 +343,7 @@ export const layout: Placement[] = [
   { prop: "bush-snow", x: -2.65, z: -4.55, scale: 0.8, side: "left" },
   { prop: "mug-cocoa", x: -2.45, z: -6.45, scale: 0.9, side: "left" },
   { prop: "rabbit", x: -3.1, z: -4.35, flip: true, side: "left" },
-  // the pond corner, with the street lamp lighting the snow (its glow: `village.lampGlow`)
+  // the pond corner, with the street lamp lighting the snow (its light: `three/effects/`)
   { prop: "pond-frozen", x: -3.55, z: -3.7, scale: 1.15, side: "left" },
   { prop: "penguin-slide", x: -2.55, z: -3.5, side: "left" },
   { prop: "street-lamp", x: -2.75, z: -2.45, side: "left" },
@@ -610,38 +610,6 @@ export const village = {
 
   /** For the sight-line check: how tall the pins are that must stay visible from the throwing view. */
   pinSightHeight: 0.5,
-
-  /**
-   * The street lamp's warm light (`--butter`): where the glass is on the drawing (share of width from the left,
-   * share of height from the foot), a halo `haloSize` across at `haloOpacity`, and a warm patch on the snow
-   * (`poolSize` x by z, shifted `poolOffset`) at `poolOpacity`. The falloff is laid in `bands` crayon-like steps;
-   * it breathes `breathe` of its strength `breatheSpeed` times a second.
-   */
-  lampGlow: {
-    head: [0.5, 0.7] as [number, number],
-    haloSize: 1.9,
-    haloOpacity: 0.95,
-    /** The halo stands this far behind the lamp (scene units), so the drawn lamp stays crisp in front of it. */
-    haloBehind: 0.12,
-    poolSize: [1.9, 1.4] as [number, number],
-    poolOffset: [0.15, 0.25] as [number, number],
-    poolOpacity: 0.6,
-    bands: 4,
-    breathe: 0.06,
-    breatheSpeed: 0.35,
-  },
-
-  /** Chimney smoke rising from the cottages: where the chimney is on the drawing (share of width, from the left). */
-  chimneys: { "cottage-blue": 0.76, "cottage-red": 0.7 } as Partial<Record<PropId, number>>,
-  smoke: {
-    /** Seconds for one puff to rise and fade; two puffs per chimney, half a loop apart. */
-    period: 5.5,
-    /** How far it rises in that time (scene units) and how much it grows. */
-    rise: 0.45,
-    grow: 0.5,
-    /** Most opacity at the middle of its rise. */
-    opacity: 0.85,
-  },
 
   /** Small life loops (`motion: "loop"` props). All stop when the device asks for reduced motion. */
   life: {

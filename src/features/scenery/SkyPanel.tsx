@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { getTimeOfDay, setTimeOfDay, subscribeTimeOfDay } from "./timeOfDay";
+import { setTimeOfDay, useTimeOfDay } from "@/features/snow-scene";
 
 const MARKS = [
   { t: 0, label: "afternoon" },
@@ -17,7 +17,7 @@ const MARKS = [
  * and the frame rate. `?t=0.5` in the address starts there.
  */
 export function SkyPanel() {
-  const t = useSyncExternalStore(subscribeTimeOfDay, getTimeOfDay, () => 0);
+  const t = useTimeOfDay();
   const [fps, setFps] = useState(0);
 
   useEffect(() => {
