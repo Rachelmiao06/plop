@@ -80,7 +80,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
     <div
       role="dialog"
       aria-labelledby={`${id}-title`}
-      className="plop-share-sheet absolute bottom-full left-0 mb-3 w-[min(80vw,300px)] px-5 pt-4 pb-5 text-ink"
+      className="plop-share-sheet absolute bottom-full left-0 mb-3 w-[min(80vw,300px)] px-5 pt-5 pb-5 text-ink"
     >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
         <path d={EDGE} className="fill-paper stroke-ink" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
@@ -94,7 +94,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
         >
           ×
         </button>
-        <h2 id={`${id}-title`} className="pr-6 text-2xl leading-tight">
+        <h2 id={`${id}-title`} className="pr-6 text-xl leading-tight">
           {words.title.zh}
           <span className="block font-sans text-xs">{words.title.en}</span>
         </h2>

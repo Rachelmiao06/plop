@@ -167,7 +167,8 @@ export function InviteCard({ name, score }: Invite) {
         later(playTie, bellAt);
         later(playStarHit, flap + cardOut * 0.55);
       }
-      later(() => setStage("open"), flap + cardOut * 0.5);
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      later(() => setStage("open"), still ? 0 : flap + cardOut * 0.5);
       return "opening";
     });
   }, []);
@@ -267,7 +268,7 @@ export function InviteCard({ name, score }: Invite) {
         )}
 
         {closedish && (
-          <p className="mt-14 text-center text-ink-deep drop-shadow-[0_0_6px_var(--paper)]" aria-hidden>
+          <p className="mt-14 pl-[30%] text-center text-ink-deep sm:pl-0 drop-shadow-[0_0_6px_var(--paper)]" aria-hidden>
             <Bi zh={words.tapToOpen.zh} en={words.tapToOpen.en} className="text-2xl" />
           </p>
         )}
