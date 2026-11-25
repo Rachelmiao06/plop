@@ -30,7 +30,7 @@ import { unlockAudioOnFirstTouch } from "@/lib/audio";
 
 import { FEEL, LOOK, type ThrowerLook } from "../content";
 import { connectFeedback, type Feedback } from "../feedback";
-import { createKeyboardInput, type KeyboardInput } from "../keyboard";
+import { createKeyboardInput, SOLO_KEYS, type KeyboardInput, type KeyMap } from "../keyboard";
 import { createPointerInput } from "../pointer";
 import { powerOf, sweetPull } from "../roll";
 import { Bowling } from "../simulation";
@@ -105,6 +105,14 @@ export type BowlingStageProps = {
    * (`FEEL.roll.soft`), and the aim line shows it. Leave out for plain snow.
    */
   softAt?: (x: number, z: number) => number;
+  /** The keys this thrower listens to (default A / D or ← / → and Space). "Together" mode gives each its own. */
+  keys?: KeyMap;
+  /** Keep this thrower to part of the line, `[min, max]` in x (two throwers side by side). Default: all of it. */
+  slide?: [number, number];
+  /** Draw the throwing line's pencil dashes (default true). With two stages, only one draws them. */
+  laneMarks?: boolean;
+  /** Which side of the thrower the pulled ball grows on (1 = right, -1 = left). Default: toward the lane's middle. */
+  ballSide?: 1 | -1;
 };
 
 /** `?thrower=one|two` on the page, for test pages (no prop given). */
@@ -114,7 +122,16 @@ function throwerFromPage(): ThrowerLook | undefined {
   return v === "one" || v === "two" ? v : undefined;
 }
 
-export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: BowlingStageProps = {}) {
+export function BowlingStage({
+  thrower,
+  onGame,
+  pinRing = true,
+  softAt,
+  keys = SOLO_KEYS,
+  slide,
+  laneMarks = true,
+  ballSide,
+}: BowlingStageProps = {}) {
   const snow = useSnow();
   const snowPoint = useSnowPoint();
   const gl = useThree((s) => s.gl);
@@ -148,7 +165,15 @@ export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: Bowlin
       markInk: ink(0.45),
     };
   }, [palette]);
-  const dashes = useMemo(() => laneDashes(pinRing), [pinRing]);
+  const dashes = useMemo(() => (laneMarks ? laneDashes(pinRing) : []), [pinRing, laneMarks]);
+  useEffect(() => game.setBallSide(ballSide ?? null), [game, ballSide]);
+  // Part of the line only (two throwers side by side); it waits for the thrower to be ready.
+  const slideMin = slide?.[0];
+  const slideMax = slide?.[1];
+  useEffect(() => {
+    game.setSlideRange(slideMin === undefined || slideMax === undefined ? null : [slideMin, slideMax]);
+    if (slideMin !== undefined && slideMax !== undefined) game.slideTo((slideMin + slideMax) / 2);
+  }, [game, slideMin, slideMax]);
   // The snow the rules read: the real snow, plus any soft mound the game laid down.
   useEffect(() => {
     game.setGround(softAt ? { packedAt: (x, z) => snow.packedAt(x, z), softAt } : snow);
@@ -188,7 +213,7 @@ export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: Bowlin
     const canvas = gl.domElement;
     const raycaster = new Raycaster();
     const ndc = new Vector2();
-    const keyboard = createKeyboardInput(game);
+    const keyboard = createKeyboardInput(game, window, keys);
     const pointer = createPointerInput(game, canvas, {
       toGround: snowPoint,
       hitsThrower: (clientX, clientY) => {
@@ -266,7 +291,7 @@ export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: Bowlin
       stopUnlock();
       off();
     };
-  }, [game, gl, camera, snowPoint, snow, clumps]);
+  }, [game, gl, camera, snowPoint, snow, clumps, keys]);
 
   // Scratch objects reused every frame.
   const scratch = useMemo(
@@ -574,12 +599,14 @@ export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: Bowlin
           renderOrder={2}
         />
       ))}
+{dashes.length > 0 && (
       <instancedMesh
         ref={dashesRef}
         args={[looks.flatDash, looks.markInk, dashes.length]}
         frustumCulled={false}
         renderOrder={1}
       />
+      )}
     </group>
   );
 }

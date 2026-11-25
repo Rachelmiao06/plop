@@ -17,25 +17,43 @@ import type { Bowling } from "@/features/bowling";
 import { PINS, type Pins } from "@/features/pins";
 import { easeTimeOfDay } from "@/features/snow-scene";
 
-import { findBowling, lockThrows, meltRestingBalls, switchThrower } from "./bowlingLink";
+import { lockThrows, meltRestingBalls, switchThrower } from "./bowlingLink";
 import { GAME } from "./content";
 import { dayFor, type Game } from "./rules";
 
 /** Shared with the page around the canvas (the cancel button needs the running bowling game). */
 export type GameLink = ReturnType<typeof createLink>;
 
+/**
+ * The running bowling games, by slot: "solo" in turns mode (one thrower who changes hats), "left" and "right" in
+ * "together" mode (two throwers side by side). Each `BowlingStage` hands its game in with `onGame`.
+ */
 export function createLink() {
-  let bowling: Bowling | null = null;
+  const games = new Map<string, Bowling>();
   return {
-    get: () => bowling,
-    set: (b: Bowling | null) => void (bowling = b),
+    /** The first running game (the camera and turns mode use one). */
+    get: (): Bowling | null => games.values().next().value ?? null,
+    all: (): Bowling[] => [...games.values()],
+    set: (slot: string, b: Bowling | null) => void (b ? games.set(slot, b) : games.delete(slot)),
+    /** Forget every slot not in this list (the mode changed and those stages went away). */
+    keep(slots: readonly string[]) {
+      for (const slot of [...games.keys()]) if (!slots.includes(slot)) games.delete(slot);
+    },
   };
 }
 
 export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link: GameLink }) {
-  const bound = useRef<{ bowling: Bowling; off: () => void } | null>(null);
+  const bound = useRef(new Map<Bowling, () => void>());
   /** Scene-clock times for the next scheduled steps (null = nothing waiting). */
-  const due = useRef<{ melt: number | null; pass: number | null; now: number }>({ melt: null, pass: null, now: 0 });
+  const due = useRef<{ melt: number | null; pass: number | null; gain: number | null; now: number }>({
+    melt: null,
+    pass: null,
+    gain: null,
+    now: 0,
+  });
+
+  // "Together" mode: the pins hold the count until both players have thrown this round.
+  useEffect(() => pins.setCountGate(() => game.countGate()), [game, pins]);
 
   // Pins → rules.
   useEffect(
@@ -56,6 +74,8 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
           }
           game.result(e.result);
           d.melt = d.now + GAME.timing.meltBallAfterResult;
+          // Together: the second player's points fly a moment after the first's.
+          if (e.result.byThrower) d.gain = d.now + GAME.timing.secondGainAfter;
         }
         if (e.type === "ready") {
           game.pinsReady();
@@ -69,43 +89,51 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
     [game, pins],
   );
 
-  // Let go of the bowling game when this goes away.
-  useEffect(
-    () => () => {
-      bound.current?.off();
-      bound.current = null;
-      link.set(null);
-    },
-    [link],
-  );
+  // Let go of the bowling games when this goes away.
+  useEffect(() => {
+    const map = bound.current;
+    return () => {
+      map.forEach((off) => off());
+      map.clear();
+    };
+  }, []);
 
   useFrame((state) => {
     const d = due.current;
     d.now = state.clock.elapsedTime;
 
-    // Find the running bowling game (and again if it was remade, e.g. after a hot reload).
-    const bowling = findBowling();
-    if (bowling && bowling !== bound.current?.bowling) {
-      bound.current?.off();
+    // Bind every running bowling game (one, or two in "together" mode; again if one was remade).
+    const games = link.all();
+    for (const [old, off] of bound.current) {
+      if (games.includes(old)) continue;
+      off();
+      bound.current.delete(old);
+    }
+    for (const bowling of games) {
+      if (bound.current.has(bowling)) continue;
       const offEvents = bowling.subscribe((e) => {
         if (e.type === "pressed") game.setPulling(true);
-        if (e.type === "cancelled") game.setPulling(false);
-        if (e.type === "launched") game.launched();
+        if (e.type === "cancelled") game.setPulling(link.all().some((g) => g !== bowling && g.thrower.phase === "pulling"));
+        if (e.type === "launched") game.launched(e.thrower);
       });
-      const unlock = lockThrows(bowling, () => game.canThrow(pins.getState().phase === "ready"));
-      bound.current = {
-        bowling,
-        off: () => {
-          offEvents();
-          unlock();
-        },
-      };
-      link.set(bowling);
+      const unlock = lockThrows(bowling, () => {
+        const phase = pins.getState().phase;
+        return game.canThrow(phase === "ready", game.playerOf(bowling.thrower.id), phase === "throw");
+      });
+      bound.current.set(bowling, () => {
+        offEvents();
+        unlock();
+      });
     }
+    const bowling = games[0] ?? null;
 
     if (d.melt !== null && d.now >= d.melt) {
       d.melt = null;
-      if (bowling) meltRestingBalls(bowling, PINS.ball.fadeTime);
+      for (const g of games) meltRestingBalls(g, PINS.ball.fadeTime);
+    }
+    if (d.gain !== null && d.now >= d.gain) {
+      d.gain = null;
+      game.flushGain();
     }
     if (d.pass !== null && d.now >= d.pass) {
       d.pass = null;
@@ -113,7 +141,7 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
     }
 
     // The thrower on the line is whoever's turn it is (switching waits until the thrower is ready).
-    if (bowling && game.getState().stage === "aim") switchThrower(bowling, game.throwerId());
+    if (bowling && game.getState().mode === "turns" && game.getState().stage === "aim") switchThrower(bowling, game.throwerId());
   });
 
   return null;

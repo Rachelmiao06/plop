@@ -64,6 +64,10 @@ Rachel worried everyone would just aim at the middle with full power. These chan
 | **Special cut-outs.** Extra points for a star friend down, and for the rabbit left standing. | `+2` · `+2` | `SPECIALS` |
 | **The sets** and the round order (3 or 5 rounds). | 5 round sets | pins `ROUND_SETS` · game `GAME.match.rounds` |
 
+**Together mode** (`GAME.together` in `src/features/game/content.ts`): each thrower's half of the line (`slide`,
+`[-1.9, -0.45]` and `[0.45, 1.9]`) and their keys; `GAME.timing.secondGainAfter` (`0.75` s) between the two
+players' points flying in.
+
 ### Measured: is "full power, straight at the middle" still the best shot?
 
 `node src/features/game/measure/measure.mjs [rounds | old]` (see the game README). For every set it throws 630

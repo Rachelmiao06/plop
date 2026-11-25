@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import { BowlingStage, FEEL } from "@/features/bowling";
+import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { MatchEnd, MatchStart, ScoreHud } from "@/features/hud";
 import { createPins, formationById, PinsPopup, PinsStage, softSnowFor } from "@/features/pins";
 import { PaperFinish } from "@/features/look";
@@ -28,10 +28,13 @@ import {
 import { GAME, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
 import { createLink, GameBridge } from "./GameBridge";
-import { CancelPull, GameHint, SpecialHint, TurnNote } from "./GameOverlay";
+import { CancelPull, GameHint, ModePick, SpecialHint, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
 import { createGame } from "./rules";
 import { ThrowingView } from "./ThrowingView";
+
+/** Thrower id → name, for "N down!" per player in together mode. */
+const throwerNames = Object.fromEntries(GAME.players.map((p) => [p.thrower, p.name]));
 
 const players = [
   { name: GAME.players[0].name, look: GAME.players[0].look },
@@ -64,6 +67,13 @@ export function Game() {
   /** Playing alone: the best total before this match started (the end card compares with it). */
   const [bestBefore, setBestBefore] = useState<number | null>(null);
   const saved = useRef(false);
+
+  const together = state.mode === "together";
+  // Each bowling stage hands its game to the bridge, by slot (one in turns mode, two side by side together).
+  const onSolo = useCallback((g: Bowling) => link.set("solo", g), [link]);
+  const onLeft = useCallback((g: Bowling) => link.set("left", g), [link]);
+  const onRight = useCallback((g: Bowling) => link.set("right", g), [link]);
+  useEffect(() => link.keep(together ? ["left", "right"] : ["solo"]), [link, together]);
 
   // The current set's soft mounds, for the roll.
   const softAt = useMemo(() => softSnowFor(formationById(set.formation)) ?? undefined, [set.formation]);
@@ -102,19 +112,21 @@ export function Game() {
   // Space throws, so it must never also press a button that still has focus (a toggle just tapped).
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return;
+      // Space, Enter and the together keys throw, so they must never also press a focused button.
+      if (e.code !== "Space" && e.code !== "Enter" && e.code !== "KeyW" && e.code !== "ArrowUp") return;
+      if (game.getState().phase !== "playing") return;
       const el = document.activeElement;
       if (el instanceof HTMLElement && el.closest("button")) el.blur();
     };
     window.addEventListener("keydown", key, true);
     return () => window.removeEventListener("keydown", key, true);
-  }, []);
+  }, [game]);
 
   /** A new match: the first round's set comes in (the cards pop back if it is already there). */
   const begin = useCallback(
     (rounds: MatchLength, playing: 1 | 2, again: boolean) => {
       if (again) game.again();
-      else game.start(rounds, playing);
+      else game.start(rounds, playing, game.getState().mode);
       const first = game.setFor(0, rounds);
       if (pins.getState().formation !== first) pins.setFormation(first);
       else pins.reset();
@@ -148,16 +160,43 @@ export function Game() {
       <SnowScene>
         <ThrowingView />
         <Village lane={FEEL.lane} />
-        <BowlingStage pinRing={false} softAt={softAt} />
+        {together ? (
+          <>
+            <BowlingStage
+              key="left"
+              thrower="one"
+              keys={GAME.together.keys.left}
+              slide={GAME.together.slide.left}
+              ballSide={-1}
+              pinRing={false}
+              softAt={softAt}
+              onGame={onLeft}
+            />
+            <BowlingStage
+              key="right"
+              thrower="two"
+              keys={GAME.together.keys.right}
+              slide={GAME.together.slide.right}
+              ballSide={1}
+              pinRing={false}
+              laneMarks={false}
+              softAt={softAt}
+              onGame={onRight}
+            />
+          </>
+        ) : (
+          <BowlingStage key="solo" pinRing={false} softAt={softAt} onGame={onSolo} />
+        )}
         <PinsStage pins={pins} />
         <GameBridge game={game} pins={pins} link={link} />
-        <CameraDirector pins={pins} link={link} />
+        {/* Together: no filmed chase; the throwing view frames both throws and the set. */}
+        {!together && <CameraDirector pins={pins} link={link} />}
       </SnowScene>
       <PaperFinish />
       <GameHint game={game} />
       <SpecialHint game={game} pins={pins} />
       <TurnNote game={game} pins={pins} />
-      <PinsPopup pins={pins} />
+      <PinsPopup pins={pins} names={throwerNames} />
       <ScoreHud
         players={[
           { ...players[0], total: state.scores[0] },
@@ -186,6 +225,9 @@ export function Game() {
           players={state.players}
           onStart={(rounds, playing) => begin(rounds as MatchLength, playing, false)}
         />
+      )}
+      {state.phase === "choosing" && (
+        <ModePick game={game} />
       )}
       {state.phase === "over" && (
         <MatchEnd

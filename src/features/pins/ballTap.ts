@@ -13,9 +13,10 @@
 import { Bowling } from "@/features/bowling";
 
 const KEY = Symbol.for("plop.pins.currentBowling");
+const ALL = Symbol.for("plop.pins.allBowlings");
 const TAPPED = Symbol.for("plop.pins.bowlingTapped");
 
-type Holder = { [KEY]?: Bowling };
+type Holder = { [KEY]?: Bowling; [ALL]?: Map<Bowling, number> };
 type Tappable = Bowling & { [TAPPED]?: true };
 
 /** Start remembering the bowling game that steps. Safe to call many times (and across hot reloads). */
@@ -24,10 +25,28 @@ export function tapBowling(): void {
   if (proto[TAPPED]) return;
   const step = proto.step;
   proto.step = function tappedStep(this: Bowling, dt: number) {
-    (globalThis as Holder)[KEY] = this;
+    const h = globalThis as Holder;
+    h[KEY] = this;
+    (h[ALL] ??= new Map()).set(this, performance.now());
     return step.call(this, dt);
   };
   proto[TAPPED] = true;
+}
+
+/**
+ * Every bowling game stepping right now (stepped within the last 2 seconds, so a slow background tab still counts): one normally, two in "together"
+ * mode (two throwers on the line at once). Games that stopped stepping (unmounted) drop out.
+ */
+export function currentBowlings(): Bowling[] {
+  const all = (globalThis as Holder)[ALL];
+  if (!all) return [];
+  const now = performance.now();
+  const live: Bowling[] = [];
+  for (const [game, at] of all) {
+    if (now - at < 2000) live.push(game);
+    else if (now - at > 5000) all.delete(game);
+  }
+  return live;
 }
 
 /** The bowling game that stepped most recently, or null before the first frame. */

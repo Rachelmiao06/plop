@@ -19,6 +19,11 @@ export type PinsResult = {
   friend: "safe" | "bumped" | null;
   /** Extra points from the special cut-outs (stars down, friends safe). */
   bonus: number;
+  /**
+   * "Together" mode (two throwers at once): the count for each thrower id, from the cards their ball knocked
+   * first (`countByThrower`). Left out when one thrower threw.
+   */
+  byThrower?: Record<string, PinsResult>;
 };
 
 /** The count of a throw. `downs[i]` is pin `i` of the formation (same order as `formation.pins`). */
@@ -43,6 +48,30 @@ export function countThrow(formation: Formation, downs: readonly boolean[]): Pin
   const friend = friends === 0 ? null : friendsDown === 0 ? "safe" : "bumped";
   const bonus = stars * SPECIALS.star.bonus + (friend === "safe" ? SPECIALS.friend.bonus : 0);
   return { down, total, fullClear: total > 0 && down === total, stars, friend, bonus };
+}
+
+/**
+ * Two throwers at the same set: each card counts for whoever's ball touched it first (or knocked the card that
+ * knocked it), `by[i]`; a card down with no owner counts for `fallback`. Each thrower's own count works like
+ * `countThrow` on their cards: their stars, the friend bonus unless their own ball bumped it. The full-clear bonus
+ * goes to every thrower who knocked a card when the whole set is down (both helped).
+ */
+export function countByThrower(
+  formation: Formation,
+  downs: readonly boolean[],
+  by: readonly (string | undefined)[],
+  throwers: readonly string[],
+  fallback: string,
+): Record<string, PinsResult> {
+  const all = countThrow(formation, downs);
+  const out: Record<string, PinsResult> = {};
+  for (const who of throwers) {
+    const mine = downs.map((d, i) => d && (by[i] ?? fallback) === who);
+    const r = countThrow(formation, mine);
+    const fullClear = all.fullClear && r.down > 0;
+    out[who] = { ...r, total: all.total, fullClear };
+  }
+  return out;
 }
 
 /** Cards that count in a set (friends do not). */

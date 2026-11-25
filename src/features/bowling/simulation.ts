@@ -127,7 +127,12 @@ export class Bowling {
 
   private ground: Ground;
   private listeners = new Set<BowlListener>();
-  private nextBallId = 1;
+  /** Ball ids are unique across every game on the page (two throwers in "together" mode share the pins). */
+  private static nextBallId = 1;
+  /** Where the thrower may stand on the line (default: the whole line, `lane.halfWidth` either way). */
+  private slideRange: [number, number] | null = null;
+  /** Which side of the thrower the ball grows on (1 = its right), or null: toward the middle of the lane. */
+  private ballSide: 1 | -1 | null = null;
   private rollClock = 0;
   private slow = { left: 0, length: 1, slowest: 1 };
 
@@ -176,11 +181,38 @@ export class Bowling {
     return this.thrower.phase === "ready";
   }
 
-  /** Slide the thrower to this spot on the line (kept inside the lane). Only while ready. */
+  /** Slide the thrower to this spot on the line (kept inside the lane, or its part of it). Only while ready. */
   slideTo(x: number): void {
     if (!this.isReady) return;
+    const [min, max] = this.range();
+    this.thrower.slideTo = Math.min(max, Math.max(min, x));
+  }
+
+  /**
+   * Keep the thrower to part of the line (two throwers side by side), or the whole line again with null.
+   * It moves inside at once if it stands outside (only between throws).
+   */
+  setSlideRange(range: [number, number] | null): void {
+    this.slideRange = range;
+    if (!this.isReady) return;
+    const [min, max] = this.range();
+    const t = this.thrower;
+    t.slideTo = Math.min(max, Math.max(min, t.slideTo));
+    t.x = Math.min(max, Math.max(min, t.x));
+    t.foot = { x: t.x, z: this.feel.lane.lineZ };
+  }
+
+  /**
+   * Grow the pulled ball on this side of the thrower (1 = its right, -1 = its left), or null for the default
+   * (toward the middle of the lane). Two throwers side by side keep their balls on their outer sides.
+   */
+  setBallSide(side: 1 | -1 | null): void {
+    this.ballSide = side;
+  }
+
+  private range(): [number, number] {
     const half = this.feel.lane.halfWidth;
-    this.thrower.slideTo = Math.min(half, Math.max(-half, x));
+    return this.slideRange ?? [-half, half];
   }
 
   /** Slide by this much. */
@@ -207,7 +239,7 @@ export class Bowling {
       position: { ...t.foot },
       track: { ...t.foot },
       beside: { x: 0, z: 0 },
-      side: t.x > b.middle ? -1 : 1,
+      side: this.ballSide ?? (t.x > b.middle ? -1 : 1),
       radius: this.feel.ball.radiusSmall,
       size: 0,
       reach: 0,
@@ -241,7 +273,7 @@ export class Bowling {
       this.crumble("short");
       return;
     }
-    const ballId = this.nextBallId++;
+    const ballId = Bowling.nextBallId++;
     this.balls.push({
       id: ballId,
       thrower: t.id,

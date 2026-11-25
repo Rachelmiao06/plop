@@ -30,8 +30,14 @@ export type MatchPhase =
   /** After the last round: the end card. */
   | "over";
 
+/** "turns": one throws, then the other. "together": both snowmen on the line at once, each throws once a round. */
+export type PlayMode = "turns" | "together";
+
 export type GameState = {
   phase: MatchPhase;
+  mode: PlayMode;
+  /** "Together" mode: who has thrown this round. */
+  thrown: readonly [boolean, boolean];
   /** How many rounds this match has, and how many players (1 = alone, against your own best). */
   rounds: MatchLength;
   players: 1 | 2;
@@ -59,7 +65,13 @@ export type GameState = {
 export type Game = ReturnType<typeof createGame>;
 
 /** What one throw scored: points per card, the full-clear bonus, and the special cut-outs' bonus from the pins. */
-export type ThrowCount = { down: number; fullClear: boolean; bonus: number };
+export type ThrowCount = {
+  down: number;
+  fullClear: boolean;
+  bonus: number;
+  /** "Together" mode: each thrower's own count (thrower id → count), from the pins. */
+  byThrower?: Record<string, { down: number; fullClear: boolean; bonus: number }>;
+};
 
 export function pointsFor(count: ThrowCount, feel = GAME): number {
   return count.down * feel.score.perCard + (count.fullClear ? feel.score.fullClearBonus : 0) + count.bonus;
@@ -74,6 +86,8 @@ export function dayFor(round: number, rounds: number, feel = GAME): number {
 export function createGame(feel = GAME) {
   let state: GameState = {
     phase: "choosing",
+    mode: "turns",
+    thrown: [false, false],
     rounds: feel.match.lengths[0],
     players: 2,
     round: 0,
@@ -89,9 +103,11 @@ export function createGame(feel = GAME) {
     turnId: 0,
   };
   /** A new match: scores and rounds from zero; the hint count and the note counter carry on. */
-  const fresh = (rounds: MatchLength, players: 1 | 2, phase: MatchPhase): GameState => ({
+  const fresh = (rounds: MatchLength, players: 1 | 2, phase: MatchPhase, mode: PlayMode = state.mode): GameState => ({
     ...state,
     phase,
+    mode,
+    thrown: [false, false],
     rounds,
     players,
     round: 0,
@@ -107,6 +123,8 @@ export function createGame(feel = GAME) {
   });
   let knockId = 0;
   let gainId = 0;
+  /** "Together" mode: the second player's points wait a moment, so the two flights never overlap. */
+  let pendingGain: GameState["gain"] = null;
   const listeners = new Set<() => void>();
   const set = (patch: Partial<GameState>) => {
     state = { ...state, ...patch };
@@ -120,7 +138,9 @@ export function createGame(feel = GAME) {
   };
 
   /** The player who throws last in a round. */
-  const lastThrower = () => (state.players === 2 ? 1 : 0);
+  const lastThrower = () => (state.players === 2 && state.mode === "turns" ? 1 : 0);
+  const together = () => state.mode === "together";
+  const playerOf = (thrower: string): 0 | 1 => (feel.players[1].thrower === thrower ? 1 : 0);
 
   return {
     getState: () => state,
@@ -133,13 +153,32 @@ export function createGame(feel = GAME) {
     setFor: (round: number, rounds: MatchLength = state.rounds) => feel.match.rounds[rounds][Math.min(round, rounds - 1)],
 
     /** Is this throw the last one of its round? (Then the next round's set comes instead of a reset.) */
-    lastOfRound: () => state.active === lastThrower(),
+    lastOfRound: () => together() || state.active === lastThrower(),
     /** Is this the last round? */
     lastRound: () => state.round >= state.rounds - 1,
 
     /** Start a match from the choice card. */
-    start(rounds: MatchLength, players: 1 | 2) {
-      set(fresh(rounds, players, "playing"));
+    start(rounds: MatchLength, players: 1 | 2, mode: PlayMode = "turns") {
+      // Together needs two throwers.
+      set(fresh(rounds, mode === "together" ? 2 : players, "playing", mode));
+    },
+    /** The mode on the start card (before "Let's roll!"). */
+    setMode(mode: PlayMode) {
+      if (state.phase === "choosing" && mode !== state.mode) set({ mode });
+    },
+    /** The player (0 or 1) a bowling thrower id belongs to. */
+    playerOf,
+    /**
+     * "Together" mode holds the pins' count until both have thrown this round (the cards stay where they fell).
+     * Turns mode never holds it.
+     */
+    countGate: () => !together() || (state.thrown[0] && state.thrown[1]),
+    /** Send the second player's points flying (together mode, a moment after the first). */
+    flushGain() {
+      if (!pendingGain) return;
+      const gain = { ...pendingGain, id: ++gainId };
+      pendingGain = null;
+      set({ gain });
     },
     /** Play the same match again from the end card. */
     again() {
@@ -151,7 +190,12 @@ export function createGame(feel = GAME) {
     },
 
     /** May the thrower start a pull now? Only while playing, in the aim stage, and while the pins stand still. */
-    canThrow: (pinsStanding: boolean) => state.phase === "playing" && state.stage === "aim" && pinsStanding,
+    canThrow: (pinsStanding: boolean, player: 0 | 1 = state.active, pinsInPlay = false) => {
+      if (state.phase !== "playing") return false;
+      if (!together()) return state.stage === "aim" && pinsStanding;
+      // Together: each once a round, while the cards stand or the other ball is still rolling.
+      return !state.thrown[player] && (state.stage === "aim" || state.stage === "rolling") && (pinsStanding || pinsInPlay);
+    },
 
     /** The thrower id the bowling feature should use right now. */
     throwerId: () => feel.players[state.active].thrower,
@@ -161,8 +205,18 @@ export function createGame(feel = GAME) {
     },
 
     /** The ball left the thrower's hand. */
-    launched() {
-      if (state.phase !== "playing" || state.stage !== "aim") return;
+    launched(thrower?: string) {
+      if (state.phase !== "playing") return;
+      if (together() && thrower !== undefined) {
+        const p = playerOf(thrower);
+        if (state.thrown[p] || (state.stage !== "aim" && state.stage !== "rolling")) return;
+        const thrown: [boolean, boolean] = [state.thrown[0], state.thrown[1]];
+        thrown[p] = true;
+        const first = state.stage === "aim";
+        set({ stage: "rolling", thrown, active: p, throws: state.throws + 1, pulling: false, ...(first ? { down: 0 } : {}) });
+        return;
+      }
+      if (state.stage !== "aim") return;
       set({ stage: "rolling", throws: state.throws + 1, pulling: false, down: 0 });
     },
 
@@ -175,6 +229,22 @@ export function createGame(feel = GAME) {
     result(count: ThrowCount) {
       if (state.stage !== "rolling") return;
       countTo(count.down); // a card counted only at the end still gets its "+1"
+      if (together() && count.byThrower) {
+        // Each player's own cards (whoever's ball reached them first), their own bonuses.
+        const scores: [number, number] = [state.scores[0], state.scores[1]];
+        const best: [GameState["best"][0], GameState["best"][1]] = [state.best[0], state.best[1]];
+        const got: [number, number] = [0, 0];
+        for (const p of [0, 1] as const) {
+          const mine = count.byThrower[feel.players[p].thrower];
+          if (!mine) continue;
+          got[p] = pointsFor(mine, feel);
+          scores[p] += got[p];
+          if (!best[p] || got[p] > best[p]!.points) best[p] = { points: got[p], round: state.round };
+        }
+        pendingGain = { id: 0, player: 1, points: got[1] };
+        set({ stage: "counted", scores, best, gain: { id: ++gainId, player: 0, points: got[0] } });
+        return;
+      }
       const points = pointsFor(count, feel);
       const scores: [number, number] = [state.scores[0], state.scores[1]];
       scores[state.active] += points;
@@ -192,6 +262,12 @@ export function createGame(feel = GAME) {
     /** Hand the ball to the next player, or start the next round, or end the match. */
     passTurn() {
       if (state.stage !== "passing") return;
+      if (together()) {
+        if (state.round < state.rounds - 1) {
+          set({ stage: "aim", active: 0, thrown: [false, false], round: state.round + 1, turnId: state.turnId + 1 });
+        } else set({ stage: "aim", thrown: [false, false], phase: "over" });
+        return;
+      }
       if (state.active !== lastThrower()) {
         set({ stage: "aim", active: 1, turnId: state.turnId + 1 });
       } else if (state.round < state.rounds - 1) {

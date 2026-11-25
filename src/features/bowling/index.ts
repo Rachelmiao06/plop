@@ -22,7 +22,7 @@ export {
   type Thrower,
   type ThrowerPhase,
 } from "./simulation";
-export { createKeyboardInput, type KeyboardInput } from "./keyboard";
+export { createKeyboardInput, SOLO_KEYS, type KeyboardInput, type KeyMap } from "./keyboard";
 export { createPointerInput, type PointerInput, type PointerInputOptions } from "./pointer";
 export { connectFeedback, type Feedback } from "./feedback";
 export type { Vec2 } from "./vec";
