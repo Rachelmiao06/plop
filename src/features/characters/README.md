@@ -51,6 +51,14 @@ One-shot moments play and then return to the held state (`onActionEnd(action)` f
 | laugh | `laugh()` |
 
 `timeScale` (default 1) slows everything down; `0` freezes it, for a hit-stop on big impacts.
+
+## Look options
+
+- `shading="computed"` (default): token colours with procedural coloured-pencil strokes.
+- `shading="matcap"`: every part is coloured from one of Rachel's hand-drawn spheres
+  (`public/assets/characters/matcap-*.jpg`), looked up by the surface's view direction, with a little light blended in.
+- `paperGrain`: a faint screen-space paper grain over the snowman.
+- `onTwos`: poses update about 12 times a second, like hand-drawn animation.
 `handle.object` is the root group, for positions and raycasting.
 
 A typical slingshot flow: `press()` on pointer down, `charge(pull)` while dragging, `launch()` on release,
@@ -59,12 +67,15 @@ and `hit(power)` on the other snowman when the snowball lands.
 ## Tuning
 
 All sizes, colours (as token names), springs and timings are in `content.ts`.
-Faces are cut from `art-source/characters/expressions-sheet.png` by `scripts/characters-slice-faces.py`
-(run `python3 scripts/characters-slice-faces.py` from the repo root after changing the sheet).
+Faces, reference thumbnails and matcaps are made by `scripts/characters-slice-art.py`
+(run `python3 scripts/characters-slice-art.py` from the repo root).
+Matcaps come from clean crayon patches of the four-view sheets until a 2 × 2 sheet of drawn spheres exists:
+`python3 scripts/characters-slice-art.py --spheres "<path to sheet>"` copies it into `art-source/characters/`
+and replaces all four (grid order snow, mint, red, blue; change with `--order`).
 
 ## Files
 
 - `Snowman.tsx` the component, its states and spring motion.
 - `parts.tsx` hats, scarf ends and the outline helper.
-- `materials.ts` flat two-tone shading with crayon grain, colours read from theme tokens.
+- `materials.ts` the crayon fill (computed or drawn matcap) and the hand-drawn outline; colours from theme tokens.
 - `spring.ts` a tiny damped spring. `facing.ts` the `faceToward` helper.

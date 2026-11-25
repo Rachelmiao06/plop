@@ -11,15 +11,19 @@ import * as THREE from "three";
 
 import {
   FACES,
+  MATCAPS,
   faceTexture,
+  look as lookSettings,
+  matcapTexture,
   motion,
+  type SnowmanShading,
   shape,
   springs,
   variants,
   type FaceName,
   type SnowmanVariant,
 } from "./content";
-import { useSnowmanMaterials } from "./materials";
+import { MATCAP_FOR, useSnowmanMaterials } from "./materials";
 import { Beanie, BucketHat, Ink, ScarfEnd } from "./parts";
 import { Spring, type SpringSettings } from "./spring";
 
@@ -53,6 +57,12 @@ export type SnowmanProps = Omit<ThreeElements["group"], "ref" | "children"> & {
   onActionEnd?: (action: SnowmanAction) => void;
   /** 1 = normal speed. Lower for slow motion, 0 to freeze (for a hit-stop on big impacts). */
   timeScale?: number;
+  /** "computed" (default) shades from a light; "matcap" uses Rachel's drawn crayon spheres. */
+  shading?: SnowmanShading;
+  /** Lay a faint screen-space paper grain over the snowman. */
+  paperGrain?: boolean;
+  /** Pose updates step at about 12 per second, like hand-drawn animation "on twos". */
+  onTwos?: boolean;
 };
 
 type ActiveAction = { kind: SnowmanAction; t: number; duration: number; strength: number; side: number };
@@ -67,7 +77,18 @@ function nextRandom(sim: { seed: number }) {
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
-  { variant, facing = 0, state = "idle", charge = 0, onActionEnd, timeScale = 1, ...groupProps },
+  {
+    variant,
+    facing = 0,
+    state = "idle",
+    charge = 0,
+    onActionEnd,
+    timeScale = 1,
+    shading = "computed",
+    paperGrain = false,
+    onTwos = false,
+    ...groupProps
+  },
   ref,
 ) {
   const look = variants[variant];
@@ -112,6 +133,30 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
   useEffect(() => {
     speed.current = timeScale;
   }, [timeScale]);
+  const twos = useRef(onTwos);
+  useEffect(() => {
+    twos.current = onTwos;
+  }, [onTwos]);
+
+  // Drawn matcaps: load them once, then switch every fill material between the two styles.
+  const matcaps = useTexture(MATCAPS.map(matcapTexture), (loaded) => {
+    for (const tex of loaded) tex.colorSpace = THREE.SRGBColorSpace;
+  });
+  useEffect(() => {
+    for (const [key, name] of Object.entries(MATCAP_FOR)) {
+      const material = mats[key as keyof typeof MATCAP_FOR];
+      if (material && name) material.uniforms.uMatcap.value = matcaps[MATCAPS.indexOf(name)];
+    }
+    for (const key of Object.keys(MATCAP_FOR) as (keyof typeof MATCAP_FOR)[]) {
+      const material = mats[key];
+      material.uniforms.uUseMatcap.value = shading === "matcap" ? 1 : 0;
+    }
+    for (const value of Object.values(mats)) {
+      if (value instanceof THREE.ShaderMaterial && value.uniforms.uPaperGrain) {
+        value.uniforms.uPaperGrain.value = paperGrain ? lookSettings.paperGrain : 0;
+      }
+    }
+  }, [mats, matcaps, shading, paperGrain]);
 
   const action = useRef<ActiveAction | null>(null);
   const onEnd = useRef(onActionEnd);
@@ -125,6 +170,7 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
       phase: look.lean > 0 ? 0 : 3.7,
       seed: look.lean > 0 ? 17 : 91,
       time: 0,
+      twosWait: 0,
       squash: new Spring(1),
       tiltX: new Spring(),
       tiltZ: new Spring(),
@@ -189,8 +235,15 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
   );
 
   useFrame((_, delta) => {
-    const dt = Math.min(delta, 1 / 20) * speed.current;
+    let dt = Math.min(delta, 1 / 20) * speed.current;
     if (dt <= 0) return;
+    if (twos.current) {
+      // Hold each pose, then jump: the springs still integrate the full time in small sub-steps.
+      sim.twosWait += dt;
+      if (sim.twosWait < 1 / lookSettings.twosRate) return;
+      dt = sim.twosWait;
+      sim.twosWait = 0;
+    }
     sim.time += dt;
     const t = sim.time + sim.phase;
     const { state: heldState, charge: amount } = held.current;

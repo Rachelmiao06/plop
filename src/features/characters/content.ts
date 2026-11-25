@@ -53,7 +53,21 @@ export const look = {
   mottle: 0.1,
   /** Light comes from the upper front-left of the world. */
   lightDirection: [-0.45, 0.8, 0.55] as [number, number, number],
+  /** In "drawn matcap" mode, how much of the light direction is blended over the drawing (0..1). */
+  matcapLightBlend: 0.35,
+  /** Strength of the optional screen-space paper grain laid over the characters. */
+  paperGrain: 0.09,
+  /** "On twos": the optional hand-drawn animation step rate, in poses per second. */
+  twosRate: 12,
 };
+
+/** Shading styles the test page can switch between. */
+export type SnowmanShading = "computed" | "matcap";
+
+/** Hand-drawn spheres for "drawn matcap" mode (made by scripts/characters-slice-art.py). */
+export const MATCAPS = ["snow", "mint", "red", "blue"] as const;
+export type MatcapName = (typeof MATCAPS)[number];
+export const matcapTexture = (name: MatcapName) => `/assets/characters/matcap-${name}.jpg`;
 
 /** Body shape. Slightly lopsided on purpose: nothing is perfectly round in a drawing. */
 export const shape = {

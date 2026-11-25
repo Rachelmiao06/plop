@@ -15,6 +15,7 @@ import {
   variants,
   type SnowmanHandle,
   type SnowmanHeldState,
+  type SnowmanShading,
   type SnowmanVariant,
 } from "@/features/characters";
 
@@ -94,6 +95,9 @@ export function CharacterLab() {
   const [charge, setCharge] = useState(0.6);
   const [strength, setStrength] = useState(0.8);
   const [speed, setSpeed] = useState(1);
+  const [shading, setShading] = useState<SnowmanShading>("computed");
+  const [paperGrain, setPaperGrain] = useState(false);
+  const [onTwos, setOnTwos] = useState(false);
   const [faceEachOther, setFaceEachOther] = useState(false);
   const [view, setView] = useState<View>("default");
   const [viewNonce, setViewNonce] = useState(0);
@@ -140,6 +144,9 @@ export function CharacterLab() {
                   state={held[v]}
                   charge={charge}
                   timeScale={speed}
+                  shading={shading}
+                  paperGrain={paperGrain}
+                  onTwos={onTwos}
                 />
               );
             })}
@@ -162,6 +169,26 @@ export function CharacterLab() {
             Drag to orbit, scroll to zoom. Buttons play each state on the chosen snowman.
           </p>
         </header>
+
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg">Look</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button variant={shading === "computed" ? "default" : "outline"} onClick={() => setShading("computed")}>
+              Computed
+            </Button>
+            <Button variant={shading === "matcap" ? "default" : "outline"} onClick={() => setShading("matcap")}>
+              Drawn matcap
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant={paperGrain ? "default" : "outline"} size="sm" onClick={() => setPaperGrain((v) => !v)}>
+              Paper grain
+            </Button>
+            <Button variant={onTwos ? "default" : "outline"} size="sm" onClick={() => setOnTwos((v) => !v)}>
+              On twos (12 fps poses)
+            </Button>
+          </div>
+        </section>
 
         <section className="flex flex-col gap-2">
           <h2 className="text-lg">Who</h2>

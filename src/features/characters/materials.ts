@@ -3,7 +3,7 @@
 import { useState } from "react";
 import * as THREE from "three";
 
-import { look, tokens } from "./content";
+import { look, tokens, type MatcapName } from "./content";
 
 type TokenKey = keyof typeof tokens;
 
@@ -39,17 +39,31 @@ const NOISE = /* glsl */ `
 
 const fillVertex = /* glsl */ `
   varying vec3 vNormalWorld;
+  varying vec3 vNormalView;
+  varying vec3 vViewPosition;
   varying vec3 vLocal;
   void main() {
     vNormalWorld = normalize(mat3(modelMatrix) * normal);
+    vNormalView = normalize(normalMatrix * normal);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vViewPosition = -mvPosition.xyz;
     vLocal = position;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
-// A flat crayon fill: the part's colour, a barely-there pale-blue shade on the far side,
-// diagonal coloured-pencil strokes and soft pressure blotches. Stuck to the object so it never swims.
+// Two ways to colour a part, switchable at runtime:
+// - computed: the part's token colour, a barely-there pale-blue shade on the far side, diagonal
+//   coloured-pencil strokes and soft pressure blotches, stuck to the object so they never swim.
+// - drawn matcap: the colour is looked up from a hand-drawn sphere by the view-space normal, so the
+//   drawing's own strokes and shading appear on every part from every angle. A little of the light
+//   direction can be blended in so form still turns as the camera orbits.
+// Either way an optional screen-space paper grain sits on top.
 const fillFragment = /* glsl */ `
+  uniform sampler2D uMatcap;
+  uniform float uUseMatcap;
+  uniform float uLightBlend;
+  uniform float uPaperGrain;
   uniform vec3 uBase;
   uniform vec3 uShade;
   uniform vec3 uLight;
@@ -58,11 +72,28 @@ const fillFragment = /* glsl */ `
   uniform float uHatch;
   uniform float uMottle;
   varying vec3 vNormalWorld;
+  varying vec3 vNormalView;
+  varying vec3 vViewPosition;
   varying vec3 vLocal;
   ${NOISE}
   void main() {
     float d = dot(normalize(vNormalWorld), uLight) * 0.5 + 0.5;
     float lit = smoothstep(uEdge - uSoft, uEdge + uSoft, d);
+
+    if (uUseMatcap > 0.5) {
+      vec3 n = normalize(vNormalView);
+      vec3 viewDir = normalize(vViewPosition);
+      vec3 x = normalize(vec3(viewDir.z, 0.0, -viewDir.x));
+      vec3 y = cross(viewDir, x);
+      vec2 uv = vec2(dot(x, n), dot(y, n)) * 0.495 + 0.5;
+      vec3 drawn = texture2D(uMatcap, uv).rgb;
+      drawn *= mix(1.0, mix(0.86, 1.0, lit), uLightBlend);
+      drawn *= 1.0 - uPaperGrain * (noise(vec3(gl_FragCoord.xy * 0.7, 0.0)) - 0.5);
+      gl_FragColor = vec4(drawn, 1.0);
+      #include <colorspace_fragment>
+      return;
+    }
+
     vec3 colour = mix(uShade, uBase, lit);
 
     vec3 p = vLocal;
@@ -73,6 +104,7 @@ const fillFragment = /* glsl */ `
     float tooth = noise(p * 420.0);
     float blotch = noise(p * 7.0) * 0.6 + noise(p * 19.0) * 0.4;
     colour *= 1.0 - uHatch * (stroke - 0.5) - uHatch * 0.5 * (tooth - 0.5) - uMottle * (blotch - 0.5);
+    colour *= 1.0 - uPaperGrain * (noise(vec3(gl_FragCoord.xy * 0.7, 0.0)) - 0.5);
 
     gl_FragColor = vec4(colour, 1.0);
     #include <colorspace_fragment>
@@ -89,6 +121,10 @@ function fillMaterial(base: THREE.Color, shade: THREE.Color, hatch: number) {
       uSoft: { value: look.shadeSoftness },
       uHatch: { value: hatch },
       uMottle: { value: look.mottle },
+      uMatcap: { value: null as THREE.Texture | null },
+      uUseMatcap: { value: 0 },
+      uLightBlend: { value: look.matcapLightBlend },
+      uPaperGrain: { value: 0 },
     },
     vertexShader: fillVertex,
     fragmentShader: fillFragment,
@@ -149,6 +185,17 @@ export function makeOutlineMaterial(colour: THREE.Color, paper: THREE.Color) {
     side: THREE.BackSide,
   });
 }
+
+/** Which drawn matcap sphere each part uses in "drawn matcap" mode. */
+export const MATCAP_FOR: Partial<Record<TokenKey, MatcapName>> = {
+  snow: "snow",
+  pompom: "snow",
+  handle: "snow",
+  mintScarf: "mint",
+  red: "red",
+  bucket: "blue",
+  snowShade: "blue",
+};
 
 export type SnowmanMaterials = Record<TokenKey, THREE.ShaderMaterial> & {
   outline: THREE.ShaderMaterial;
