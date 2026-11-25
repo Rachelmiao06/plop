@@ -97,8 +97,10 @@ export function stepRoll(
 }
 
 /**
- * The roll that letting go now would make, for a ball at `foot + pull` of growth
- * `size` and radius `radius`. Null when the pull is too short (letting go cancels).
+ * The roll that letting go now would make, for a ball at `foot + pull + beside` of growth
+ * `size` and radius `radius`. The direction and power come from `pull` alone; `beside` only moves
+ * where the roll starts (the ball sits beside the thrower's feet). Null when the pull is too short
+ * (letting go cancels).
  */
 export function planRoll(
   foot: Vec2,
@@ -107,6 +109,7 @@ export function planRoll(
   radius: number,
   feel: Feel,
   ground: Ground,
+  beside: Vec2 = { x: 0, z: 0 },
 ): RollPlan | null {
   const pulled = Math.hypot(pull.x, pull.z);
   const { max, cancelBelow } = feel.pull;
@@ -117,7 +120,7 @@ export function planRoll(
   const s = clamp01(size);
   const r = feel.roll;
   const startSpeed = lerp(r.speedSmall, r.speedBig, s) * lerp(r.weakPull, 1, power);
-  const start = { x: foot.x + pull.x, z: foot.z + pull.z };
+  const start = { x: foot.x + pull.x + beside.x, z: foot.z + pull.z + beside.z };
 
   const state: RollState = { position: { ...start }, speed: startSpeed, rolled: 0, age: 0 };
   const shape = { direction, size: s, radius };

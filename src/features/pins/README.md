@@ -63,9 +63,20 @@ Formation ids and exports are fixed; the game imports them.
   long lane.
 - **Toppling:** real Rapier contacts give the chain reactions. After every physics step speeds are capped
   (`caps`) so nothing jitters or flies off. When a tipped card touches the snow it presses soft dents along its
-  length, a tiny puff crater at its head, and plays a synthesized paper "fwump" (`fwump.ts`).
-- **Counting:** a card is down when tilted past `down.tiltDegrees`. The result comes when the ball has stopped and
-  nothing has moved for `down.settleHold`, or `down.timeoutAfterStop` after the ball stops.
+  length, a tiny puff crater at its head, and plays a synthesized paper "fwump" (`fwump.ts`). A tip backward on
+  impact (`impact.faceUp`) makes most cards land face-up.
+- **Lying cards stay readable (#48):** from the low throwing view a card lying flat is a sliver, so once it has
+  landed its drawing lifts its head (turning on its bottom edge) to rest `rest.elevationDegrees` off the snow, on a
+  small paper-snow heap (the scenery's mound look, `rest.heap`). Drawing only: the physics card lies flat and the
+  count does not change. It eases back down as the card pops up again. No "x x" dizzy face: the art has none, and
+  art is never drawn here (add one when Rachel or the image model draws it).
+- **The ball never parks on the cards (#47):** once a ball of the throw has rolled past every card's foot, or slows
+  below `burst.slowSpeed` among them, the pins call the bowling game's `burst(ballId)` and it poofs into snow. From
+  the low impact camera even a ball resting behind the set covers the cards lying in the snow.
+- **Counting:** a card is down when tilted past `down.tiltDegrees`. The `result` event (and "N down!") comes as soon
+  as the count is certain: no ball of the throw can reach a card any more (it has burst) and every card has been
+  still for `down.settleHold` (a card already lying in the snow may still slide a little, `down.lyingShare`), or
+  `down.timeoutAfterClear` after the ball is through. It no longer waits for the ball to stop.
 - **Reset:** after `reset.delayAfterResult`, every card is held still (kinematic) and the moved ones hop back in a
   little wave, landing with a boing; then all return to the physics together. After a full clear (or "next set")
   the set ducks into the snow, fresh snow settles on the spot, and the next set hops in from further down the lane.
@@ -99,4 +110,4 @@ Formation ids and exports are fixed; the game imports them.
 
 - A small ball could be deflected by a heavy card (today every ball keeps the simulation's path).
 - Cards lie on the untouched snow, not in the dents they press.
-- Reaction faces (a surprised swap as a card falls) once the art has them.
+- Reaction faces (a surprised swap as a card falls, an "x x" dizzy face on a lying card) once the art has them.

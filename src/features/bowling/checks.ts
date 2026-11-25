@@ -49,7 +49,7 @@ export function runBowlingChecks(): string[] {
     const ball = game.thrower.ball!;
     check(ball.charged, "at the limit after a full pull");
     check(Math.abs(ball.radius - FEEL.ball.radiusBig) < 1e-9, "full size after a full pull on fresh snow");
-    const pulled = distance(ball.position, game.thrower.foot);
+    const pulled = distance(ball.track, game.thrower.foot);
     check(pulled > FEEL.pull.max && pulled <= FEEL.pull.max + FEEL.pull.rubberBand + 1e-9, "rubber band gives a little and stops");
   }
 
