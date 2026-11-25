@@ -11,11 +11,11 @@ import {
   Vector3,
 } from "three";
 import { content } from "./content";
-import { cameraHome, sunDirection } from "./layout";
+import { sunDirection } from "./layout";
 import { sharedUniforms } from "./sharedUniforms";
 
-// Everything around the snow: sun, sky light, the camera, the foggy
-// backdrop and the falling flakes.
+// Everything around the snow: sun, sky light, the foggy backdrop and the
+// falling flakes. The camera is in CameraRig.tsx.
 
 /** Low warm sun plus a cool sky fill, so shadows read soft blue. */
 export function Lights() {
@@ -54,22 +54,6 @@ export function Lights() {
       </directionalLight>
     </>
   );
-}
-
-/** Holds the diorama view and adds a tiny slow sway so sparkles glint. */
-export function CameraRig() {
-  const home = useMemo(() => new Vector3(...cameraHome()), []);
-  useFrame((state) => {
-    const c = content.camera;
-    const t = state.clock.elapsedTime * c.swaySpeed;
-    state.camera.position.set(
-      home.x + Math.sin(t) * c.swayAmount,
-      home.y + Math.cos(t * 1.3) * c.swayAmount * 0.5,
-      home.z,
-    );
-    state.camera.lookAt(0, c.targetHeight, 0);
-  });
-  return null;
 }
 
 /** The fog colour behind everything, drawn as one screen-filling triangle. */
@@ -118,11 +102,8 @@ export function Backdrop() {
   );
 }
 
-// Changed every frame, so they live outside the component.
-const flakeClock = {
-  uTime: { value: 0 },
-  uPixelsPerUnit: { value: 1 },
-};
+// Changed every frame, so it lives outside the component.
+const flakeClock = { uTime: { value: 0 } };
 
 /** Light snowfall. The flakes are moved on the graphics card, not in script. */
 export function Snowfall() {
@@ -157,6 +138,7 @@ export function Snowfall() {
         depthWrite: false,
         uniforms: {
           ...flakeClock,
+          uPixelsPerUnit: sharedUniforms.uPixelsPerUnit,
           uArea: { value: new Vector3(s.areaX, s.height, s.areaZ) },
           uCenterZ: { value: content.ground.centerZ },
           // fall speed, sideways drift, flake size, opacity
@@ -205,7 +187,7 @@ export function Snowfall() {
   useFrame((state) => {
     flakeClock.uTime.value = state.clock.elapsedTime;
     const fov = (content.camera.fieldOfView * Math.PI) / 180;
-    flakeClock.uPixelsPerUnit.value =
+    sharedUniforms.uPixelsPerUnit.value =
       sharedUniforms.uResolution.value.y / (2 * Math.tan(fov / 2));
   });
 

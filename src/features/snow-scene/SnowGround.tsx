@@ -103,6 +103,7 @@ function buildMaterial(): MeshStandardMaterial {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, sharedUniforms, {
       uSnowPressed: { value: new Color(content.colors.snowPressed) },
+      uHardGround: { value: new Color(content.colors.hardGround) },
       uSparkleColor: { value: new Color(content.colors.sparkle) },
       // scale, strength, tint
       uGrain: { value: new Vector4(s.grainScale, s.grainStrength, s.grainTint, 0) },
@@ -140,6 +141,7 @@ function buildMaterial(): MeshStandardMaterial {
         "#include <common>",
         /* glsl */ `#include <common>
         uniform vec3 uSnowPressed;
+        uniform vec3 uHardGround;
         uniform vec3 uSparkleColor;
         uniform vec3 uFogTop;
         uniform vec3 uFogBottom;
@@ -162,8 +164,15 @@ function buildMaterial(): MeshStandardMaterial {
         vec2 grainP = vSnowPos.xz * uGrain.x;
         float grainFade = 1.0 - smoothstep(0.5, 1.6, snowPx * uGrain.x);
         float grainValue = snowNoise(grainP) * 0.65 + snowNoise(grainP * 2.3 + 7.1) * 0.35;
-        // Pressed snow: a little darker and bluer.
-        diffuseColor.rgb = mix(diffuseColor.rgb, uSnowPressed, vPressed);
+        // Pressed snow: darker and bluer the deeper it goes; at the very
+        // bottom the hard ground shows through.
+        float packed = min(vPressed, 1.0);
+        float hardGround = clamp(vPressed - 1.0, 0.0, 1.0);
+        diffuseColor.rgb = mix(diffuseColor.rgb, uSnowPressed, packed);
+        diffuseColor.rgb = mix(diffuseColor.rgb, uHardGround, hardGround);
+        // An extra, finer layer of grain that only shows when zoomed in close.
+        vec2 fineP = grainP * 3.1;
+        float fineFade = (1.0 - smoothstep(0.5, 1.6, snowPx * uGrain.x * 3.1)) * 0.6;
         diffuseColor.rgb *= 1.0 + (grainValue - 0.5) * uGrain.z * grainFade;`,
       )
       .replace(
@@ -175,8 +184,13 @@ function buildMaterial(): MeshStandardMaterial {
           snowNoise(grainP + vec2(grainE, 0.0)) - snowNoise(grainP - vec2(grainE, 0.0)),
           snowNoise(grainP + vec2(0.0, grainE)) - snowNoise(grainP - vec2(0.0, grainE))
         );
-        vec3 grainBump = (viewMatrix * vec4(grainSlope.x, 0.0, grainSlope.y, 0.0)).xyz;
-        normal = normalize(normal - grainBump * uGrain.y * grainFade * (1.0 - 0.6 * vPressed));`,
+        vec2 fineSlope = vec2(
+          snowNoise(fineP + vec2(grainE, 0.0)) - snowNoise(fineP - vec2(grainE, 0.0)),
+          snowNoise(fineP + vec2(0.0, grainE)) - snowNoise(fineP - vec2(0.0, grainE))
+        );
+        vec2 allSlope = grainSlope * grainFade + fineSlope * fineFade;
+        vec3 grainBump = (viewMatrix * vec4(allSlope.x, 0.0, allSlope.y, 0.0)).xyz;
+        normal = normalize(normal - grainBump * uGrain.y * (1.0 - 0.6 * packed));`,
       )
       .replace(
         "#include <opaque_fragment>",
@@ -199,7 +213,7 @@ function buildMaterial(): MeshStandardMaterial {
         float sparkleSun = smoothstep(0.03, 0.2, dot(reflectedLight.directDiffuse, vec3(0.3333)));
         float sparkleFade = 1.0 - smoothstep(0.7, 2.5, snowPx / uSparkle.x);
         outgoingLight += uSparkleColor * uSparkle.w * sparkleGlint * sparkleOn
-          * sparkleDot * sparkleSun * sparkleFade * (1.0 - 0.7 * vPressed);
+          * sparkleDot * sparkleSun * sparkleFade * (1.0 - 0.7 * packed);
         #include <opaque_fragment>`,
       )
       .replace(

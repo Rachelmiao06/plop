@@ -5,10 +5,12 @@ import { Canvas } from "@react-three/fiber";
 import { NeutralToneMapping } from "three";
 import { content } from "./content";
 import { cameraHome } from "./layout";
-import { Backdrop, CameraRig, Lights, Snowfall } from "./SceneLook";
+import { CameraRig } from "./CameraRig";
+import { Backdrop, Lights, Snowfall } from "./SceneLook";
 import { SnowContext } from "./snowContext";
 import { SnowField } from "./snowField";
 import { SnowGround } from "./SnowGround";
+import { SnowSpray } from "./SnowSpray";
 import { TempDragPress, TempFps, TempGuides } from "./TempDragPress";
 
 // The 3D canvas. Loaded in the browser only (see SnowScene.tsx).
@@ -39,6 +41,7 @@ export default function SnowCanvas({ children }: { children?: ReactNode }) {
         <Lights />
         <SnowGround />
         <Snowfall />
+        <SnowSpray />
         {/* TEMPORARY test hook, see TempDragPress.tsx */}
         <TempDragPress />
         <TempGuides />

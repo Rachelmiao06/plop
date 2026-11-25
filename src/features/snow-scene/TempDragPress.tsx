@@ -3,55 +3,48 @@
 // ─────────────────────────────────────────────────────────────────────────
 // TEMPORARY TEST HOOK. Delete this file when the real characters arrive.
 // It exists only to check the snow scene (issue #2):
-//   - drag a finger or the mouse on the snow: presses a groove that stays
+//   - press and hold on the snow: digs deeper the longer it is held
+//   - drag: a groove that follows the finger with a little lag (friction)
 //   - double click or double tap: punches a crater
 //   - add ?guides to the address: two stand-in blocks where characters stand
 //   - add ?fps to the address: frame rate replaces the hint at the bottom
+// (Zoom is NOT temporary; it lives in CameraRig.tsx.)
 // To remove: delete this file, its lines in SnowCanvas.tsx, the hint in
 // SnowScene.tsx, and `tempHint`, `tempDrag`, `colors.tempGuide` in content.ts.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Plane, Raycaster, Vector2, Vector3 } from "three";
 import { content } from "./content";
-import { useSnow, useSnowLayout } from "./snowContext";
+import { snowPointers } from "./pointers";
+import { useSnow, useSnowLayout, useSnowPoint } from "./snowContext";
+
+type Finger = {
+  clientX: number;
+  clientY: number;
+  // The pressed point, which trails behind the finger.
+  x: number;
+  z: number;
+  placed: boolean;
+};
+
+// One entry per finger. Mouse and touch both count as fingers.
+const fingers = new Map<number, Finger>();
 
 export function TempDragPress() {
   const snow = useSnow();
+  const pointOnSnow = useSnowPoint();
   const canvas = useThree((s) => s.gl.domElement);
-  const get = useThree((s) => s.get);
 
   useEffect(() => {
-    const raycaster = new Raycaster();
-    const pointer = new Vector2();
-    const plane = new Plane(new Vector3(0, 1, 0), 0);
-    const hit = new Vector3();
-    // One entry per finger, so two people can drag at once.
-    const last = new Map<number, { x: number; z: number }>();
-    const radius = content.tempDrag.ballRadius;
-    const step = radius * content.tempDrag.spacing;
-
-    const pointOnSnow = (e: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      pointer.set(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, get().camera);
-      // Aim at a flat plane first, then once more at the snow's real height there.
-      plane.constant = 0;
-      if (!raycaster.ray.intersectPlane(plane, hit)) return null;
-      plane.constant = -snow.heightAt(hit.x, hit.z);
-      if (!raycaster.ray.intersectPlane(plane, hit)) return null;
-      return { x: hit.x, z: hit.z };
-    };
-
     const down = (e: PointerEvent) => {
-      const p = pointOnSnow(e);
-      if (!p) return;
-      last.set(e.pointerId, p);
-      snow.pressGroove(p.x, p.z, radius);
+      fingers.set(e.pointerId, {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        x: 0,
+        z: 0,
+        placed: false,
+      });
       // Keep following the finger even if it slides off the canvas.
       try {
         canvas.setPointerCapture(e.pointerId);
@@ -61,25 +54,14 @@ export function TempDragPress() {
     };
 
     const move = (e: PointerEvent) => {
-      const from = last.get(e.pointerId);
-      if (!from) return;
-      const to = pointOnSnow(e);
-      if (!to) return;
-      const dx = to.x - from.x;
-      const dz = to.z - from.z;
-      const distance = Math.hypot(dx, dz);
-      const stamps = Math.floor(distance / step);
-      if (stamps < 1) return;
-      for (let n = 1; n <= stamps; n++) {
-        const t = (n * step) / distance;
-        snow.pressGroove(from.x + dx * t, from.z + dz * t, radius);
-      }
-      const t = (stamps * step) / distance;
-      last.set(e.pointerId, { x: from.x + dx * t, z: from.z + dz * t });
+      const finger = fingers.get(e.pointerId);
+      if (!finger) return;
+      finger.clientX = e.clientX;
+      finger.clientY = e.clientY;
     };
 
     const up = (e: PointerEvent) => {
-      last.delete(e.pointerId);
+      fingers.delete(e.pointerId);
     };
 
     // A double click or double tap punches a crater, to try that part too.
@@ -87,7 +69,7 @@ export function TempDragPress() {
     const tap = (e: PointerEvent) => {
       const near = Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
       if (near && e.timeStamp - lastTap.time < 350) {
-        const p = pointOnSnow(e);
+        const p = pointOnSnow(e.clientX, e.clientY);
         if (p) snow.punchCrater(p.x, p.z, content.tempDrag.craterRadius);
         lastTap = { time: 0, x: 0, y: 0 };
       } else {
@@ -106,8 +88,67 @@ export function TempDragPress() {
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);
       canvas.removeEventListener("pointercancel", up);
+      fingers.clear();
     };
-  }, [canvas, get, snow]);
+  }, [canvas, pointOnSnow, snow]);
+
+  // The pressing itself happens once per frame, so that holding still keeps
+  // digging and the pressed point can lag behind the finger.
+  useFrame((_, delta) => {
+    // Two fingers on empty snow are a pinch-to-zoom, not two presses.
+    if (snowPointers.pinching) fingers.clear();
+    if (fingers.size === 0) return;
+
+    const t = content.tempDrag;
+    const seconds = Math.min(delta, 0.05);
+    const radius = t.ballRadius;
+    const step = radius * t.spacing;
+
+    for (const [id, finger] of fingers) {
+      if (snowPointers.claimed.has(id)) continue;
+      const target = pointOnSnow(finger.clientX, finger.clientY);
+      if (!target) continue;
+
+      if (!finger.placed) {
+        finger.placed = true;
+        finger.x = target.x;
+        finger.z = target.z;
+        snow.pressGroove(finger.x, finger.z, radius);
+        continue;
+      }
+
+      // Friction: fresh snow ahead holds the point back, a packed track lets it run.
+      const toX = target.x - finger.x;
+      const toZ = target.z - finger.z;
+      const far = Math.hypot(toX, toZ);
+      const aheadX = far > 0 ? finger.x + (toX / far) * radius : finger.x;
+      const aheadZ = far > 0 ? finger.z + (toZ / far) * radius : finger.z;
+      const packed = snow.packedAt(aheadX, aheadZ);
+      const follow = t.followFresh + (t.followPacked - t.followFresh) * packed;
+      const share = 1 - Math.exp(-follow * seconds);
+
+      const moveX = toX * share;
+      const moveZ = toZ * share;
+      const distance = Math.hypot(moveX, moveZ);
+      const stamps = Math.max(Math.ceil(distance / step), 1);
+      const options = {
+        dig: (t.digRate * seconds) / stamps,
+        velocityX: moveX / seconds,
+        velocityZ: moveZ / seconds,
+      };
+      for (let n = 1; n <= stamps; n++) {
+        const along = n / stamps;
+        snow.pressGroove(
+          finger.x + moveX * along,
+          finger.z + moveZ * along,
+          radius,
+          options,
+        );
+      }
+      finger.x += moveX;
+      finger.z += moveZ;
+    }
+  });
 
   return null;
 }
