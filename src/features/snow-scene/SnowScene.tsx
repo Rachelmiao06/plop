@@ -1,14 +1,25 @@
+"use client";
+
+import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { content } from "./content";
 
-// Placeholder only. The real 3D scene is built in its own issue.
-export function SnowScene() {
+// The canvas is loaded in the browser only; the server never renders 3D.
+const SnowCanvas = dynamic(() => import("./SnowCanvas"), { ssr: false });
+
+/**
+ * The full-screen snow scene. Anything passed as children is drawn inside
+ * the 3D scene and can call useSnow() and useSnowLayout().
+ */
+export function SnowScene({ children }: { children?: ReactNode }) {
   return (
-    <section className="flex flex-1 flex-col items-center justify-center gap-3 bg-background p-8 text-center text-foreground">
-      <h1 className="font-heading text-6xl font-semibold tracking-tight">
-        {content.title}
-      </h1>
-      <p className="max-w-sm text-muted-foreground">{content.tagline}</p>
-      <p className="text-sm text-muted-foreground">{content.status}</p>
+    <section className="relative h-full w-full overflow-hidden bg-background select-none">
+      <h1 className="sr-only">{content.title}</h1>
+      <SnowCanvas>{children}</SnowCanvas>
+      {/* TEMPORARY: hint for the drag test hook, see TempDragPress.tsx */}
+      <p className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-sm text-muted-foreground">
+        {content.tempHint}
+      </p>
     </section>
   );
 }
