@@ -32,6 +32,12 @@ export const CAMERA = {
     fovFar: 24,
     rate: 2.6,
     keepPins: 0.3,
+    /**
+     * Once the ball meets the set, the camera slides `side` units to the side the ball is on (straight balls, within
+     * `sideDeadZone` of the middle, go right), so the cards it smashes show beside it instead of behind it.
+     */
+    side: 2.2,
+    sideDeadZone: 0.25,
   },
   /**
    * The settle: once the ball has stopped or poofed (or the count is in), the look-at point eases onto the pins (`lookBack`
@@ -47,4 +53,11 @@ export const CAMERA = {
    * a key: the other player's keys must not end it. After the throws it eases onto the pins like the settle.
    */
   together: { share: 0.55, max: 5, closer: 0.12, wallZ: 14.5, rate: 2, lookRate: 2.6 },
+  /**
+   * The first contact of a throw (the ball smashes into the first card): a small shake. `kicks` pushes on the camera's
+   * springs, `gap` seconds apart, alternating forward and back, the first `push` units per second (and `fov` degrees
+   * per second), each `decay` of the last; times the ball's size and speed (never less than `minShare`). Off with
+   * "reduce motion".
+   */
+  shake: { kicks: 4, gap: 0.045, push: 2.2, fov: 5, decay: 0.55, minShare: 0.35, speedFull: 12 },
 } as const;

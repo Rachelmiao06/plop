@@ -184,6 +184,15 @@ export const FEEL = {
     spareFriendsAhead: 0.12,
   },
 
+  /**
+   * The ball gets smashed by the cards (Rachel: the hit should feel heavy, and the snowball should break up too). Each
+   * card it strikes knocks off `perCard.share` of its snow plus `perCard.volume` (cubic units, about a fist of snow), times
+   * the card's weight (the pins' `IMPACT.card.chip`), so a small ball loses most of itself on the first card or two and
+   * a big one only a few chunks per card. Smaller than `breakBelow` (radius) and it crumbles apart into a pile of snow.
+   * The roll keeps its path (the aim line stays true); only the ball you see, and the one the pins feel, shrinks.
+   */
+  impact: { perCard: { share: 0.07, volume: 0.005 }, breakBelow: 0.1 },
+
   /** How the ball presses the snow (passed to the snow scene's `pressGroove`). */
   groove: {
     /** Distance between presses, as a share of the ball radius. */
@@ -342,6 +351,30 @@ export const LOOK = {
    * toward the lane at `speed`). The paper's own wobble is the backdrop's.
    */
   wallHit: { squash: 0.3, amount: 0.12, radius: 1.6, speed: 2.2 },
+
+  /**
+   * Snow knocked off the ball by a card (`FEEL.impact`, the `chipped` event): `count` big chunks per tenth of its snow
+   * lost (at least `least`, at most `most`), `size` across, thrown out of the struck side at `speed` (and `up`), carried
+   * on with `carry` of the ball's speed; they tumble and roll on the snow (slowing by `roll` units per second each
+   * second), dent it where they land, then sink away over `melt` seconds. A burst of powder (`powder`, times the snow
+   * lost) and a squash of the ball (`squash`). A ball crumbling apart (`crumble`) throws `crumble.count` chunks and a big
+   * powder puff; the chunks lie about as its little pile of snow before they sink (a real `heapSnow` would never melt).
+   */
+  chunks: {
+    count: 4,
+    least: 2,
+    most: 9,
+    size: [0.07, 0.13] as [number, number],
+    speed: [1.2, 2.6] as [number, number],
+    up: [1.4, 2.8] as [number, number],
+    carry: 0.45,
+    roll: 2.6,
+    melt: 1.4,
+    max: 64,
+    powder: 0.5,
+    squash: 0.35,
+    crumble: { count: 12, powder: 0.3 },
+  },
 
   /** With "reduce motion" on: squash, stretch and hops keep this share (vibration and sound stay). */
   reducedMotion: 0.3,

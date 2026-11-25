@@ -65,6 +65,14 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     closer: 0,
     lower: 0,
     release: GAME.camera.aim.rate as number,
+    /** The first-contact shake still to play: kicks left, when the next is due (seconds since letting go), its size. */
+    shake: null as { left: number; at: number; push: number; sign: number } | null,
+    /** The shake has played for this throw (the ball has met the set). */
+    shook: false,
+    /** Which side the view slides to once the ball meets the set (+1 right, -1 left, 0 not yet). */
+    side: 0,
+    /** Where the player's own view stood before the throw (the camera's position at rest), for the slide. */
+    home: null as V3 | null,
     /** The running bowling games (two in "together" mode) and their event listeners. */
     bound: new Map<Bowling, () => void>(),
   });
@@ -116,11 +124,26 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     for (const bowling of games) {
       if (st.bound.has(bowling)) continue;
       const off = bowling.subscribe((e) => {
+        // The ball smashes into its first card: a small shake, bigger for a big fast ball.
+        if (e.type === "chipped" && !st.shook && !prefersLessMotion()) {
+          const sh = CAMERA.shake;
+          st.shook = true;
+          const p = sh.minShare + (1 - sh.minShare) * e.size * Math.min(1, e.speed / sh.speedFull);
+          st.shake = { left: sh.kicks, at: st.since, push: sh.push * p, sign: -1 };
+        }
+        // The ball meets the set: slide the view a little to the side it is on, so the cards show beside it.
+        if (e.type === "chipped" && st.side === 0) {
+          const pin = setCentre(formationById(pins.getState().formation));
+          st.side = e.at.x < pin.x - CAMERA.chase.sideDeadZone ? -1 : 1;
+        }
         if (e.type !== "launched") return;
         const fresh = st.stage !== "chase";
         st.stage = "chase";
         st.ballId = e.ballId;
         if (fresh) {
+          st.side = 0;
+          st.shook = false;
+          st.shake = null;
           st.since = 0;
           st.reach = 0;
           st.fromCloser = st.closer;
@@ -137,10 +160,35 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     if (!bowling) return;
 
     st.since += Math.min(delta, 0.1);
+    // The first-contact shake: a few quick alternating pushes on the camera's springs, dying away.
+    const shake = st.shake;
+    if (shake && st.since >= shake.at) {
+      const sh = CAMERA.shake;
+      kickSnowCamera({ forward: shake.sign * shake.push, fov: -shake.sign * sh.fov * (shake.push / sh.push) });
+      shake.sign = -shake.sign;
+      shake.push *= sh.decay;
+      shake.at += sh.gap;
+      if (--shake.left <= 0) st.shake = null;
+    }
     // The player's own look-at point (lookShift is added to it): the phone's framing on a phone held upright.
     const phone = size.width / Math.max(size.height, 1) < GAME.phoneView.maxAspect;
     const base = (phone ? phoneThrowingView() : throwingView(FEEL.lane)).lookAt;
     const shiftTo = (x: number, y: number, z: number): V3 => [x - base[0], y - base[1], z - base[2]];
+    /**
+     * After the ball meets the set the camera slides `chase.side` to one side, so it is no longer hidden behind the
+     * ball: the same glide as `closer` / `lower`, as a position worked out from the player's view at rest.
+     */
+    const placed = (closer: number, lower: number): { position?: V3; closer?: number; lower?: number } => {
+      const h = st.home;
+      if (!h || st.side === 0) return { closer, lower };
+      return {
+        position: [
+          h[0] + (base[0] - h[0]) * closer + st.side * CAMERA.chase.side,
+          h[1] + (base[1] - h[1]) * closer - lower,
+          h[2] + (base[2] - h[2]) * closer,
+        ],
+      };
+    };
     // The set on the lane now: round sets stand left or right of the middle.
     const pin = setCentre(formationById(pins.getState().formation));
     const lineZ = FEEL.lane.lineZ;
@@ -164,6 +212,8 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
         st.closer = 0;
         st.lower = 0;
         setSnowCameraShot(null, st.release);
+        // At rest (no pull) the camera is the player's own view: remember it for the slide after the impact.
+        if (t.phase !== "pulling") st.home = [camera.position.x, camera.position.y, camera.position.z];
       }
       return;
     }
@@ -232,8 +282,7 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
       // Ease from the launch push into the steady follow.
       const u = smooth(clamp01(st.since / c.launch.time));
       setSnowCameraShot({
-        closer: st.closer,
-        lower: st.lower,
+        ...placed(st.closer, st.lower),
         lookShift: shiftTo(lx, snow.heightAt(lx, lz) + ch.lookHeight, lz),
         fov: lerp(snowCameraFov, ch.fovFar, glide),
         rate: lerp(c.launch.rate, ch.rate, u),
@@ -247,8 +296,7 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     const se = CAMERA.settle;
     const lz = pin.z + se.lookBack;
     setSnowCameraShot({
-      closer: st.closer,
-      lower: st.lower,
+      ...placed(st.closer, st.lower),
       lookShift: shiftTo(pin.x, snow.heightAt(pin.x, lz) + se.lookHeight, lz),
       fov: snowCameraFov,
       rate: se.rate,

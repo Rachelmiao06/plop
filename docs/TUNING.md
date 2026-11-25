@@ -59,6 +59,20 @@ met by a ball rolling back from the wall can fall too, and they count. A standin
 falls to the roll back: the ball poofs just short of it, `FEEL.wall.spareFriendsAhead` (`0.12` s of its travel) ahead, so
 the friend's +2 is decided on the way out.
 
+### The impact: heavy cards, a ball that gets smashed (Rachel: the most important part of the throw)
+
+| What you feel | Number(s) today | Where |
+|---|---|---|
+| **The ball breaks up.** Each card it strikes knocks off a share of its snow plus a fist of snow (times the card's weight: light `0.75`, medium `1`, heavy `1.5`); a small ball crumbles apart on a crowd, a big one loses a few chunks per card. The roll keeps its path; only the ball you see (and the one the cards feel) shrinks. | `share 0.07` + `volume 0.005` · crumbles below radius `0.1` | `FEEL.impact` (bowling) · `IMPACT.card.chip` (pins) |
+| **Chunks and powder.** Big chunks thrown out of the struck side that tumble and roll on the snow and dent it, a burst of powder, a squash of the ball. | `4` chunks per tenth of the snow lost (`2`–`9`), size `0.07`–`0.13`, roll slowing `2.6`, melt `1.4` s; crumble `12` chunks | `LOOK.chunks` (bowling) |
+| **Heavy cards.** Spin inertia times a plain board's; for the first moments after the touch a card spins at most `firstSpin.max` (it takes the blow, then tips); a bigger shove, less lift and tumble; a squash and a groove dug at its base. | inertia `×12` · `3.6` rad/s for `0.3` s · shove `×1.7`, lift `×0.5`, tumble `×0.35` · groove `0.32` long | `IMPACT.card` (pins `impact.ts`) |
+| **Landing with weight.** A soft thud under the paper flop (one per `0.14` s so chains stay soft) and a bigger snow puff. | thud `0.16` from strength `0.35` · puff `×1.6` | `IMPACT.landing` |
+| **The first contact.** The hit-stop grows with size and speed; a deep double "cr-ump" (the thump, then `0.6` of it `0.045` s later); vibration `hit` by size and speed; a small camera shake (`4` alternating pushes, each `0.55` of the last); the view slides `2.2` to the side so the cards show beside the ball. | hit-stop `+0.06` s / `-0.04` at `12` /s · shake push `2.2` · side `2.2` | `IMPACT.hitStop`, `IMPACT.crump` · `CAMERA.shake`, `CAMERA.chase.side` |
+
+Measured in the browser (development build logs `window.__falls`): cards that were standing when the ball touched
+them went down 0.13 to 2 s later, most 0.2 to 0.9 s (before: 33 to 75 ms, they flicked over). Cards already tipping from
+a neighbour can still go down quicker. "N down!" still came 2.6 to 4.6 s after letting go.
+
 ### The camera (`src/features/game/camera.ts`, and `GAME.camera` in `src/features/game/content.ts`)
 
 One camera moves through five stages on critically damped springs, so it never jumps. A spring `rate` of about 2 is a

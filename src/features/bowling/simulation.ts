@@ -87,6 +87,11 @@ export type RollingBall = {
   direction: Vec2;
   /** How often it has bounced off the back wall. */
   bounces: number;
+  /**
+   * Its radius now: the plan's at first, smaller once cards have knocked snow off it (`chip`). The drawing and the
+   * pins use this; the roll itself keeps the plan's, so it still follows the aim line it showed.
+   */
+  radius: number;
   rolled: number;
   rolling: boolean;
   /** Seconds since it stopped (0 while rolling). */
@@ -125,6 +130,23 @@ export type BowlEvent =
       strength: number;
       radius: number;
       size: number;
+    }
+  /**
+   * A card knocked snow off a ball (see `chip`): `at` where it struck (on the ball's edge), `lost` the share of its
+   * snow that came off, `radius` what is left, `broke` true when it crumbled apart (a `burst` follows).
+   */
+  | {
+      type: "chipped";
+      thrower: string;
+      ballId: number;
+      at: Vec2;
+      from: Vec2;
+      lost: number;
+      before: number;
+      radius: number;
+      speed: number;
+      size: number;
+      broke: boolean;
     }
   /** A ball poofs into snow (see `burst`); `removed` follows once it has gone. */
   | { type: "burst"; ballId: number; at: Vec2; radius: number; velocity: Vec2 }
@@ -302,6 +324,7 @@ export class Bowling {
       velocity: scale(plan.direction, plan.startSpeed * snapShare(0, this.feel)),
       direction: { ...plan.direction },
       bounces: 0,
+      radius: plan.radius,
       rolled: 0,
       rolling: true,
       restAge: 0,
@@ -324,6 +347,38 @@ export class Bowling {
   }
 
   /**
+   * A card knocks snow off the ball: it loses `lost` (0..1) of its snow from the side that struck (toward `toward`,
+   * a point on the snow), shrinks by that, and carries on smaller. Below `FEEL.impact.breakBelow` radius it crumbles
+   * apart completely (a `burst`). The roll's path does not change. Returns false if there is no such ball.
+   */
+  chip(ballId: number, lost: number, toward: Vec2): boolean {
+    const ball = this.balls.find((b) => b.id === ballId);
+    if (!ball || ball.bursting !== null || lost <= 0) return false;
+    const before = ball.radius;
+    const after = before * Math.cbrt(1 - clamp01(lost));
+    const broke = after < this.feel.impact.breakBelow;
+    ball.radius = broke ? before : after;
+    const dx = toward.x - ball.position.x;
+    const dz = toward.z - ball.position.z;
+    const d = Math.hypot(dx, dz) || 1;
+    this.emit({
+      type: "chipped",
+      thrower: ball.thrower,
+      ballId,
+      at: { x: ball.position.x + (dx / d) * before, z: ball.position.z + (dz / d) * before },
+      from: { x: dx / d, z: dz / d },
+      lost: broke ? 1 : clamp01(lost),
+      before,
+      radius: ball.radius,
+      speed: ball.speed,
+      size: ball.plan.size,
+      broke,
+    });
+    if (broke) this.burst(ballId);
+    return true;
+  }
+
+  /**
    * Poof a rolling or resting ball into snow: it keeps rolling for a moment while it flattens and shrinks
    * away (drawn by the stage, with a puff of snow), then it is removed. The pins ask for this once the ball
    * has rolled through them, so it never parks over the fallen cards. Returns false if there is no such ball
@@ -333,7 +388,7 @@ export class Bowling {
     const ball = this.balls.find((b) => b.id === ballId);
     if (!ball || ball.bursting !== null) return false;
     ball.bursting = 0;
-    this.emit({ type: "burst", ballId, at: { ...ball.position }, radius: ball.plan.radius, velocity: { ...ball.velocity } });
+    this.emit({ type: "burst", ballId, at: { ...ball.position }, radius: ball.radius, velocity: { ...ball.velocity } });
     return true;
   }
 
@@ -551,7 +606,7 @@ export class Bowling {
             ball: { ...ball.position },
             direction: { ...ball.direction },
             strength: clamp01(state.hit.normalSpeed / Math.max(1e-6, this.feel.wall.fullSpeed)),
-            radius: ball.plan.radius,
+            radius: ball.radius,
             size: ball.plan.size,
           });
         }
@@ -562,7 +617,7 @@ export class Bowling {
             thrower: ball.thrower,
             ballId: ball.id,
             at: { ...ball.position },
-            radius: ball.plan.radius,
+            radius: ball.radius,
             size: ball.plan.size,
           });
         }

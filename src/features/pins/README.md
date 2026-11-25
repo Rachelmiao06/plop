@@ -80,6 +80,11 @@ Formation ids and exports are fixed; the game imports them.
   (`impact`); the first card of a throw also starts the hit-stop with a thump, both bigger for a bigger ball
   (`hitStop.bigExtra`, `bigSlowest`, `thumpPerSize`). Pins stand around `lane.pinSpot`, 8.6 from the line on the
   long lane.
+- **A heavy hit (`impact.ts`):** cards have 12× the spin inertia of a plain board and, for 0.3 s after the ball
+  touches them, a low spin cap, so they take the blow (a shove, a squash, a groove dug at the base) before they tip;
+  each card struck smashes snow off the ball (bowling's `chip`); landing adds a soft thud and a bigger puff; the
+  first contact's hit-stop grows with size and speed, with a double thump and a vibration. Development builds log
+  each struck card's time to "down" in `window.__falls` (under about 0.15 s is too light).
 - **Toppling:** real Rapier contacts give the chain reactions. After every physics step speeds are capped
   (`caps`) so nothing jitters or flies off. When a tipped card touches the snow it presses soft dents along its
   length, a tiny puff crater at its head, and plays a synthesized paper "fwump" (`fwump.ts`). A tip backward on

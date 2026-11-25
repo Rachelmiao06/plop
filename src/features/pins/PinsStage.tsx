@@ -47,6 +47,7 @@ import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
 
 import { currentBowlings, tapBowling } from "./ballTap";
 import { MOUND, PINS, SPECIALS } from "./content";
+import { IMPACT } from "./impact";
 import { nextFormationId, type Pins, type PinsPhase } from "./controller";
 import { playFwump, unlockFwumpOnFirstTouch } from "./fwump";
 import { buildPins, formationById, moundsOf, pinPropIds, sampleGround, type PinSpec } from "./layout";
@@ -80,6 +81,12 @@ type PinRuntime = {
   hidden: boolean;
   /** The ball has touched this card in this throw (the extra impact shove is given once). */
   struck?: boolean;
+  /** When the ball first touched it (real milliseconds), for the development fall-time log. */
+  struckAt?: number;
+  /** And on the pins' own clock, for the first moments of the blow (`IMPACT.card.firstSpin`). */
+  struckClock?: number;
+  /** Its tilt (degrees) when the ball touched it, for the development fall-time log (a card already falling is quick). */
+  struckTilt?: number;
   /** The flop squash spring (drawing only): amount and its speed. */
   squash: { q: number; v: number };
   /** How far the drawing of a fallen card is propped up off the snow (radians, drawing only). */
@@ -166,12 +173,25 @@ function segmentDistance(x: number, z: number, ax: number, az: number, bx: numbe
   return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
 }
 
+/** The card's mass, with the spin inertia of a box its size times `IMPACT.card.inertia`. */
+function cardMass(mass: number, [hx, hy, hz]: [number, number, number]) {
+  const k = (IMPACT.card.inertia * mass) / 3;
+  return {
+    mass,
+    centerOfMass: { x: 0, y: 0, z: 0 },
+    principalAngularInertia: { x: k * (hy * hy + hz * hz), y: k * (hx * hx + hz * hz), z: k * (hx * hx + hy * hy) },
+    angularInertiaLocalFrame: { x: 0, y: 0, z: 0, w: 1 },
+  };
+}
+
 /** A new throw: nothing is down or landed yet. */
 function clearCounts(list: PinRuntime[]) {
   for (const rt of list) {
     rt.down = false;
     rt.landed = false;
     rt.struck = false;
+    rt.struckAt = undefined;
+    rt.struckClock = undefined;
     rt.sparkled = false;
     rt.by = undefined;
   }
@@ -221,6 +241,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   );
   useEffect(() => () => heapMaterial.dispose(), [heapMaterial]);
   const ballBodies = useRef<(RapierRigidBody | null)[]>([]);
+  /** When the last landing thud played (real milliseconds), so a chain of landings stays soft. */
+  const lastThud = useRef(-Infinity);
   const ballColliders = useRef<(RapierCollider | null)[]>([]);
   const flow = useRef({
     phase: "ready" as PinsPhase,
@@ -498,25 +520,46 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           // A bit more energy than the plain push: a shove, a lift and a tumble, once per card.
           if (!rt.struck) {
             rt.struck = true;
+            rt.struckAt = performance.now();
+            rt.struckClock = f.clock;
+            rt.struckTilt = tiltOf(body.rotation());
             // Tuning aid (development only): cards first met by a ball rolling back from the wall.
             if (process.env.NODE_ENV !== "production" && ball.bounces > 0) {
               const w = window as unknown as { __backKnocks?: number };
               w.__backKnocks = (w.__backKnocks ?? 0) + 1;
             }
             const im = PINS.impact;
+            const ic = IMPACT.card;
             const d = ball.direction;
             const m = body.mass();
             const v = ball.speed;
-            body.applyImpulse({ x: d.x * im.push * m * v, y: im.lift * m, z: d.z * im.push * m * v }, true);
+            // Heavy, not paper: a big shove along the ball's way, a little lift, and much less instant tumble, so the
+            // card takes the blow first and then tips over with weight (its inertia is raised too, see the colliders).
+            const push = im.push * ic.shove;
+            body.applyImpulse({ x: d.x * push * m * v, y: im.lift * ic.lift * m, z: d.z * push * m * v }, true);
+            // The blow: a squash, and the card's base digs a short groove in the snow along the shove.
+            rt.squash.v += ic.squash * 30 * Math.min(1, v / 8);
+            const foot = body.translation();
+            const g = ic.groove;
+            for (let k = 1; k <= 3; k++) {
+              snow.pressGroove(foot.x + d.x * g.length * (k / 3), foot.z + d.z * g.length * (k / 3), s.card[0] * g.share, {
+                velocityX: d.x * v * 0.3,
+                velocityZ: d.z * v * 0.3,
+              });
+            }
+            // And the card smashes snow off the ball: it shrinks, and a small one may crumble apart.
+            const fi = game.feel.impact.perCard;
+            const volume = (4 / 3) * Math.PI * ball.radius ** 3;
+            game.chip(ball.id, (fi.share + fi.volume / Math.max(volume, 1e-6)) * ic.chip[s.weight], { x: foot.x, z: foot.z });
             // Plus a tip backward about the card's own width (away from the throwing line), so it lands face-up.
             const r = body.rotation();
             const across = new Vector3(1, 0, 0).applyQuaternion(new Quaternion(r.x, r.y, r.z, r.w));
             const back = -im.faceUp * m * v;
             body.applyTorqueImpulse(
               {
-                x: d.z * im.tumble * m * v + across.x * back,
+                x: d.z * im.tumble * ic.tumble * m * v + across.x * back,
                 y: (Math.random() * 2 - 1) * im.twist * m * v,
-                z: -d.x * im.tumble * m * v + across.z * back,
+                z: -d.x * im.tumble * ic.tumble * m * v + across.z * back,
               },
               true,
             );
@@ -526,10 +569,20 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
             f.hitThisThrow = true;
             if (f.reachedAt === null) f.reachedAt = f.clock;
             const h = PINS.hitStop;
+            const hs = IMPACT.hitStop;
             const size = ball.plan.size;
-            game.hitStop(h.seconds + h.bigExtra * size, h.slowest + (h.bigSlowest - h.slowest) * size);
-            playThump(h.thump + h.thumpPerSize * size);
-            haptic("hit", ball.plan.size);
+            // Bigger and faster = a longer, deeper hold.
+            const fast = clamp01(ball.speed / hs.speedFull);
+            game.hitStop(
+              h.seconds + h.bigExtra * size + hs.speedExtra * fast,
+              Math.max(0.03, h.slowest + (h.bigSlowest - h.slowest) * size - hs.speedSlower * fast),
+            );
+            // A deep, soft double "cr-ump", and a bump you feel.
+            const c = IMPACT.crump;
+            const thump = h.thump + h.thumpPerSize * size;
+            playThump(thump);
+            window.setTimeout(() => playThump(thump * c.echoShare), c.echo * 1000);
+            haptic("hit", clamp01(c.haptic * (0.4 + 0.6 * size) * (0.5 + 0.5 * fast)));
           }
           return;
         }
@@ -549,12 +602,19 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           const along = ((k + 0.5) / l.dents) * length;
           snow.pressGroove(t.x + up.x * along, t.z + up.z * along, radius);
         }
-        if (l.puff > 0) snow.punchCrater(t.x + up.x * length, t.z + up.z * length, l.puff);
+        if (l.puff > 0) snow.punchCrater(t.x + up.x * length, t.z + up.z * length, l.puff * IMPACT.landing.puff);
         const v = b.linvel();
         const w = b.angvel();
         const speed = Math.hypot(v.x, v.y, v.z) + Math.hypot(w.x, w.y, w.z) * length * 0.5;
         const strength = clamp01((speed - l.softSpeed) / (l.hardSpeed - l.softSpeed));
         playFwump(strength, clamp01((s.height * s.width - 0.15) / 0.8));
+        // Landing with weight: a soft thud under the flop (one at a time, so a chain stays soft).
+        const ld = IMPACT.landing;
+        const now = performance.now();
+        if (strength >= ld.thudFrom && now - lastThud.current > ld.gap * 1000) {
+          lastThud.current = now;
+          playThump(ld.thud * strength);
+        }
         haptic("flop", strength);
         // A little squash on landing, harder for a harder flop.
         rt.squash.v += PINS.flop.squash * (0.5 + 0.5 * strength) * 30;
@@ -586,7 +646,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         : ball.rolling
           ? 1
           : clamp01((game.feel.roll.restTime - ball.restAge) / PINS.ball.fadeTime);
-      const r = ball.plan.radius * fade;
+      const r = ball.radius * fade;
       collider.setRadius(Math.max(0.005, r * PINS.ball.radiusShare));
       // Only a rolling ball, or one still part of the throw being counted, pushes cards; a bursting one never.
       const pushes = !bursting && (ball.rolling || (f.phase === "throw" && f.throwBalls.has(ball.id)));
@@ -626,7 +686,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     let clear = true;
     for (const { ball, game } of allBalls()) {
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
-      const r = ball.plan.radius;
+      const r = ball.radius;
       const bx = ball.position.x;
       const bz = ball.position.z;
       let past = true;
@@ -694,13 +754,21 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       if (capped) b.setLinvel({ x, y, z }, true);
       const w = b.angvel();
       const spin = Math.hypot(w.x, w.y, w.z);
-      if (spin > c.angular) b.setAngvel({ x: (w.x * c.angular) / spin, y: (w.y * c.angular) / spin, z: (w.z * c.angular) / spin }, true);
+      // Just struck: it takes the blow before it tips (a heavy card cannot flick over at once, IMPACT.card.firstSpin).
+      const fs = IMPACT.card.firstSpin;
+      const cap = rt.struckClock !== undefined && f.clock - rt.struckClock < fs.for ? Math.min(c.angular, fs.max) : c.angular;
+      if (spin > cap) b.setAngvel({ x: (w.x * cap) / spin, y: (w.y * cap) / spin, z: (w.z * cap) / spin }, true);
       const isDown = tiltOf(b.rotation()) > d.tiltDegrees;
       // A card lying in the snow can no longer change the count, so it may still slide a little.
       const loose = isDown && rt.landed ? d.lyingShare : 1;
       if (!b.isSleeping() && (Math.hypot(x, y, z) > d.settleSpeed * loose || spin > d.settleSpin * loose)) moving = true;
 
       if (f.phase === "throw" && isDown && !rt.down) {
+        // Tuning aid (development only): how long from the ball's touch to "down" (too light under about 0.15 s).
+        if (process.env.NODE_ENV !== "production" && rt.struckAt !== undefined) {
+          const w = window as unknown as { __falls?: string[] };
+          (w.__falls ??= []).push(`${Math.round(performance.now() - rt.struckAt)}ms@${Math.round(rt.struckTilt ?? 0)}°`);
+        }
         newlyDown = true;
         // A star friend tipping over: a little rising sparkle (once a throw, even if it rocks).
         if (specs[i]?.kind === "star" && !rt.sparkled) {
@@ -715,7 +783,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
       specs.forEach((s, i) => {
         if (s.kind !== "friend" || runtime.current[i]?.down) return;
-        const gap = Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) - ball.plan.radius - s.card[0];
+        const gap = Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) - ball.radius - s.card[0];
         if (gap < f.friendGap) f.friendGap = gap;
       });
     }
@@ -858,7 +926,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const ballOnSpots =
         !changing &&
         allBalls().some(({ ball }) =>
-          specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.plan.radius + s.card[0]),
+          specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.radius + s.card[0]),
         );
       const waited = f.clock - f.since;
       if (waited > wait && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) afterResult();
@@ -967,7 +1035,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       ms.grow += ((leaving || arriving ? 0 : 1) - ms.grow) * (1 - Math.exp(-6 * dt));
       for (const { ball } of allBalls()) {
         if (!f.throwBalls.has(ball.id) && !ball.rolling) continue;
-        if (Math.hypot(ball.position.x - m.x, ball.position.z - m.z) > m.radius + ball.plan.radius * 0.5) continue;
+        if (Math.hypot(ball.position.x - m.x, ball.position.z - m.z) > m.radius + ball.radius * 0.5) continue;
         ms.flat += (MOUND.flatten - ms.flat) * (1 - Math.exp(-MOUND.flattenRate * dt));
         if (!ms.puffed && ball.rolling) {
           ms.puffed = true;
@@ -1109,7 +1177,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
             <CuboidCollider
               args={s.card}
               position={[0, lift + s.card[1], 0]}
-              mass={w.mass * (1 - w.footShare)}
+              // Heavier to turn than a plain board (IMPACT.card.inertia), so it tips over with weight.
+              massProperties={cardMass(w.mass * (1 - w.footShare), s.card)}
               friction={w.friction}
               restitution={w.restitution}
             />

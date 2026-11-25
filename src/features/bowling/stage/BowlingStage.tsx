@@ -288,6 +288,28 @@ export function BowlingStage({
         });
         emitWallHit({ x: e.at.x, z: e.at.z, strength: e.strength * (0.5 + 0.5 * e.size) });
       }
+      if (e.type === "chipped") {
+        // A card smashed snow off the ball: chunks fly out of the struck side and powder bursts up; it squashes.
+        const ch = LOOK.chunks;
+        const ball = game.balls.find((b) => b.id === e.ballId);
+        const velocity = ball?.velocity ?? { x: 0, z: 0 };
+        const y = snow.heightAt(e.at.x, e.at.z) + e.before * (1 - game.feel.ball.sink);
+        const count = e.broke
+          ? ch.crumble.count
+          : Math.max(ch.least, Math.min(ch.most, Math.round(e.lost * 10 * ch.count)));
+        // A small ball crumbling throws chunks a little smaller than a big ball's.
+        const scale = Math.min(1, 0.55 + e.before / game.feel.ball.radiusBig);
+        clumps.shatter(e.at.x, y, e.at.z, e.from, velocity, count, scale);
+        const motion = motionShare();
+        snow.kickUpSnow(e.at.x, e.at.z, e.before * (e.broke ? 1.6 : 1), {
+          amount: (e.broke ? ch.crumble.powder : ch.powder * e.lost) * motion,
+          velocityX: e.from.x * 1.5 + velocity.x * 0.3,
+          velocityZ: e.from.z * 1.5 + velocity.z * 0.3,
+        });
+        if (e.broke) snow.punchCrater(e.at.x, e.at.z, e.before * 1.2);
+        const m = map.get(e.ballId);
+        if (m) m.squash.q = Math.max(m.squash.q, ch.squash * Math.min(1, 0.4 + e.lost * 4) * motion);
+      }
       if (e.type === "removed") map.delete(e.ballId);
     });
     io.current = { keyboard, feedback };
@@ -352,7 +374,7 @@ export function BowlingStage({
    */
   const throwSnow = (ball: Bowling["balls"][number], fast: number, dt: number) => {
     const k = LOOK.kick;
-    const r = ball.plan.radius;
+    const r = ball.radius;
     const d = ball.direction;
     const big = Math.max(0, Math.min(1, (r - FEEL.ball.radiusSmall) / (FEEL.ball.radiusBig - FEEL.ball.radiusSmall)));
     const { x, z } = ball.position;
@@ -412,7 +434,7 @@ export function BowlingStage({
       // A fast ball ploughs up more spray: the snow is told it moves faster than it does.
       const fast = Math.max(0, Math.min(1, (ball.speed - LOOK.speed.from) / (LOOK.speed.full - LOOK.speed.from)));
       const boost = 1 + (LOOK.speed.sprayBoost - 1) * fast;
-      pressAlong(ball.id, ball.position, ball.plan.radius, { x: ball.velocity.x * boost, z: ball.velocity.z * boost }, 0);
+      pressAlong(ball.id, ball.position, ball.radius, { x: ball.velocity.x * boost, z: ball.velocity.z * boost }, 0);
       if (ball.rolling) throwSnow(ball, fast, dt);
     }
 
@@ -447,7 +469,7 @@ export function BowlingStage({
       shown.push({
         key: ball.id,
         at: ball.position,
-        radius: ball.plan.radius,
+        radius: ball.radius,
         rolled: ball.rolled,
         dir: ball.direction,
         scale: Math.min(1, fadeLeft / 0.4) * (1 - burst * burst),
@@ -608,13 +630,13 @@ export function BowlingStage({
       ))}
       <instancedMesh
         ref={clumpRef}
-        args={[looks.clump, looks.clumpMaterial, LOOK.clumps.max]}
+        args={[looks.clump, looks.clumpMaterial, LOOK.clumps.max + LOOK.chunks.max]}
         frustumCulled={false}
         castShadow
       />
       <instancedMesh
         ref={clumpOutlineRef}
-        args={[looks.clump, looks.clumpOutline, LOOK.clumps.max]}
+        args={[looks.clump, looks.clumpOutline, LOOK.clumps.max + LOOK.chunks.max]}
         frustumCulled={false}
       />
       <instancedMesh
