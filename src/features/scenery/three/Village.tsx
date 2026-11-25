@@ -62,7 +62,9 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
 
 function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, number] }) {
   const snow = useSnow();
-  const placed = useMemo(() => villageLayout(lane).filter((p) => hasOutline(p.id)), [lane]);
+  // A phone held upright gets the few cut-outs placed for its narrow frame (`view: "portrait"` in the layout).
+  const portrait = useThree((s) => s.size.width / s.size.height < village.portraitAspect);
+  const placed = useMemo(() => villageLayout(lane, portrait).filter((p) => hasOutline(p.id)), [lane, portrait]);
   const ids = useMemo(() => [...new Set(placed.map((p) => p.id))], [placed]);
   const urls = useMemo(() => Object.fromEntries(ids.map((id) => [id, propSrc(id)])), [ids]);
   const textures = useTexture(urls) as Record<string, Texture>;
@@ -184,14 +186,15 @@ function Mover({ id, x, z, inward, children }: { id: PropId; x: number; z: numbe
 /** Development only: once the camera has settled in its default view, list anything in the lane or the sight line. */
 function SightCheck({ lane }: { lane: GameLane }) {
   const camera = useThree((s) => s.camera);
+  const portrait = useThree((s) => s.size.width / s.size.height < village.portraitAspect);
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const problems = villageProblems(lane, camera.position);
+      const problems = villageProblems(lane, camera.position, portrait);
       if (problems.length > 0) console.warn("Village layout:", problems);
       else console.info("Village layout: lane clear, pins in sight.");
     }, 1500);
     return () => window.clearTimeout(timer);
-  }, [lane, camera]);
+  }, [lane, camera, portrait]);
   return null;
 }
 

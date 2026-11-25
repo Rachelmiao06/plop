@@ -3,6 +3,10 @@
     "w": 402,
     "h": 307
   },
+  "bench-cat": {
+    "w": 512,
+    "h": 353
+  },
   "bench-snowmen": {
     "w": 470,
     "h": 396
@@ -27,6 +31,10 @@
     "w": 416,
     "h": 261
   },
+  "cafe-stump": {
+    "w": 512,
+    "h": 395
+  },
   "chimney-smoke": {
     "w": 279,
     "h": 293
@@ -47,13 +55,17 @@
     "w": 509,
     "h": 392
   },
+  "cottage-snow": {
+    "w": 512,
+    "h": 394
+  },
   "fairy-lights": {
     "w": 512,
     "h": 267
   },
   "far-hills": {
-    "w": 2126,
-    "h": 150
+    "w": 2188,
+    "h": 145
   },
   "fence": {
     "w": 390,
@@ -91,9 +103,29 @@
     "w": 304,
     "h": 351
   },
+  "mailbox-red": {
+    "w": 309,
+    "h": 431
+  },
+  "mice-lantern": {
+    "w": 512,
+    "h": 379
+  },
   "mound-snow": {
     "w": 459,
     "h": 184
+  },
+  "mouse-letter": {
+    "w": 416,
+    "h": 412
+  },
+  "mug-cocoa": {
+    "w": 406,
+    "h": 467
+  },
+  "otter-cocoa": {
+    "w": 432,
+    "h": 390
   },
   "penguin-bag": {
     "w": 228,
@@ -110,6 +142,10 @@
   "penguin-standing": {
     "w": 316,
     "h": 328
+  },
+  "penguins-postbox": {
+    "w": 512,
+    "h": 345
   },
   "pine-medium": {
     "w": 345,
@@ -187,6 +223,10 @@
     "w": 429,
     "h": 251
   },
+  "sled-red": {
+    "w": 512,
+    "h": 303
+  },
   "snow-mound": {
     "w": 380,
     "h": 179
@@ -224,6 +264,10 @@
     "h": 404
   },
   "street-lamp": {
+    "w": 205,
+    "h": 468
+  },
+  "street-lamp-crayon": {
     "w": 203,
     "h": 385
   },
@@ -242,6 +286,10 @@
   "tree-bare": {
     "w": 445,
     "h": 436
+  },
+  "tree-christmas": {
+    "w": 342,
+    "h": 427
   },
   "tree-snowmen": {
     "w": 512,
