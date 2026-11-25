@@ -625,6 +625,12 @@ export const backdrop = {
   tintShare: 0.55,
   /** Far hills band: height on the wall (width follows the drawing), how far its foot sinks into the snow. */
   hillsHeight: 0.95,
+  /**
+   * The share of `far-hills.webp`'s width that holds the drawing (its first and last 9 columns are empty), so no
+   * white gap shows where copies meet. The two ends do not match, so copies alternate mirrored and each joint meets
+   * its own mirror image. A version Rachel draws to tile would be best.
+   */
+  hillsCrop: [10 / 2126, 2116 / 2126] as [number, number],
   hillsSink: 0.12,
   /** The far hills fade this much toward `--snow-shadow` (distance haze), so they sit behind the village on the lit snow. */
   haze: 0.3,

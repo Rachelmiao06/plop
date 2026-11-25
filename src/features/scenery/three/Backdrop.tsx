@@ -30,13 +30,25 @@ const DEG = Math.PI / 180;
 const fade = { uOpacity: { value: 1 } };
 
 /** A flat drawing shown exactly as drawn (no light, no tone mapping), fading with the backdrop. */
-function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, mirror = false) {
+/**
+ * `tile` lays the drawing along the band `repeat` times: every other copy mirrored so each joint meets its own
+ * mirror image (the panorama's two ends do not match), using only `crop` (share of the width that has art,
+ * without the empty margin), shifted by `phase` copies.
+ */
+type Tile = { repeat: number; crop: [number, number]; phase: number };
+
+function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile | null = null, mirror = false) {
   return new ShaderMaterial({
     side: mirror ? BackSide : DoubleSide,
     transparent: true,
     depthWrite: false,
     toneMapped: false,
-    uniforms: { uMap: { value: map }, uRepeat: { value: repeat }, uPaper: { value: paper }, uHaze: { value: haze }, ...fade },
+    uniforms: {
+      uMap: { value: map },
+      uRepeat: { value: tile?.repeat ?? 1 },
+      uCrop: { value: tile?.crop ?? [0, 1] },
+      uPhase: { value: tile?.phase ?? 0 },
+      uPaper: { value: paper }, uHaze: { value: haze }, ...fade },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
       void main() {
@@ -47,6 +59,8 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
     fragmentShader: /* glsl */ `
       uniform sampler2D uMap;
       uniform float uRepeat;
+      uniform vec2 uCrop;
+      uniform float uPhase;
       uniform vec3 uPaper;
       uniform float uHaze;
       uniform float uOpacity;
@@ -54,7 +68,11 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
       void main() {
         // Seen from inside the curve, the drawing runs the other way round (so it is not mirrored).
         float u = ${mirror ? "1.0 - vUv.x" : "vUv.x"};
-        vec4 art = texture2D(uMap, vec2(u * uRepeat, vUv.y));
+        ${tile ? `float t = u * uRepeat + uPhase;
+        float f = fract(t);
+        if (mod(floor(t), 2.0) >= 1.0) f = 1.0 - f;
+        u = mix(uCrop.x, uCrop.y, f);` : ""}
+        vec4 art = texture2D(uMap, vec2(u, vUv.y));
         if (art.a < 0.02) discard;
         gl_FragColor = vec4(mix(art.rgb, uPaper, uHaze), art.a * uOpacity);
         #include <colorspace_fragment>
@@ -177,16 +195,19 @@ export function Backdrop({ center, reach = 0 }: Props) {
   // Far hills band: the panorama repeated along the arc, just inside the wall.
   const hillsTex = textures["far-hills"];
   const px = propPx("far-hills");
-  const copyWidth = px ? (b.hillsHeight * px.w) / px.h : b.hillsHeight * 14;
+  const crop = b.hillsCrop;
+  const copyWidth = (px ? (b.hillsHeight * px.w) / px.h : b.hillsHeight * 14) * (crop[1] - crop[0]);
   const hillsRadius = b.radius - 0.05;
-  const repeats = (hillsRadius * arc) / copyWidth;
+  // A whole number of copies (never stretched much), mirrored at every joint, with a copy's middle straight back.
+  const repeats = Math.max(1, Math.round((hillsRadius * arc) / copyWidth));
+  const phase = 0.5 - ((repeats * 0.5) % 1);
   const hills = useMemo(
     () => new CylinderGeometry(hillsRadius, hillsRadius, b.hillsHeight, 96, 1, true, Math.PI - arc / 2, arc),
     [hillsRadius, b.hillsHeight, arc],
   );
   const hillsMaterial = useMemo(
-    () => artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, repeats, true),
-    [hillsTex, repeats, paper, b.haze],
+    () => artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, { repeat: repeats, crop, phase }, true),
+    [hillsTex, repeats, crop, phase, paper, b.haze],
   );
 
   // Sky doodles: small flat planes on the wall, facing the middle.
