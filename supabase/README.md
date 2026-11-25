@@ -1,59 +1,41 @@
-# Turning on the real leaderboard (Supabase)
+# The leaderboard's database (Supabase)
 
-Until these steps are done, the leaderboard runs in **demo mode**: it works, but scores are forgotten whenever
-the site redeploys. After them, scores are kept for good. About 10 minutes, all in the browser, no terminal.
+**Already set up.** The Supabase project `plop` is connected to the Vercel project through the Vercel Supabase
+integration, so Production, Preview and Development already have `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+The scores table from [`migrations/0001_scores.sql`](migrations/0001_scores.sql) was created on 2026-11-25.
+Nothing to do unless you want to look.
 
-> **Already connected Supabase through Vercel → Storage (the Supabase integration)?** Then Vercel already has
-> `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for Production and Preview: do only **step 2** (make the table)
-> and **step 5** (check). Until step 2 is done the board says "the board is napping", and the server log says
-> `Could not find the table 'public.scores'`.
+## Looking at the scores
 
-## 1. Make the Supabase project
+1. Go to <https://supabase.com/dashboard> and open the project **plop** (or Vercel → the plop project →
+   **Storage** → the Supabase database → **Open in Supabase**).
+2. Left sidebar → **Table Editor** → **scores**. One row per nickname per invite group:
+   - `group_id` the invite link's group (`?g=`)
+   - `name` the nickname
+   - `best_score`, `best_rounds`, `best_mode` their best match
+   - `latest_score`, `latest_rounds` their most recent match
+   - `plays` how many matches they submitted
+3. To remove a rude name or wipe a group: tick the rows → **Delete**. The board updates on the next look.
 
-1. Go to <https://supabase.com> and sign up (GitHub sign-in is fine). The free plan is enough.
-2. Click **New project**. Name: `plop`. Pick a strong database password and keep it in your password manager
-   (the game never needs it). Region: the one closest to most players. Click **Create new project** and wait a
-   minute until it is ready.
-
-## 2. Make the scores table
-
-1. In the left sidebar click **SQL Editor**, then **New query**.
-2. Open [`supabase/migrations/0001_scores.sql`](migrations/0001_scores.sql) on GitHub, click the **Copy raw file**
-   button, and paste everything into the editor.
-3. Click **Run**. It should say **Success. No rows returned**.
-4. Check: left sidebar → **Table Editor** → you should see a table called **scores** (empty).
-
-Running it a second time is harmless.
-
-## 3. Copy the two values
-
-In Supabase: left sidebar → **Project Settings** (the gear) → **API** (on newer dashboards: **Data API** for the
-URL and **API Keys** for the key).
-
-| Copy this | Name it in Vercel |
-| --- | --- |
-| **Project URL** (looks like `https://abcd1234.supabase.co`) | `SUPABASE_URL` |
-| The **service_role** key (click **Reveal**; on newer dashboards a **secret** key, `sb_secret_…`) | `SUPABASE_SERVICE_ROLE_KEY` |
-
-The service_role / secret key can do anything to the database: paste it only into Vercel, never into a chat,
-a file, GitHub or the game's code. Do **not** use the `anon` / publishable key.
-
-## 4. Paste them into Vercel
-
-1. <https://vercel.com> → the **plop** project → **Settings** → **Environment Variables**.
-2. Add `SUPABASE_URL` with the Project URL. Tick **Production** and **Preview**. Save.
-3. Add `SUPABASE_SERVICE_ROLE_KEY` with the secret key. Tick **Production** and **Preview**, and switch on
-   **Sensitive**. Save.
-4. Vercel only reads new values on the next deploy: **Deployments** → the latest one → **⋯** → **Redeploy**.
-
-## 5. Check it
-
-Open `https://plop-two.vercel.app/dev/leaderboard`, submit a score, and look at the server answers at the bottom:
-they should say `backend supabase` (not `demo`). In Supabase → **Table Editor** → **scores** you will see the row.
+Please don't change the table's columns or switch off row-level security there: the game expects this shape, and
+row-level security keeps the table closed to everyone except the game's server.
 
 ## What is stored
 
 Only a nickname and match scores per invite group (plus the match length, turns / together, how many matches and
-when). No accounts, emails, IP addresses or device ids. Row-level security is on with no public rules, so only
-the game's server (with the secret key) can read or write the table. To wipe a group, delete its rows in the
-Table Editor.
+when). No accounts, emails, IP addresses or device ids. Row-level security is on with no public rules, and the
+public (anon / publishable) key has no rights on the table, so only the game's server, with the secret key, can
+read or write it.
+
+## Keys
+
+The secret key (`SUPABASE_SERVICE_ROLE_KEY`) stays in Vercel → Settings → Environment Variables and only the server
+uses it. Never paste it into a chat, a file, GitHub or the game's code. If it ever leaks: Supabase → Project
+Settings → API Keys → roll it, then Vercel → Deployments → latest → ⋯ → Redeploy.
+
+Without the two variables (for example a fresh local checkout without `vercel env pull .env.local`), the leaderboard
+runs in **demo mode**: it works, but scores live in memory and are forgotten on restart.
+
+## A new migration later
+
+A new file in `migrations/` (`0002_….sql`) is run once in Supabase → **SQL Editor** → **New query** → paste → **Run**.

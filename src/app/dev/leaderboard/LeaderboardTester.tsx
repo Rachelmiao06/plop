@@ -63,7 +63,9 @@ export function LeaderboardTester() {
       <header>
         <h1 className="font-heading text-4xl font-bold text-ink-deep">Leaderboard test</h1>
         <p className="font-sans text-sm">
-          Without Supabase keys the server runs in demo mode (memory, forgotten on redeploy). Max points: 3 rounds{" "}
+          Scores go to the real Supabase table when the server has its keys (each answer below says{" "}
+          <code>backend supabase</code>); without them, demo mode (memory, forgotten on restart). Use a new group for
+          tests and delete its rows afterwards. Max points: 3 rounds{" "}
           {maxScore(3)}, 5 rounds {maxScore(5)}.
         </p>
       </header>

@@ -37,7 +37,8 @@ spam and is never written anywhere.
 - `rateLimit.ts`: 10 submits a minute per IP and group (`BOARD.rateLimit`), in the server's memory (best effort;
   each server instance counts on its own).
 - `src/lib/db.ts` stores: one line per nickname per group (same name in any case = same person), keeping their
-  **best** score on top and their **latest** one. Supabase when the keys exist (`supabase/README.md`), otherwise
+  **best** score on top and their **latest** one. Supabase when the keys exist (connected through the Vercel
+  integration, table created; `supabase/README.md`; locally `vercel env pull .env.local`), otherwise
   **demo mode**: memory plus a temp file, forgotten on redeploy, logged as "demo mode" in the server log.
 - A 3-round and a 5-round score share one board; the row says which length the best came from.
 
