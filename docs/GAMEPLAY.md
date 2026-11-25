@@ -1,126 +1,119 @@
 # Plop! · how the game plays
 
-Draft 1, 2026-11-24. Written by Claude as "the most reasonable version" for Rachel to react to and change.
+Draft 2, 2026-11-24: **paper bowling on snow.** Chosen by Rachel over draft 1 (snowmen running around a field)
+because hand-drawn feel matters most and everything here can be her paper cut-outs.
 This file is the source of truth for interaction. `docs/SPEC.md` keeps the why and the look.
 
 ## In one sentence
 
-Two snowmen run around a cosy snowy village, roll snowballs that grow on fresh snow, stop to aim like a
-slingshot, and splat each other. No scores, no rounds, no winning: just the feel.
+A paper snowman stands at a line in the snow, pulls back to roll a snowball that grows the further it is pulled,
+lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as many as it can.
 
 ## The loop
 
 ```
-   ┌────────────── run and ROLL ──────────────┐
-   │  ball grows on fresh snow, slows you down │
-   └──────────────────┬───────────────────────┘
-                      │ hold the aim key / press your snowman
-                      ▼
-               AIM (slingshot)  ── let go too early ──► cancel, keep the ball
-               pull back = power,
-               arc + landing ring
-                      │ let go
-                      ▼
-                    THROW ──► SPLAT (hit or crater) ──► new small ball, back to ROLL
+  PICK A SPOT on the line ──► PULL BACK (ball grows, aim line shows) ──► LET GO
+                                                                           │
+            ┌──────────────────────────────────────────────────────────────┘
+            ▼
+  ball ROLLS through the snow, leaving a groove ──► cut-outs TOPPLE, knocking each other over
+            │
+            ▼
+  "7 down!" (all down: a little celebration) ──► cut-outs pop back up / next set ──► next turn
 ```
 
-## 1. Rolling
+## 1. The scene
 
-- Your snowman always has a snowball at its feet. Moving rolls it.
-- The ball grows only while rolling over **fresh** snow, and grows little on snow that is already packed
-  (the snow scene's `packedAt`). Rolling leaves a packed track, so over time the field fills with paths and
-  big balls have to be rolled in untouched corners. That gives the toy a gentle "where do I go" without rules.
-- Bigger ball = slower run, heavier turning, deeper groove, louder crunch. It stops growing at a maximum size
-  and trembles a little to say "full".
-- Growth slows as the ball gets big (bigger surface to cover), so a small ball grows quickly and a huge one
-  takes patience.
-- A ball never shrinks while you hold it.
+- One long view down a snowy lane in the cosy village. The thrower is near the camera; the crowd of cut-outs
+  stands further down the snow. The camera looks from behind and above the thrower, so every cut-out faces
+  the viewer. It can still turn left / right and tilt within limits, and it never sees the back of the cut-outs.
+- Everything is a paper cut-out made from Rachel's art: thick card with a cream edge, real shadow on the snow,
+  base sunk into the snow, half-turning toward the camera (the scenery standee look).
+- The village props (cottage, igloo, big tree, pines) frame the lane and are not knocked down.
 
-## 2. Aiming (the slingshot)
+## 2. The thrower
 
-- Hold your aim key (or press on your snowman with mouse / finger): the snowman stops and plants its feet.
-- Pull back, away from the target. Pull length = power = how far it flies. The ball rolls back a little as you
-  pull, so it can still pick up a bit of snow.
-- While aiming you see a dotted arc and a landing ring on the snow. The real throw follows exactly that arc.
-- Keyboard players get help: the aim starts pointed at the other snowman, the pull grows the longer you hold,
-  and left / right nudge the angle. Mouse and touch aim freely.
-- Release with almost no pull = cancel; you keep your ball and run on.
+- A paper snowman standee at the throwing line, Rachel's bucket snowman for player 1 and red-hat snowman for
+  player 2.
+- Before throwing, it slides left and right along the line to choose a spot (and wobbles a little while idle).
+- When pulled, it leans back and strains; on release it does a little hop.
 
-## 3. Throwing
+## 3. Pull back, the ball grows
 
-- On release the ball flies. Small balls fly fast and flat; big balls fly slow and high and splat wider.
-- The snowman does a little hop and a happy face. A new small ball pops out of the snow at its feet after
-  about half a second.
-- You cannot throw again until the new ball has appeared, so nobody can machine-gun.
+- Press on the thrower (or hold the throw key) and pull back, away from the crowd.
+- A snowball appears at the thrower's feet and really rolls backward in the snow as you pull, pressing a groove.
+- The further you pull, the bigger the ball (it only grows while it rolls over fresh snow, so pulling back over
+  your own old track grows it less). It never shrinks while held. At the limit it is full and trembles.
+- Sideways pull sets the aim angle. A dotted line on the snow shows where the ball will roll.
+- Release with almost no pull = cancel.
 
-## 4. Splat
+## 4. The roll
 
-- **Hit:** the target squashes, its head tips or its hat flies off, it slides back a little, then pulls itself
-  back together with a springy bounce (about one second). While reassembling it cannot aim or throw, but it can
-  still shuffle. A short freeze frame, a small camera shake, a thump and a vibration sell the hit; bigger balls,
-  bigger everything.
-- **Miss:** the ball bursts into snow and punches a crater that stays.
-- **Scenery:** trees, cottage, igloo, log and bench block balls and snowmen. A hit makes the prop wobble and
-  drop a little snow. They are the cover you hide behind.
-- **Friends** (little snowmen, penguins, people): balls pass through them, but a near miss makes them flinch and
-  look around. Nobody gets hurt.
+- On release the ball rolls forward down the lane along the aim line, opposite to the pull.
+- Speed comes from pull length; weight from size. Small ball: fast and nimble, can thread a gap. Big ball: slow,
+  heavy, ploughs a wide groove and flattens everything in its path.
+- It leaves a groove and throws up snow dust all the way. It slows down in deep fresh snow and runs further on
+  packed tracks, so earlier grooves become faster lanes. It stops by itself, or bursts into snow when it hits a
+  big village prop.
 
-## 5. The field
+## 5. Knocking down cut-outs
 
-- A round-ish play area in the middle of the village, about 18 by 12 character heights.
-- The edge is soft and in-world: past it, the snow gets deeper and deeper and the snowman slows to a stop,
-  as if wading. No walls, no invisible box.
-- The cosy village sits around and inside the edge: three clusters (home at the back, music corner, watching
-  bench), with clear lanes between them.
+- Cut-outs are standing cards on the snow. When the ball or another falling card hits one, it tips over about
+  its base, flops into the snow with a soft puff, and can knock its neighbours over (chain reactions).
+- Each cut-out reacts in character as it falls (a wobble, a surprised face swap if it has one), and lands
+  face-up or face-down with a little bounce.
+- Tall thin ones fall easily; wide heavy ones (bench, log) need a big ball.
+- When everything has settled: a hand-drawn "7 down!" pops up with the effect doodles (star, surprise lines).
+  All down: a bigger burst, music notes, everyone cheers.
+- Then the fallen cut-outs pop back up with a springy bounce, or a new formation slides in.
 
-## 6. Camera (two players, one screen)
+## 6. Formations
 
-- One shared view, no split screen.
-- It looks at the point between the two snowmen and pulls back as they run apart, so both are always in frame,
-  then eases closer when they come together. Gentle easing; it never jerks.
-- Anyone can still turn and tilt the view with the mouse / trackpad on empty snow; the automatic part only
-  manages the distance and the centre. "Reset view" returns to the default angle.
-- The camera never goes behind the village or straight down (the snow scene's limits).
+- A few hand-made sets to start: a triangle (classic), a straight row, a ring, a loose crowd of friends
+  (snowmen, penguins, people), and a "little village" mixed set.
+- 6 to 12 cut-outs per set. The next set is chosen after each full clear, or by a small "next" button.
 
-## 7. Controls
+## 7. Two players, one device
 
-| | Move | Aim | Throw |
+- Players take turns, one ball each, like bowling. The thrower swaps between the bucket snowman and the
+  red-hat snowman.
+- A small, soft tally at the top shows how many each knocked down in their last throw and in total. No rounds,
+  no winner screen; it is just for fun and can be hidden.
+- One person can simply keep throwing.
+- Later option: both throwers on the line at once, aiming at the same crowd (chaos mode).
+
+## 8. Controls
+
+| | Choose spot | Pull back and aim | Throw |
 |---|---|---|---|
-| Left player (keyboard) | W A S D | hold **F**, then A / D to nudge | release F |
-| Right player (keyboard) | arrow keys | hold **/** (or **Enter**), then ← / → to nudge | release |
-| Mouse (one person) | click and hold on snow: your snowman walks toward the pointer | press on your snowman and drag back | let go |
-| Phone / tablet | each player owns their half of the screen: drag on your half to walk | press on your snowman and pull back | let go |
+| Mouse / trackpad | drag the thrower left / right along the line | press on the thrower and drag back; sideways sets the angle | let go |
+| Touch | same as mouse | same as mouse | let go |
+| Keyboard (whoever's turn it is) | A / D or ← / → | hold Space: pull grows while held, A / D or ← / → turn the aim | release Space |
 
-- On a Mac two people sit side by side and share the keyboard; both can move and aim at the same time.
-- Mouse controls whichever snowman you pressed last, so one person can play both or two people can take turns.
-- A key on the left and a key on the right is free for later (for example a cute "wave" or "taunt").
+- Dragging on empty snow turns and tilts the camera (never behind the cut-outs). "Reset view" returns to the
+  throwing view.
 
-## 8. Calm extras
+## 9. Calm extras
 
-- **Fresh snowfall:** a small button (and a key) that lets soft snow fall for a few seconds and smooths the field
-  back to fresh. For when the field is all paths, or just to watch it.
-- **Practice buddy (later):** when only one person plays, the other snowman can wander and lob gentle balls.
-- Background music and its on / off button.
-- No score, no timer, no win screen. If a hit counter ever appears, it is tiny and off by default.
+- **Fresh snowfall:** a button (and a key) that lets snow fall for a few seconds and smooths every groove and
+  crater away.
+- Background music with an on / off button; snow crunch while pulling and rolling, soft paper flops as cards fall,
+  a cheer on a full clear.
 
-## 9. Feel targets (numbers live in `content.ts`)
+## 10. Feel targets (numbers live in `content.ts`)
 
-- Running: brisk and light with a small ball; a full-size ball roughly halves the speed.
-- Full-size ball: about 1.2 character heights across; starting ball about 0.25.
-- Rolling from smallest to full size on fresh snow: about 6 to 8 seconds of running.
-- Throw range: from about 3 to about 14 character heights, depending on pull.
-- Hit recovery: about 1 second. New ball after a throw: about 0.5 seconds.
+- Ball size: from about 0.25 to about 1.2 character heights across, by pull length.
+- A full pull takes about 1 to 2 seconds of dragging; keyboard hold to full about 1.5 seconds.
+- Roll: a light ball crosses the lane in about 1.5 seconds; a full one in about 3.
+- Cut-outs settle within about 2 seconds after the ball stops; reset bounce about 0.6 seconds.
 
-## What this changes in the work already done
+## What this means for the work already done
 
-- **Slingshot (PR #21):** home spots are no longer fixed. Add running and rolling growth; aiming starts wherever
-  the snowman stops. Keep the pull, the shared arc maths, landing, hits and the event stream.
-- **Snow scene (on `main`):** add camera auto-framing of two moving points, and a soft deep-snow edge.
-- **Characters (PR #22):** add run, plant-feet, hop and wade animations to the existing states.
-- **Scenery (PR #20):** props need simple round blockers (for balls and snowmen) and a wobble on hit.
-
-## Open questions for Rachel
-
-1. Is running the right call, or would small side-steps (a dodge) be enough?
-2. Should the ball sit at the snowman's feet and be pushed (rolling), or should the snowman stand on top of it?
-3. Is the keyboard layout comfortable for two people side by side?
+- **Snow scene (on `main`):** used as is: the lane, grooves, craters, dust, packed tracks. Camera gets a
+  "throwing view" default and limits that keep it in front of the cut-outs.
+- **Slingshot (PR #21):** keep the pull, growth, aim preview and event stream. Change: one thrower at a time,
+  the thrower slides along a line, and the release rolls the ball along the ground instead of an arc.
+- **Scenery (PR #20):** the standee look (thickness, shadow, half-turn) becomes the look of every cut-out. The
+  village frames the lane; small friends become pins.
+- **Characters (PR #22, 3D snowmen):** not needed for this version; the thrower is a paper standee. Parked.
+- **New:** toppling physics for cut-outs (`@react-three/rapier`), formations, the "N down!" moment, turns.
