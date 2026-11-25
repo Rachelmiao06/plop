@@ -52,6 +52,13 @@ export function connectFeedback(game: Bowling): Feedback {
         }
         haptic("launch", e.plan.power);
         break;
+      case "bounced": {
+        // The back wall: a soft thump, heavier for a big ball, louder the harder it hit.
+        const w = game.feel.wall;
+        playThump((w.thump + w.thumpPerSize * e.size) * (0.35 + 0.65 * e.strength));
+        haptic("hit", e.size * e.strength);
+        break;
+      }
     }
   });
 

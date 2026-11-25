@@ -35,6 +35,7 @@ import { createPointerInput } from "../pointer";
 import { powerOf, sweetPull } from "../roll";
 import { Bowling } from "../simulation";
 import { type Vec2, lerp } from "../vec";
+import { backWall, emitWallHit } from "../wall";
 import { Clumps } from "./clumps";
 import { readPalette } from "./look";
 import { motionShare } from "./motion";
@@ -51,7 +52,7 @@ const UP = new Vector3(0, 1, 0);
 
 /** Drawing sizes (scene units). Not feel numbers: they only change how marks look. */
 const MAX_BALLS = 6;
-const AIM = { dots: 80, spacing: 0.22, dotRadius: 0.035 };
+const AIM = { dots: 120, spacing: 0.22, dotRadius: 0.035 };
 const MARK = { lift: 0.012, dashLength: 0.16, dashWidth: 0.035, pinRingRadius: 0.9 };
 
 type Dash = { x: number; z: number; angle: number; length: number };
@@ -174,9 +175,16 @@ export function BowlingStage({
     game.setSlideRange(slideMin === undefined || slideMax === undefined ? null : [slideMin, slideMax]);
     if (slideMin !== undefined && slideMax !== undefined) game.slideTo((slideMin + slideMax) / 2);
   }, [game, slideMin, slideMax]);
-  // The snow the rules read: the real snow, plus any soft mound the game laid down.
+  // The snow the rules read: the real snow, plus any soft mound the game laid down, and the paper wall at the back
+  // (wherever the backdrop says it stands now; none on pages without one).
   useEffect(() => {
-    game.setGround(softAt ? { packedAt: (x, z) => snow.packedAt(x, z), softAt } : snow);
+    game.setGround({
+      packedAt: (x, z) => snow.packedAt(x, z),
+      softAt,
+      get wall() {
+        return backWall();
+      },
+    });
   }, [game, snow, softAt]);
 
   const throwerRef = useRef<ThrowerHandle>(null);
@@ -268,6 +276,18 @@ export function BowlingStage({
           velocityZ: e.velocity.z * b.carry,
         });
       }
+      if (e.type === "bounced") {
+        // The back wall: squashed flat against it, a puff of snow off the bank, and the paper wobbles (the backdrop).
+        const w = LOOK.wallHit;
+        const m = map.get(e.ballId);
+        if (m) m.squash.q = Math.max(m.squash.q, w.squash * (0.4 + 0.6 * e.strength) * motionShare());
+        snow.kickUpSnow(e.at.x, e.at.z, e.radius * w.radius, {
+          amount: w.amount * (0.3 + 0.7 * e.strength) * motionShare(),
+          velocityX: e.direction.x * w.speed,
+          velocityZ: e.direction.z * w.speed,
+        });
+        emitWallHit({ x: e.at.x, z: e.at.z, strength: e.strength * (0.5 + 0.5 * e.size) });
+      }
       if (e.type === "removed") map.delete(e.ballId);
     });
     io.current = { keyboard, feedback };
@@ -331,7 +351,7 @@ export function BowlingStage({
   const throwSnow = (ball: Bowling["balls"][number], fast: number, dt: number) => {
     const k = LOOK.kick;
     const r = ball.plan.radius;
-    const d = ball.plan.direction;
+    const d = ball.direction;
     const big = Math.max(0, Math.min(1, (r - FEEL.ball.radiusSmall) / (FEEL.ball.radiusBig - FEEL.ball.radiusSmall)));
     const { x, z } = ball.position;
     const plume = k.plume.amount * fast * (k.plume.sizeFloor + (1 - k.plume.sizeFloor) * big) * dt;
@@ -427,7 +447,7 @@ export function BowlingStage({
         at: ball.position,
         radius: ball.plan.radius,
         rolled: ball.rolled,
-        dir: ball.plan.direction,
+        dir: ball.direction,
         scale: Math.min(1, fadeLeft / 0.4) * (1 - burst * burst),
         load: burst > 0 ? LOOK.burst.flatten : 0,
       });
@@ -481,15 +501,30 @@ export function BowlingStage({
     if (dots && end) {
       let n = 0;
       if (aim) {
-        const start = aim.radius + 0.1;
-        for (let d = start; d < aim.distance && n < AIM.dots; d += AIM.spacing, n++) {
-          const x = aim.start.x + aim.direction.x * d;
-          const z = aim.start.z + aim.direction.z * d;
+        // Along the roll: from the ball to the back wall and back again (each bounce a corner), to where it stops.
+        const corners = [aim.start, ...aim.bounces, aim.stop];
+        let d = aim.radius + 0.1;
+        let leg = 0;
+        let legStart = 0;
+        while (n < AIM.dots && leg < corners.length - 1) {
+          const a = corners[leg];
+          const b = corners[leg + 1];
+          const legLength = Math.hypot(b.x - a.x, b.z - a.z);
+          if (d - legStart > legLength) {
+            legStart += legLength;
+            leg++;
+            continue;
+          }
+          const u = legLength > 1e-6 ? (d - legStart) / legLength : 0;
+          const x = lerp(a.x, b.x, u);
+          const z = lerp(a.z, b.z, u);
           scratch.holder.position.set(x, snow.heightAt(x, z) + MARK.lift, z);
           scratch.holder.rotation.set(0, 0, 0);
           scratch.holder.scale.setScalar(AIM.dotRadius);
           scratch.holder.updateMatrix();
           dots.setMatrixAt(n, scratch.holder.matrix);
+          n++;
+          d += AIM.spacing;
         }
         end.visible = true;
         end.position.set(aim.stop.x, snow.heightAt(aim.stop.x, aim.stop.z) + MARK.lift, aim.stop.z);

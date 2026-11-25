@@ -39,7 +39,7 @@ import {
 import { playNearMiss, playStarHit, playThump } from "@/lib/audio";
 import { haptic } from "@/lib/haptics";
 
-import type { BowlEvent, Bowling } from "@/features/bowling";
+import { FEEL, type BowlEvent, type Bowling } from "@/features/bowling";
 import { propSettings, propSrc, propWidth } from "@/features/scenery";
 import { standee3d } from "@/features/scenery/content";
 import { toonMaterial } from "@/features/scenery/three/materials";
@@ -254,6 +254,13 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     groundChecked: false,
     /** The ball has met a card in this throw (the hit-stop plays once per throw). */
     hitThisThrow: false,
+    /**
+     * When a ball of this throw first met a card, or first rolled past them all (null: not yet). The count comes at
+     * the latest `FEEL.wall.countWithin` after it, even while a ball is still rolling back from the wall.
+     */
+    reachedAt: null as number | null,
+    /** Balls of this throw that have rolled past every card at least once (on to the back wall, maybe back again). */
+    wentPast: new Set<number>(),
     /** Who threw in this throw (thrower ids), and the latest one (owner of a card nobody touched). */
     throwers: new Set<string>(),
     lastThrower: "",
@@ -334,6 +341,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     f.settledFor = 0;
     f.pendingThrow = false;
     f.hitThisThrow = false;
+    f.reachedAt = null;
+    f.wentPast.clear();
     f.friendGap = Infinity;
     clearCounts(runtime.current);
     pins.emit({ type: "knocked", down: 0, total: counted });
@@ -417,6 +426,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     // The ball came close to the bunny and it is still standing: a tiny surprised mew.
     if (result.friend === "safe" && f.friendGap < SPECIALS.friend.nearMiss) playNearMiss();
     f.fullClear = fullClear;
+    // A ball still rolling back from the wall poofs now, so nothing knocks a card after the count.
+    for (const { ball, game } of allBalls()) if (f.throwBalls.has(ball.id) && ball.rolling) game.burst(ball.id);
     f.throwBalls.clear();
     pins.emit({ type: "result", result });
     // The pop-up's beat you feel: a celebration on a full clear, a small double tap otherwise.
@@ -488,7 +499,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           if (!rt.struck) {
             rt.struck = true;
             const im = PINS.impact;
-            const d = ball.plan.direction;
+            const d = ball.direction;
             const m = body.mass();
             const v = ball.speed;
             body.applyImpulse({ x: d.x * im.push * m * v, y: im.lift * m, z: d.z * im.push * m * v }, true);
@@ -508,6 +519,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           // The ball meets the first card of the throw: a hit-stop, a thump and a bump you feel.
           if (!f.hitThisThrow) {
             f.hitThisThrow = true;
+            if (f.reachedAt === null) f.reachedAt = f.clock;
             const h = PINS.hitStop;
             const size = ball.plan.size;
             game.hitStop(h.seconds + h.bigExtra * size, h.slowest + (h.bigSlowest - h.slowest) * size);
@@ -595,8 +607,11 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   });
 
   /**
-   * The balls of this throw that are through the pins burst into snow (so they never park over the fallen
-   * cards): past every card, or slow among them. True once none of them can touch a card any more.
+   * The balls of this throw roll on through the pins to the back wall and may roll back through them (Rachel: it
+   * should go all the way to the back), so a ball no longer poofs as soon as it is through. It bursts into snow
+   * when it slows down among the cards, or anywhere once it has been past them all (so it never parks over the
+   * fallen cards seen from the low camera), and the count bursts any still rolling (`finishThrow`).
+   * True once none of them can touch a card any more (burst or stopped).
    */
   const cardEnd = useMemo(() => new Vector3(), []);
   const scratchQ = useMemo(() => new Quaternion(), []);
@@ -607,7 +622,6 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     for (const { ball, game } of allBalls()) {
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
       const r = ball.plan.radius;
-      const d = ball.plan.direction;
       const bx = ball.position.x;
       const bz = ball.position.z;
       let past = true;
@@ -621,11 +635,16 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         cardEnd.set(0, s.height, 0).applyQuaternion(scratchQ.set(q.x, q.y, q.z, q.w));
         const hx = t.x + cardEnd.x;
         const hz = t.z + cardEnd.z;
-        // Past its foot: a fallen card's head may still lie ahead, and the ball bursts on it.
-        if ((bx - t.x) * d.x + (bz - t.z) * d.z < r + B.pastMargin) past = false;
+        // Past it down the lane (toward the back wall): beyond its foot and wherever its head lies.
+        if (bz > Math.min(t.z, hz) - r - B.pastMargin) past = false;
         if (segmentDistance(bx, bz, t.x, t.z, hx, hz) < r + s.card[0] + B.amongMargin) near = true;
       });
-      if (past || (near && ball.speed < B.slowSpeed)) game.burst(ball.id);
+      if (past && !f.wentPast.has(ball.id)) {
+        f.wentPast.add(ball.id);
+        if (f.reachedAt === null) f.reachedAt = f.clock;
+      }
+      const slow = ball.speed < B.slowSpeed;
+      if (slow && (near || f.wentPast.has(ball.id))) game.burst(ball.id);
       else if (ball.rolling) clear = false;
     }
     return clear;
@@ -692,7 +711,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     if (clear && f.clearAt === null) f.clearAt = f.clock;
     if (!clear) f.clearAt = null;
     const timedOut =
-      (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) || f.clock - f.launchedAt > d.timeoutAfterLaunch;
+      (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) ||
+      (f.reachedAt !== null && f.clock - f.reachedAt > FEEL.wall.countWithin) ||
+      f.clock - f.launchedAt > d.timeoutAfterLaunch;
     // The count is certain once no ball can reach a card and the cards are still: "N down!" pops now.
     // "Together" mode waits until every player has thrown before it counts (`pins.setCountGate`).
     if (((clear && f.settledFor >= d.settleHold) || timedOut) && pins.countGate()) finishThrow();
@@ -936,8 +957,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           ms.puffed = true;
           snow.kickUpSnow(m.x, m.z, m.radius * 0.8, {
             amount: MOUND.puff * motion,
-            velocityX: ball.plan.direction.x * 2,
-            velocityZ: ball.plan.direction.z * 2,
+            velocityX: ball.direction.x * 2,
+            velocityZ: ball.direction.z * 2,
           });
         }
       }

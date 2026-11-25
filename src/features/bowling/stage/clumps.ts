@@ -89,7 +89,7 @@ export class Clumps {
   private spawn(ball: RollingBall, sink: number) {
     const c = LOOK.clumps;
     const r = ball.plan.radius;
-    const { x: dx, z: dz } = ball.plan.direction;
+    const { x: dx, z: dz } = ball.direction;
     // From the upper sides and back of the ball, never the front.
     const side = this.rnd() < 0.5 ? -1 : 1;
     const around = 0.35 + this.rnd() * 0.6; // 0 = straight up, 1 = level with the side

@@ -5,7 +5,7 @@
  * Step it with `step(seconds)`; feed it slides and pull targets; read its state; listen to its events.
  */
 import type { Feel } from "./content";
-import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, movingSpeed, pastSweet, planRoll, powerOf, snapShare, stepRoll } from "./roll";
+import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, type RollState, movingSpeed, pastSweet, planRoll, powerOf, snapShare, stepRoll } from "./roll";
 import { type Vec2, add, clamp01, distance, ease, length, lerp, scale, sub } from "./vec";
 
 /** ready (sliding allowed) → pulling → thrown (a little hop) → ready. */
@@ -83,6 +83,10 @@ export type RollingBall = {
   speed: number;
   /** Direction times speed, for the snow's plough. */
   velocity: Vec2;
+  /** Which way it rolls now: the plan's direction until it bounces off the back wall (`FEEL.wall`). */
+  direction: Vec2;
+  /** How often it has bounced off the back wall. */
+  bounces: number;
   rolled: number;
   rolling: boolean;
   /** Seconds since it stopped (0 while rolling). */
@@ -107,6 +111,21 @@ export type BowlEvent =
       reason: "short" | "interrupted";
     }
   | { type: "stopped"; thrower: string; ballId: number; at: Vec2; radius: number; size: number }
+  /**
+   * A ball met the back wall and bounced: `at` where it touched the wall (on the snow), `ball` where its middle is,
+   * `strength` how hard (0..1, `FEEL.wall.fullSpeed` straight at the wall = 1), `direction` its way back.
+   */
+  | {
+      type: "bounced";
+      thrower: string;
+      ballId: number;
+      at: Vec2;
+      ball: Vec2;
+      direction: Vec2;
+      strength: number;
+      radius: number;
+      size: number;
+    }
   /** A ball poofs into snow (see `burst`); `removed` follows once it has gone. */
   | { type: "burst"; ballId: number; at: Vec2; radius: number; velocity: Vec2 }
   | { type: "removed"; ballId: number };
@@ -281,6 +300,8 @@ export class Bowling {
       position: { ...plan.start },
       speed: plan.startSpeed * snapShare(0, this.feel),
       velocity: scale(plan.direction, plan.startSpeed * snapShare(0, this.feel)),
+      direction: { ...plan.direction },
+      bounces: 0,
       rolled: 0,
       rolling: true,
       restAge: 0,
@@ -504,14 +525,36 @@ export class Bowling {
       this.rollClock -= ROLL_STEP;
       for (const ball of this.balls) {
         if (!ball.rolling) continue;
-        const state = { position: ball.position, speed: ball.baseSpeed, rolled: ball.rolled, age: ball.age };
+        const state: RollState = {
+          position: ball.position,
+          speed: ball.baseSpeed,
+          rolled: ball.rolled,
+          age: ball.age,
+          direction: ball.direction,
+          bounces: ball.bounces,
+        };
         const still = stepRoll(state, ball.plan, this.feel, this.ground);
         ball.position = state.position;
         ball.baseSpeed = state.speed;
         ball.age = state.age;
         ball.speed = still ? movingSpeed(state, this.feel) : 0;
         ball.rolled = state.rolled;
-        ball.velocity = scale(ball.plan.direction, ball.speed);
+        ball.direction = state.direction ?? ball.direction;
+        ball.bounces = state.bounces ?? ball.bounces;
+        ball.velocity = scale(ball.direction, ball.speed);
+        if (state.hit) {
+          this.emit({
+            type: "bounced",
+            thrower: ball.thrower,
+            ballId: ball.id,
+            at: state.hit.at,
+            ball: { ...ball.position },
+            direction: { ...ball.direction },
+            strength: clamp01(state.hit.normalSpeed / Math.max(1e-6, this.feel.wall.fullSpeed)),
+            radius: ball.plan.radius,
+            size: ball.plan.size,
+          });
+        }
         if (!still) {
           ball.rolling = false;
           this.emit({

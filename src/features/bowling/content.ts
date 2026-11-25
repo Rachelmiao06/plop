@@ -118,26 +118,28 @@ export const FEEL = {
   },
 
   /**
-   * The roll down the long lane after letting go. Tuned so a light ball reaches the pins in about 0.9 s and
-   * a full one in about 1.35 s, and both stop about 3 units past the pin spot (`docs/TUNING.md`).
+   * The roll down the long lane after letting go (Rachel: it should go further, with more force, all the way to the
+   * back). A light ball reaches the pins in about 0.95 s, a full one in about 1 s; a medium or full pull carries on
+   * to the paper wall at the back (`wall`) and bounces back, a full ball rolling back through the pins' spot; only
+   * the tiniest pull stops short of the snow bank (`docs/TUNING.md`).
    */
   roll: {
     /** Top speed of the smallest and the biggest ball (at full pull), reached right after the snap. */
-    speedSmall: 13.5,
-    speedBig: 8.4,
+    speedSmall: 15.5,
+    speedBig: 11.5,
     /** A weak pull starts this share as fast as a full one. */
-    weakPull: 0.8,
+    weakPull: 0.62,
     /** Letting go is a snap: the ball leaves at `from` of its top speed and reaches it within `time` seconds. */
     snap: { from: 0.35, time: 0.09 },
     /** Early in the roll the snow slows it only `dragShare` as much, easing to full drag over `time` seconds. */
     early: { dragShare: 0.2, time: 0.7 },
     /** Steady slowing in deep fresh snow, and the extra slowing that grows with speed. */
-    dragFresh: 6.5,
+    dragFresh: 4.2,
     dragPerSpeed: 0.15,
     /** On a fully packed track the slowing is only this share, so old grooves become (gently) faster lanes. */
     dragOnPacked: 0.8,
-    /** Big balls plough on: their slowing is this share of a small ball's. */
-    dragBigShare: 0.45,
+    /** Big balls plough on: their slowing is this share of a small ball's (heavy, but unstoppable). */
+    dragBigShare: 0.35,
     /** Below this speed the ball stops. */
     stopSpeed: 0.12,
     /** A stopped ball stays in the snow this long before it goes away. */
@@ -151,6 +153,19 @@ export const FEEL = {
     /** `burst()`: a ball asked to burst (the pins do, once it has rolled through them) poofs into snow over this long. */
     burstTime: 0.32,
   },
+
+  /**
+   * The back wall (Rachel: roll all the way to the back and bounce off the paper sky). The scenery's backdrop says
+   * where its paper wall stands (`wall.ts`); the ball meets it `inset` in front of the paper (the snow bank at its
+   * foot), keeps `bounce` of its speed straight off the wall and `slide` of it along the wall, and rolls back toward
+   * the lane (at most `most` bounces a roll). The aim line shows the bounce too, so it still matches the roll.
+   * The hit: a soft thump of `thump` (+ `thumpPerSize` for a full ball) on the thump sound's size scale, times how
+   * hard it hit (`fullSpeed` units per second straight at the wall = the hardest), a puff of snow (`LOOK.wallPuff`)
+   * and a wobble of the paper (the backdrop's).
+   * The long roll back must not hold up the score: the pins count the throw at the latest `countWithin` seconds after
+   * the ball first meets a card (or first rolls past them all, on a miss), and any ball still rolling then poofs.
+   */
+  wall: { inset: 0.55, bounce: 0.5, slide: 0.8, most: 2, thump: 0.22, thumpPerSize: 0.3, fullSpeed: 7, countWithin: 3.5 },
 
   /** How the ball presses the snow (passed to the snow scene's `pressGroove`). */
   groove: {
@@ -303,6 +318,13 @@ export const LOOK = {
    * squash it springs to (up to `ballSquash.max`).
    */
   burst: { amount: 0.16, radius: 1.3, carry: 0.35, flatten: 0.25 },
+
+  /**
+   * Meeting the back wall (`FEEL.wall`): the ball squashes flat against it (`squash`, times how hard it hit) and a
+   * puff of snow is thrown up off the bank (`amount` times how hard, over `radius` × the ball's radius, flying back
+   * toward the lane at `speed`). The paper's own wobble is the backdrop's.
+   */
+  wallHit: { squash: 0.3, amount: 0.12, radius: 1.6, speed: 2.2 },
 
   /** With "reduce motion" on: squash, stretch and hops keep this share (vibration and sound stay). */
   reducedMotion: 0.3,
