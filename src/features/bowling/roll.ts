@@ -5,6 +5,7 @@
  */
 import type { Feel } from "./content";
 import { type Vec2, clamp01, lerp } from "./vec";
+import type { BackWall } from "./wall";
 
 /** What the rules need to know about the snow. The snow scene's `useSnow()` fits. */
 export type Ground = {
@@ -12,6 +13,11 @@ export type Ground = {
   packedAt(x: number, z: number): number;
   /** Optional: how soft and deep the snow is here, 0 normal .. 1 a soft mound (`roll.soft`). */
   softAt?(x: number, z: number): number;
+  /**
+   * Optional: the back wall (the paper theatre's sky and its snow bank, see `wall.ts`). A ball that reaches it
+   * bounces back toward the lane, losing speed (`FEEL.wall`). Null or left out: the lane runs on.
+   */
+  readonly wall?: BackWall | null;
 };
 
 /** Untouched snow everywhere (for checks, or before the snow is ready). */
@@ -35,12 +41,26 @@ export type RollPlan = {
   power: number;
   /** Where it will stop, how far that is and how long it takes, on the snow as it is now. */
   stop: Vec2;
+  /** Where the ball's middle is each time it bounces off the back wall, in order (empty: it never gets there). */
+  bounces: Vec2[];
   distance: number;
   duration: number;
 };
 
-/** `speed` is the roll's own speed (slowed by the snow); `age` is seconds since letting go. */
-export type RollState = { position: Vec2; speed: number; rolled: number; age: number };
+/**
+ * `speed` is the roll's own speed (slowed by the snow); `age` is seconds since letting go. `direction` is where it
+ * rolls now (the plan's direction until it bounces off the back wall), `bounces` how often it has, and `hit` is set
+ * by the step in which it meets the wall (where, and how hard), else null.
+ */
+export type RollState = {
+  position: Vec2;
+  speed: number;
+  rolled: number;
+  age: number;
+  direction?: Vec2;
+  bounces?: number;
+  hit?: { at: Vec2; normalSpeed: number } | null;
+};
 
 /**
  * The snap of letting go: like a stretched band, the ball leaves at `snap.from` of its speed and reaches
@@ -69,11 +89,13 @@ export function stepRoll(
 ): boolean {
   const r = feel.roll;
   const dt = ROLL_STEP;
+  const dir = state.direction ?? plan.direction;
+  state.hit = null;
   const ahead = plan.radius * 1.2;
   const packed = clamp01(
     ground.packedAt(
-      state.position.x + plan.direction.x * ahead,
-      state.position.z + plan.direction.z * ahead,
+      state.position.x + dir.x * ahead,
+      state.position.z + dir.z * ahead,
     ),
   );
   // Less drag early in the roll: it eases in over `early.time`, so the ball carries its snap.
@@ -94,11 +116,41 @@ export function stepRoll(
   const move = movingSpeed(state, feel) * dt;
   state.age += dt;
   state.position = {
-    x: state.position.x + plan.direction.x * move,
-    z: state.position.z + plan.direction.z * move,
+    x: state.position.x + dir.x * move,
+    z: state.position.z + dir.z * move,
   };
   state.rolled += move;
+  bounceOffWall(state, dir, plan.radius, feel, ground.wall);
   return true;
+}
+
+/**
+ * The back wall: once the ball's edge reaches `wall.inset` in front of the paper (the snow bank), it bounces back
+ * inside the circle. Straight off the wall it keeps `wall.bounce` of its speed, along the wall `wall.slide`, so it
+ * rolls back toward the lane, slower. At most `wall.most` bounces a roll.
+ */
+function bounceOffWall(state: RollState, dir: Vec2, radius: number, feel: Feel, wall: BackWall | null | undefined) {
+  const w = feel.wall;
+  if (!wall || (state.bounces ?? 0) >= w.most) return;
+  const reach = wall.radius - w.inset - radius;
+  const dx = state.position.x - wall.cx;
+  const dz = state.position.z - wall.cz;
+  const out = Math.hypot(dx, dz);
+  if (out < reach || out < 1e-6) return;
+  const n = { x: dx / out, z: dz / out };
+  const along = dir.x * n.x + dir.z * n.z;
+  if (along <= 0) return; // already heading back in
+  // Split the way it goes into straight at the wall and along it; bounce the first back, keep some of the second.
+  const tx = dir.x - along * n.x;
+  const tz = dir.z - along * n.z;
+  const nx = -along * w.bounce * n.x + tx * w.slide;
+  const nz = -along * w.bounce * n.z + tz * w.slide;
+  const kept = Math.hypot(nx, nz);
+  state.hit = { at: { x: wall.cx + n.x * (reach + radius), z: wall.cz + n.z * (reach + radius) }, normalSpeed: along * state.speed };
+  state.position = { x: wall.cx + n.x * reach, z: wall.cz + n.z * reach };
+  state.direction = { x: nx / kept, z: nz / kept };
+  state.speed *= kept;
+  state.bounces = (state.bounces ?? 0) + 1;
 }
 
 /** How far past the sweet spot a pull of this power is: 0 at or below it, 1 at a full pull (`pull.sweet`). */
@@ -149,9 +201,13 @@ export function planRoll(
 
   const state: RollState = { position: { ...start }, speed: startSpeed, rolled: 0, age: 0 };
   const shape = { direction, size: s, radius };
+  const bounces: Vec2[] = [];
   let steps = 0;
   const most = LONGEST_ROLL / ROLL_STEP;
-  while (steps < most && stepRoll(state, shape, feel, ground)) steps++;
+  while (steps < most && stepRoll(state, shape, feel, ground)) {
+    steps++;
+    if (state.hit) bounces.push({ ...state.position });
+  }
 
   return {
     start,
@@ -161,6 +217,7 @@ export function planRoll(
     radius,
     power,
     stop: state.position,
+    bounces,
     distance: state.rolled,
     duration: steps * ROLL_STEP,
   };

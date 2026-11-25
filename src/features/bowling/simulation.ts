@@ -5,7 +5,7 @@
  * Step it with `step(seconds)`; feed it slides and pull targets; read its state; listen to its events.
  */
 import type { Feel } from "./content";
-import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, movingSpeed, pastSweet, planRoll, powerOf, snapShare, stepRoll } from "./roll";
+import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, type RollState, movingSpeed, pastSweet, planRoll, powerOf, snapShare, stepRoll } from "./roll";
 import { type Vec2, add, clamp01, distance, ease, length, lerp, scale, sub } from "./vec";
 
 /** ready (sliding allowed) → pulling → thrown (a little hop) → ready. */
@@ -83,6 +83,15 @@ export type RollingBall = {
   speed: number;
   /** Direction times speed, for the snow's plough. */
   velocity: Vec2;
+  /** Which way it rolls now: the plan's direction until it bounces off the back wall (`FEEL.wall`). */
+  direction: Vec2;
+  /** How often it has bounced off the back wall. */
+  bounces: number;
+  /**
+   * Its radius now: the plan's at first, smaller once cards have knocked snow off it (`chip`). The drawing and the
+   * pins use this; the roll itself keeps the plan's, so it still follows the aim line it showed.
+   */
+  radius: number;
   rolled: number;
   rolling: boolean;
   /** Seconds since it stopped (0 while rolling). */
@@ -107,6 +116,38 @@ export type BowlEvent =
       reason: "short" | "interrupted";
     }
   | { type: "stopped"; thrower: string; ballId: number; at: Vec2; radius: number; size: number }
+  /**
+   * A ball met the back wall and bounced: `at` where it touched the wall (on the snow), `ball` where its middle is,
+   * `strength` how hard (0..1, `FEEL.wall.fullSpeed` straight at the wall = 1), `direction` its way back.
+   */
+  | {
+      type: "bounced";
+      thrower: string;
+      ballId: number;
+      at: Vec2;
+      ball: Vec2;
+      direction: Vec2;
+      strength: number;
+      radius: number;
+      size: number;
+    }
+  /**
+   * A card knocked snow off a ball (see `chip`): `at` where it struck (on the ball's edge), `lost` the share of its
+   * snow that came off, `radius` what is left, `broke` true when it crumbled apart (a `burst` follows).
+   */
+  | {
+      type: "chipped";
+      thrower: string;
+      ballId: number;
+      at: Vec2;
+      from: Vec2;
+      lost: number;
+      before: number;
+      radius: number;
+      speed: number;
+      size: number;
+      broke: boolean;
+    }
   /** A ball poofs into snow (see `burst`); `removed` follows once it has gone. */
   | { type: "burst"; ballId: number; at: Vec2; radius: number; velocity: Vec2 }
   | { type: "removed"; ballId: number };
@@ -281,6 +322,9 @@ export class Bowling {
       position: { ...plan.start },
       speed: plan.startSpeed * snapShare(0, this.feel),
       velocity: scale(plan.direction, plan.startSpeed * snapShare(0, this.feel)),
+      direction: { ...plan.direction },
+      bounces: 0,
+      radius: plan.radius,
       rolled: 0,
       rolling: true,
       restAge: 0,
@@ -303,6 +347,38 @@ export class Bowling {
   }
 
   /**
+   * A card knocks snow off the ball: it loses `lost` (0..1) of its snow from the side that struck (toward `toward`,
+   * a point on the snow), shrinks by that, and carries on smaller. Below `FEEL.impact.breakBelow` radius it crumbles
+   * apart completely (a `burst`). The roll's path does not change. Returns false if there is no such ball.
+   */
+  chip(ballId: number, lost: number, toward: Vec2): boolean {
+    const ball = this.balls.find((b) => b.id === ballId);
+    if (!ball || ball.bursting !== null || lost <= 0) return false;
+    const before = ball.radius;
+    const after = before * Math.cbrt(1 - clamp01(lost));
+    const broke = after < this.feel.impact.breakBelow;
+    ball.radius = broke ? before : after;
+    const dx = toward.x - ball.position.x;
+    const dz = toward.z - ball.position.z;
+    const d = Math.hypot(dx, dz) || 1;
+    this.emit({
+      type: "chipped",
+      thrower: ball.thrower,
+      ballId,
+      at: { x: ball.position.x + (dx / d) * before, z: ball.position.z + (dz / d) * before },
+      from: { x: dx / d, z: dz / d },
+      lost: broke ? 1 : clamp01(lost),
+      before,
+      radius: ball.radius,
+      speed: ball.speed,
+      size: ball.plan.size,
+      broke,
+    });
+    if (broke) this.burst(ballId);
+    return true;
+  }
+
+  /**
    * Poof a rolling or resting ball into snow: it keeps rolling for a moment while it flattens and shrinks
    * away (drawn by the stage, with a puff of snow), then it is removed. The pins ask for this once the ball
    * has rolled through them, so it never parks over the fallen cards. Returns false if there is no such ball
@@ -312,7 +388,7 @@ export class Bowling {
     const ball = this.balls.find((b) => b.id === ballId);
     if (!ball || ball.bursting !== null) return false;
     ball.bursting = 0;
-    this.emit({ type: "burst", ballId, at: { ...ball.position }, radius: ball.plan.radius, velocity: { ...ball.velocity } });
+    this.emit({ type: "burst", ballId, at: { ...ball.position }, radius: ball.radius, velocity: { ...ball.velocity } });
     return true;
   }
 
@@ -451,15 +527,23 @@ export class Bowling {
     }
     ball.track = next;
 
-    // Growth: only while reaching farther than before, and less over packed snow.
+    // Growth: a share from pulling farther than before, the rest from holding the charge; less over packed snow.
     const max = Math.max(1e-6, feel.pull.max);
     const pulledBy = distance(next, t.foot);
     const reach = Math.min(pulledBy, max);
+    const freshness = lerp(1, feel.ball.growthOnPacked, packed);
+    const sizeBefore = ball.size;
     if (reach > ball.reach) {
-      const freshness = lerp(1, feel.ball.growthOnPacked, packed);
-      ball.size = clamp01(ball.size + ((reach - ball.reach) / max) * freshness);
+      ball.size = clamp01(ball.size + ((reach - ball.reach) / max) * feel.ball.growByPull * freshness);
       ball.reach = reach;
     }
+    // Held: it keeps rolling bigger the longer you charge (faster the farther it is pulled), once past the cancel distance.
+    if (pulledBy >= feel.pull.cancelBelow) {
+      const share = lerp(feel.ball.heldFloor, 1, clamp01(reach / max));
+      const timed = (1 - feel.ball.growByPull) / Math.max(1e-6, feel.ball.growSeconds);
+      ball.size = clamp01(ball.size + timed * share * freshness * dt);
+    }
+    const grown = ball.size - sizeBefore;
     ball.radius = lerp(feel.ball.radiusSmall, feel.ball.radiusBig, Math.pow(ball.size, feel.ball.growthCurve));
 
     // Beside the feet: to the side of the pull line, easing in as the pull starts, wider for a bigger ball.
@@ -472,7 +556,8 @@ export class Bowling {
     // Rolling.
     const move = sub(drawn, ball.position);
     const moved = length(move);
-    ball.rolled += moved;
+    // Growing while held also turns it a little, as if being rolled bigger on the spot.
+    ball.rolled += moved + Math.max(0, grown) * feel.ball.rollWhileGrowing;
     if (moved > 1e-6) ball.rollDirection = scale(move, 1 / moved);
     const instant = dt > 0 ? scale(move, 1 / dt) : { x: 0, z: 0 };
     ball.velocity = add(ball.velocity, scale(sub(instant, ball.velocity), ease(20, dt)));
@@ -482,7 +567,7 @@ export class Bowling {
     ball.dwell = moved / Math.max(dt, 1e-9) < feel.ball.stillSpeed ? ball.dwell + dt : 0;
 
     const wasCharged = ball.charged;
-    ball.charged = ball.reach >= max * 0.999;
+    ball.charged = ball.reach >= max * 0.999 && ball.size >= 0.999;
     if (ball.charged && !wasCharged) this.emit({ type: "charged", thrower: t.id, at: { ...next } });
     const c = feel.charge;
     ball.tremble = ball.charged ? Math.min(1, ball.tremble + dt / Math.max(0.01, c.trembleFadeIn)) : 0;
@@ -504,14 +589,36 @@ export class Bowling {
       this.rollClock -= ROLL_STEP;
       for (const ball of this.balls) {
         if (!ball.rolling) continue;
-        const state = { position: ball.position, speed: ball.baseSpeed, rolled: ball.rolled, age: ball.age };
+        const state: RollState = {
+          position: ball.position,
+          speed: ball.baseSpeed,
+          rolled: ball.rolled,
+          age: ball.age,
+          direction: ball.direction,
+          bounces: ball.bounces,
+        };
         const still = stepRoll(state, ball.plan, this.feel, this.ground);
         ball.position = state.position;
         ball.baseSpeed = state.speed;
         ball.age = state.age;
         ball.speed = still ? movingSpeed(state, this.feel) : 0;
         ball.rolled = state.rolled;
-        ball.velocity = scale(ball.plan.direction, ball.speed);
+        ball.direction = state.direction ?? ball.direction;
+        ball.bounces = state.bounces ?? ball.bounces;
+        ball.velocity = scale(ball.direction, ball.speed);
+        if (state.hit) {
+          this.emit({
+            type: "bounced",
+            thrower: ball.thrower,
+            ballId: ball.id,
+            at: state.hit.at,
+            ball: { ...ball.position },
+            direction: { ...ball.direction },
+            strength: clamp01(state.hit.normalSpeed / Math.max(1e-6, this.feel.wall.fullSpeed)),
+            radius: ball.radius,
+            size: ball.plan.size,
+          });
+        }
         if (!still) {
           ball.rolling = false;
           this.emit({
@@ -519,7 +626,7 @@ export class Bowling {
             thrower: ball.thrower,
             ballId: ball.id,
             at: { ...ball.position },
-            radius: ball.plan.radius,
+            radius: ball.radius,
             size: ball.plan.size,
           });
         }

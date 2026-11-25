@@ -48,8 +48,8 @@ export function SpeedLines({ game, snow }: { game: Bowling; snow: SnowApi }) {
       if (!sprite) return;
       sprite.visible = fast > 0.01 && !!ball;
       if (!ball || !sprite.visible) return;
-      const r = ball.plan.radius;
-      const d = ball.plan.direction;
+      const r = ball.radius;
+      const d = ball.direction;
       // Behind the ball and out to its side, at about its middle height.
       const back = r + s.curlBehind;
       const across = r * s.curlOut * side;

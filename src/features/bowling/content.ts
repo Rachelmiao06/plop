@@ -86,8 +86,24 @@ export const FEEL = {
     /** Ball radius when it first appears, and when fully grown (0.25 and 1.2 across). */
     radiusSmall: 0.125,
     radiusBig: 0.6,
-    /** Shape of growth: radius = small..big along size^curve. Below 1 = grows fast early. */
-    growthCurve: 0.85,
+    /**
+     * Shape of growth: radius = small..big along size^curve. Below 1 = grows fast early; above 1 = starts small and
+     * grows faster and faster the further you pull (Rachel: a light pull made the ball big at once, too easy; the
+     * ball should visibly roll bigger as you charge). At 1.8 a third of the pull gives about 0.18 radius, half 0.26,
+     * full 0.6 (was 0.85: 0.30, 0.39, 0.6). Only the ball's size; its speed and the roll are unchanged.
+     */
+    growthCurve: 1.8,
+    /**
+     * The longer you charge, the bigger it gets (Rachel). Pulling back farther than before gives `growByPull` of the
+     * growth (a quick yank is a small ball); the rest comes with time while it is held: a full pull grows it to full in
+     * about `growSeconds`, a shorter pull more slowly (never below `heldFloor` as fast). The held ball turns a little as
+     * it grows (`rollWhileGrowing` units of roll per full growth), so it reads as being rolled bigger. Both slow down
+     * over packed snow (`growthOnPacked`). Full size, not just full pull, is "charged" (the clunk and the tremble).
+     */
+    growByPull: 0.35,
+    growSeconds: 2.0,
+    heldFloor: 0.3,
+    rollWhileGrowing: 1.6,
     /**
      * Growth needs fresh snow. On a fully packed track the ball grows only this share
      * as fast, so pulling back over your own old groove grows it less.
@@ -118,26 +134,28 @@ export const FEEL = {
   },
 
   /**
-   * The roll down the long lane after letting go. Tuned so a light ball reaches the pins in about 0.9 s and
-   * a full one in about 1.35 s, and both stop about 3 units past the pin spot (`docs/TUNING.md`).
+   * The roll down the long lane after letting go (Rachel: it should go further, with more force, all the way to the
+   * back). A light ball reaches the pins in about 0.85 s, a full one in about 1 s, and every throw carries on to the
+   * paper wall at the back (`wall`): a light one just taps it, a medium one bounces back behind the pins, a full one
+   * rolls back through the pins' spot (`docs/TUNING.md`).
    */
   roll: {
     /** Top speed of the smallest and the biggest ball (at full pull), reached right after the snap. */
-    speedSmall: 13.5,
-    speedBig: 8.4,
+    speedSmall: 15.5,
+    speedBig: 11.5,
     /** A weak pull starts this share as fast as a full one. */
-    weakPull: 0.8,
+    weakPull: 0.75,
     /** Letting go is a snap: the ball leaves at `from` of its top speed and reaches it within `time` seconds. */
     snap: { from: 0.35, time: 0.09 },
     /** Early in the roll the snow slows it only `dragShare` as much, easing to full drag over `time` seconds. */
     early: { dragShare: 0.2, time: 0.7 },
     /** Steady slowing in deep fresh snow, and the extra slowing that grows with speed. */
-    dragFresh: 6.5,
+    dragFresh: 4.2,
     dragPerSpeed: 0.15,
     /** On a fully packed track the slowing is only this share, so old grooves become (gently) faster lanes. */
     dragOnPacked: 0.8,
-    /** Big balls plough on: their slowing is this share of a small ball's. */
-    dragBigShare: 0.45,
+    /** Big balls plough on: their slowing is this share of a small ball's (heavy, but unstoppable). */
+    dragBigShare: 0.35,
     /** Below this speed the ball stops. */
     stopSpeed: 0.12,
     /** A stopped ball stays in the snow this long before it goes away. */
@@ -151,6 +169,44 @@ export const FEEL = {
     /** `burst()`: a ball asked to burst (the pins do, once it has rolled through them) poofs into snow over this long. */
     burstTime: 0.32,
   },
+
+  /**
+   * The back wall (Rachel: roll all the way to the back and bounce off the paper sky). The scenery's backdrop says
+   * where its paper wall stands (`wall.ts`); the ball meets it `inset` in front of the paper (the snow bank at its
+   * foot), keeps `bounce` of its speed straight off the wall and `slide` of it along the wall, and rolls back toward
+   * the lane (at most `most` bounces a roll). The aim line shows the bounce too, so it still matches the roll.
+   * The hit: a soft thump of `thump` (+ `thumpPerSize` for a full ball) on the thump sound's size scale, times how
+   * hard it hit (`fullSpeed` units per second straight at the wall = the hardest), a puff of snow (`LOOK.wallPuff`)
+   * and a wobble of the paper (the backdrop's).
+   * The roll to the wall and back never holds up the score: the pins count the first pass through the crowd and treat
+   * the rest as a bonus show (the pins' `IMPACT.count`).
+   * A ball that has been past the pins rolls back from the wall until it is nearly still (`poofBelow` units per
+   * second), then poofs into snow so it never parks over the fallen cards.
+   */
+  wall: {
+    inset: 0.55,
+    bounce: 0.58,
+    slide: 0.8,
+    most: 2,
+    thump: 0.22,
+    thumpPerSize: 0.3,
+    fullSpeed: 7,
+    poofBelow: 0.8,
+    /**
+     * The friend (bunny, sleepy cat) keeps its +2 from the way out: a ball rolling back from the wall poofs just short
+     * of a standing friend, this many seconds of its travel ahead (plus its radius and a small margin).
+     */
+    spareFriendsAhead: 0.12,
+  },
+
+  /**
+   * The ball gets smashed by the cards (Rachel: the hit should feel heavy, and the snowball should break up too). Each
+   * card it strikes knocks off `perCard.share` of its snow plus `perCard.volume` (cubic units, about a fist of snow), times
+   * the card's weight (the pins' `IMPACT.card.chip`), so a small ball loses most of itself on the first card or two and
+   * a big one only a few chunks per card. Smaller than `breakBelow` (radius) and it crumbles apart into a pile of snow.
+   * The roll keeps its path (the aim line stays true); only the ball you see, and the one the pins feel, shrinks.
+   */
+  impact: { perCard: { share: 0.07, volume: 0.005 }, breakBelow: 0.1 },
 
   /** How the ball presses the snow (passed to the snow scene's `pressGroove`). */
   groove: {
@@ -303,6 +359,37 @@ export const LOOK = {
    * squash it springs to (up to `ballSquash.max`).
    */
   burst: { amount: 0.16, radius: 1.3, carry: 0.35, flatten: 0.25 },
+
+  /**
+   * Meeting the back wall (`FEEL.wall`): the ball squashes flat against it (`squash`, times how hard it hit) and a
+   * puff of snow is thrown up off the bank (`amount` times how hard, over `radius` × the ball's radius, flying back
+   * toward the lane at `speed`). The paper's own wobble is the backdrop's.
+   */
+  wallHit: { squash: 0.3, amount: 0.12, radius: 1.6, speed: 2.2 },
+
+  /**
+   * Snow knocked off the ball by a card (`FEEL.impact`, the `chipped` event): `count` big chunks per tenth of its snow
+   * lost (at least `least`, at most `most`), `size` across, thrown out of the struck side at `speed` (and `up`), carried
+   * on with `carry` of the ball's speed; they tumble and roll on the snow (slowing by `roll` units per second each
+   * second), dent it where they land, then sink away over `melt` seconds. A burst of powder (`powder`, times the snow
+   * lost) and a squash of the ball (`squash`). A ball crumbling apart (`crumble`) throws `crumble.count` chunks and a big
+   * powder puff; the chunks lie about as its little pile of snow before they sink (a real `heapSnow` would never melt).
+   */
+  chunks: {
+    count: 4,
+    least: 2,
+    most: 9,
+    size: [0.07, 0.13] as [number, number],
+    speed: [1.2, 2.6] as [number, number],
+    up: [1.4, 2.8] as [number, number],
+    carry: 0.45,
+    roll: 2.6,
+    melt: 1.4,
+    max: 64,
+    powder: 0.5,
+    squash: 0.35,
+    crumble: { count: 12, powder: 0.3 },
+  },
 
   /** With "reduce motion" on: squash, stretch and hops keep this share (vibration and sound stay). */
   reducedMotion: 0.3,

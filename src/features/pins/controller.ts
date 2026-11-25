@@ -30,6 +30,11 @@ export type PinsEvent =
   | { type: "knocked"; down: number; total: number }
   /** Everything settled after a throw: the count. */
   | { type: "result"; result: PinsResult }
+  /**
+   * After the count, the ball's bounce off the back wall and roll back knocked more cards over (a bonus show): the
+   * count grew. Same shape as `result`; each friend keeps its state from the count, so its bonus never goes away.
+   */
+  | { type: "recount"; result: PinsResult }
   /** Cards are back on their spots (after a reset or a new set). */
   | { type: "ready"; formation: string; total: number }
   | { type: "phase"; phase: PinsPhase };

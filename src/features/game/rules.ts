@@ -125,6 +125,8 @@ export function createGame(feel = GAME) {
   let gainId = 0;
   /** "Together" mode: the second player's points wait a moment, so the two flights never overlap. */
   let pendingGain: GameState["gain"] = null;
+  /** The points this throw has given so far, per player (a bonus recount adds only the difference). */
+  let given: [number, number] = [0, 0];
   const listeners = new Set<() => void>();
   const set = (patch: Partial<GameState>) => {
     state = { ...state, ...patch };
@@ -242,16 +244,47 @@ export function createGame(feel = GAME) {
           if (!best[p] || got[p] > best[p]!.points) best[p] = { points: got[p], round: state.round };
         }
         pendingGain = { id: 0, player: 1, points: got[1] };
+        given = [got[0], got[1]];
         set({ stage: "counted", scores, best, gain: { id: ++gainId, player: 0, points: got[0] } });
         return;
       }
       const points = pointsFor(count, feel);
+      given = [0, 0];
+      given[state.active] = points;
       const scores: [number, number] = [state.scores[0], state.scores[1]];
       scores[state.active] += points;
       const best: [GameState["best"][0], GameState["best"][1]] = [state.best[0], state.best[1]];
       const mine = best[state.active];
       if (!mine || points > mine.points) best[state.active] = { points, round: state.round };
       set({ stage: "counted", scores, best, gain: { id: ++gainId, player: state.active, points } });
+    },
+
+    /**
+     * After the count, the ball's roll back from the wall knocked more cards (the pins' `recount`): their "+1"s fly and
+     * the difference in points is added (never taken away). Returns true when the second player's points wait a moment.
+     */
+    recount(count: ThrowCount): boolean {
+      if (state.stage !== "counted" && state.stage !== "passing") return false;
+      countTo(count.down);
+      const got: [number, number] = [given[0], given[1]];
+      if (together() && count.byThrower) {
+        for (const p of [0, 1] as const) {
+          const mine = count.byThrower[feel.players[p].thrower];
+          if (mine) got[p] = Math.max(given[p], pointsFor(mine, feel));
+        }
+      } else got[state.active] = Math.max(given[state.active], pointsFor(count, feel));
+      const more: [number, number] = [got[0] - given[0], got[1] - given[1]];
+      if (more[0] <= 0 && more[1] <= 0) return false;
+      given = got;
+      const scores: [number, number] = [state.scores[0] + more[0], state.scores[1] + more[1]];
+      const best: [GameState["best"][0], GameState["best"][1]] = [state.best[0], state.best[1]];
+      for (const p of [0, 1] as const) {
+        if (more[p] > 0 && (!best[p] || got[p] > best[p]!.points)) best[p] = { points: got[p], round: state.round };
+      }
+      const first: 0 | 1 = more[0] > 0 ? 0 : 1;
+      if (first === 0 && more[1] > 0) pendingGain = { id: 0, player: 1, points: more[1] };
+      set({ scores, best, gain: { id: ++gainId, player: first, points: more[first] } });
+      return first === 0 && more[1] > 0;
     },
 
     /** The pins stand again (after their bounce, or the next round's set has hopped in). */

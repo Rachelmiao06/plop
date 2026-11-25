@@ -20,6 +20,8 @@ import {
 
 // The match's time of day is one shared value, owned by the snow scene (the game eases it between rounds).
 import { getTimeOfDay, useSnow } from "@/features/snow-scene";
+// The back wall contract with the roll (a plain module, no drawing): where the paper stands, and where a ball hit it.
+import { onWallHit, setBackWall } from "@/features/bowling/wall";
 
 import { backdrop, effectPx, effectSrc, propPx, propSettings, propSrc, type TokenMix } from "../content";
 import { useReducedMotion } from "./motion";
@@ -30,6 +32,50 @@ const DEG = Math.PI / 180;
 // Changed every frame (the fade as the view rises), so it lives outside the component, shared by every layer.
 const fade = { uOpacity: { value: 1 } };
 
+/**
+ * The paper gives a little where a snowball hits the back wall (Rachel: bounce off the paper sky): the sky and the
+ * hills band hop and shiver around the spot, a ripple running out along the arc, dying away. Drawn by moving the
+ * wall's own vertices, so it costs nothing while still. Up to `slots` hits at once.
+ * `lift` / `push`: how far (units) a full-strength hit lifts the paper and pushes it back; `width`: how far along the
+ * arc it spreads (units); `fall`: how quickly it fades up the wall (units); `waves` per second, `travel` (waves per
+ * unit along the arc), `damping` per second, gone after `time` seconds. Its sound and the snow puff are bowling's.
+ */
+const WOBBLE = { slots: 3, lift: 0.2, push: 0.22, width: 3.2, fall: 2.6, waves: 2.6, travel: 0.9, damping: 2.2, time: 1.9 };
+// One set of uniforms shared by the wall and the hills band, so both move as one sheet of paper.
+const wobble = {
+  // Per hit: angle on the wall's circle (radians, as `atan(x, z)` from its middle), age (s, < 0 = empty), strength.
+  uHits: { value: Array.from({ length: WOBBLE.slots }, () => new Vector3(0, -1, 0)) },
+  uWobble: { value: [WOBBLE.lift, WOBBLE.push, WOBBLE.width, WOBBLE.fall] },
+  uWave: { value: [WOBBLE.waves, WOBBLE.travel, WOBBLE.damping, WOBBLE.time] },
+  uRadius: { value: 10 },
+};
+/** GLSL: moves a vertex of a wall-circle mesh (local position, height above the foot) by the live hits. */
+const wobbleGlsl = /* glsl */ `
+  uniform vec3 uHits[${WOBBLE.slots}];
+  uniform vec4 uWobble;
+  uniform vec4 uWave;
+  uniform float uRadius;
+  vec3 wobbled(vec3 p, float height) {
+    float ang = atan(p.x, p.z);
+    float lift = 0.0;
+    float push = 0.0;
+    for (int i = 0; i < ${WOBBLE.slots}; i++) {
+      vec3 h = uHits[i];
+      if (h.y < 0.0 || h.y > uWave.w) continue;
+      // Distance along the arc, the short way round.
+      float along = (mod(ang - h.x + 3.14159265, 6.2831853) - 3.14159265) * uRadius;
+      float spread = exp(-along * along / (uWobble.z * uWobble.z));
+      float env = exp(-h.y * uWave.z) * smoothstep(0.0, 0.06, h.y);
+      float wave = sin(h.y * uWave.x * 6.2831853 - abs(along) * uWave.y);
+      lift += h.z * spread * env * wave;
+      push += h.z * spread * env * (0.5 + 0.5 * wave);
+    }
+    float up = exp(-max(height, 0.0) / uWobble.w);
+    vec2 out2 = length(p.xz) > 0.0 ? normalize(p.xz) : vec2(0.0);
+    return p + vec3(out2.x * push * uWobble.y, lift * uWobble.x, out2.y * push * uWobble.y) * up;
+  }
+`;
+
 /** A flat drawing shown exactly as drawn (no light, no tone mapping), fading with the backdrop. */
 /**
  * `tile` lays the drawing along the band `repeat` times, side by side (Rachel's panorama is drawn to tile: its
@@ -38,7 +84,15 @@ const fade = { uOpacity: { value: 1 } };
  */
 type Tile = { repeat: number; crop: [number, number]; phase: number };
 
-function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile | null = null, mirror = false) {
+function artPlaneMaterial(
+  map: Texture,
+  paper: Color,
+  haze: number,
+  tile: Tile | null = null,
+  mirror = false,
+  /** Wobbles with the wall where a ball hits (the hills band, on the wall's circle): `above` = local y + this is the height above the foot. */
+  wobbles: { footAt: number } | null = null,
+) {
   return new ShaderMaterial({
     side: mirror ? BackSide : DoubleSide,
     transparent: true,
@@ -53,8 +107,19 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile |
       // Evening: a dusk tint over the drawing, lit windows kept bright (hills only), and its own fade (sun, moon, stars).
       uDusk: { value: new Color() }, uDuskAmt: { value: 0 },
       uGlow: { value: new Color() }, uGlowAmt: { value: 0 },
-      uAlpha: { value: 1 } },
-    vertexShader: /* glsl */ `
+      uAlpha: { value: 1 },
+      ...(wobbles ? wobble : {}) },
+    vertexShader: wobbles
+      ? /* glsl */ `
+      varying vec2 vUv;
+      ${wobbleGlsl}
+      void main() {
+        vUv = uv;
+        vec3 p = wobbled(position, position.y + ${wobbles.footAt.toFixed(4)});
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }
+    `
+      : /* glsl */ `
       varying vec2 vUv;
       void main() {
         vUv = uv;
@@ -222,10 +287,31 @@ export function Backdrop({ center, reach = 0 }: Props) {
     return sum / n;
   }, [snow, arc, cx, cz, b.radius]);
 
+  // Tell the roll where the paper wall stands (it bounces balls back from just in front of it, `FEEL.wall`).
+  useEffect(() => {
+    setBackWall({ cx, cz, radius: b.radius });
+    wobble.uRadius.value = b.radius;
+    return () => setBackWall(null);
+  }, [cx, cz, b.radius]);
+  // A ball hit the wall: the paper gives a little there (the newest hit takes the oldest slot). Still with "reduce motion".
+  const hits = useRef<{ angle: number; at: number; strength: number }[]>([]);
+  const clockNow = useRef(0);
+  useEffect(
+    () =>
+      onWallHit((hit) => {
+        if (reduced) return;
+        const list = hits.current;
+        list.push({ angle: Math.atan2(hit.x - cx, hit.z - cz), at: clockNow.current, strength: hit.strength });
+        if (list.length > WOBBLE.slots) list.shift();
+      }),
+    [cx, cz, reduced],
+  );
+
   // Paper sky wall (seen from inside the curve).
   const below = 1; // reaches this far under the snow so no gap ever shows at its foot
   const wall = useMemo(
-    () => new CylinderGeometry(b.radius, b.radius, b.height + below, 72, 1, true, Math.PI - arc / 2, arc),
+    // Enough rows and columns for the wobble to bend smoothly (still only a few thousand vertices).
+    () => new CylinderGeometry(b.radius, b.radius, b.height + below, 120, 10, true, Math.PI - arc / 2, arc),
     [b.radius, b.height, arc],
   );
   const wallMaterial = useMemo(
@@ -245,12 +331,17 @@ export function Backdrop({ center, reach = 0 }: Props) {
           uGrain: { value: ev.grain },
           uFoot: { value: foot },
           ...fade,
+          ...wobble,
         },
         vertexShader: /* glsl */ `
+          uniform float uFoot;
           varying float vHeight;
           varying float vAngle;
+          ${wobbleGlsl}
           void main() {
-            vec4 world = modelMatrix * vec4(position, 1.0);
+            // Height above the foot, for the wobble (which is strongest low down, where the ball hits).
+            float above = (modelMatrix * vec4(position, 1.0)).y - uFoot;
+            vec4 world = modelMatrix * vec4(wobbled(position, above), 1.0);
             vHeight = world.y;
             vAngle = atan(position.x, position.z);
             gl_Position = projectionMatrix * viewMatrix * world;
@@ -297,8 +388,11 @@ export function Backdrop({ center, reach = 0 }: Props) {
     [hillsRadius, b.hillsHeight, arc],
   );
   const hillsMaterial = useMemo(
-    () => artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, { repeat: repeats, crop, phase }, true),
-    [hillsTex, repeats, crop, phase, paper, b.haze],
+    () =>
+      artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, { repeat: repeats, crop, phase }, true, {
+        footAt: b.hillsHeight / 2 - b.hillsSink,
+      }),
+    [hillsTex, repeats, crop, phase, paper, b.haze, b.hillsHeight, b.hillsSink],
   );
 
   // Sky doodles: small flat planes on the wall, facing the middle.
@@ -362,6 +456,15 @@ export function Backdrop({ center, reach = 0 }: Props) {
   useFrame(({ camera, clock }) => {
     const g = root.current;
     if (!g) return;
+    // The wobble: each live hit's age; finished ones leave their slot.
+    clockNow.current = clock.elapsedTime;
+    const list = hits.current;
+    while (list.length && clock.elapsedTime - list[0].at > WOBBLE.time) list.shift();
+    wobble.uHits.value.forEach((slot, i) => {
+      const hit = list[i];
+      if (hit) slot.set(hit.angle, clock.elapsedTime - hit.at, hit.strength);
+      else slot.set(0, -1, 0);
+    });
     // Fade with how steeply the camera looks down at the snow (from the throwing view that is its height
     // seen from the middle of the scene; a camera riding low behind the ball looks nearly level and keeps it).
     camera.getWorldDirection(look);

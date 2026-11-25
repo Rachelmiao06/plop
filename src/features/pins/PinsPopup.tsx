@@ -86,6 +86,22 @@ export function PinsPopup({ pins, names }: { pins: Pins; names?: Record<string, 
     let leaveTimer: ReturnType<typeof setTimeout> | undefined;
     let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const off = pins.subscribe((e) => {
+      if (e.type === "recount") {
+        // The roll back knocked more: the number ticks up with a little bump (the pop plays again), and it stays a bit.
+        setShown((s) => {
+          if (!s) return s;
+          clearTimeout(leaveTimer);
+          clearTimeout(hideTimer);
+          const mine = ++id;
+          if (e.result.fullClear && !s.result.fullClear) playFullClear();
+          else playPop(false);
+          const stay = (e.result.fullClear ? PINS.popup.showForFullClear : PINS.popup.showFor) * 1000 * 0.6;
+          leaveTimer = setTimeout(() => setShown((v) => (v && v.id === mine ? { ...v, leaving: true } : v)), stay);
+          hideTimer = setTimeout(() => setShown((v) => (v && v.id === mine ? null : v)), stay + 300);
+          return { id: mine, result: e.result, leaving: false };
+        });
+        return;
+      }
       if (e.type !== "result") return;
       clearTimeout(leaveTimer);
       clearTimeout(hideTimer);

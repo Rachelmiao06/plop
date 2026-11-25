@@ -6,10 +6,10 @@ seconds, units per second.
 
 | # | What you feel | Number(s) today | Where |
 |---|---|---|---|
-| 1 | **How big the ball gets.** Smallest and biggest snowball (radius). Bigger = slower, heavier, wider path. | `0.125` → `0.6` | `src/features/bowling/content.ts` · `FEEL.ball.radiusSmall`, `radiusBig` |
-| 2 | **How far you pull for a full ball.** Longer = more drag on a phone, more time to aim. Keyboard: Space fills at `pullSpeed` (about 1.5 s to full). | `1.6` units · `1.1` /s | `FEEL.pull.max` · `FEEL.keyboard.pullSpeed` |
-| 3 | **How fast the ball rolls.** Top speed of a small and of a full ball. On the long lane (pins 8.6 from the line) a light ball reaches the pins in about 0.9 s, a full one in about 1.35 s. | `13.5` and `8.4` | `FEEL.roll.speedSmall`, `speedBig` |
-| 4 | **How far it rolls.** Slowing in fresh snow (a full ball slows only `dragBigShare` as much), and how much less on an old groove. Both stop about 3 units past the pin spot. | `6.5` · `0.45` · `0.8` share | `FEEL.roll.dragFresh` · `dragBigShare` · `dragOnPacked` |
+| 1 | **How big the ball gets.** Smallest and biggest snowball (radius), and how it grows along the pull (above 1 = small at first, growing faster and faster; Rachel: a light pull was already big, too easy). Bigger = slower, heavier, wider path. | `0.125` → `0.6` · curve `1.8` (was `0.85`) | `src/features/bowling/content.ts` · `FEEL.ball.radiusSmall`, `radiusBig`, `growthCurve` |
+| 2 | **How far you pull for full power, and how long you charge for a full ball.** The pull sets the power (keyboard: Space pulls at `pullSpeed`, about 1.5 s to full); the ball's size grows `growByPull` from pulling back and the rest from holding the charge (Rachel: the longer you charge, the bigger), full in about `growSeconds` at a full pull, slower for a short one (`heldFloor`). Holding Space: radius 0.20 at 1 s, 0.33 at 1.5 s, 0.44 at 2 s, full (0.6) at about 2.8 s. | `1.6` units · `1.1` /s · `0.35` · `2.0` s · `0.3` | `FEEL.pull.max` · `FEEL.keyboard.pullSpeed` · `FEEL.ball.growByPull`, `growSeconds`, `heldFloor` |
+| 3 | **How fast the ball rolls.** Top speed of a small and of a full ball, and how much of it a weak pull gets. On the long lane (pins 8.6 from the line) a light ball reaches the pins in about 0.85 s, a full one in about 1 s. | `15.5` and `11.5` · `0.75` | `FEEL.roll.speedSmall`, `speedBig`, `weakPull` |
+| 4 | **How far it rolls.** Slowing in fresh snow (a full ball slows only `dragBigShare` as much), and how much less on an old groove. Every throw reaches the paper wall at the back (about 15 from the line) and bounces back (`FEEL.wall`, below). | `4.2` · `0.35` · `0.8` share | `FEEL.roll.dragFresh` · `dragBigShare` · `dragOnPacked` |
 | 5 | **How heavy the ball feels in the hand.** How quickly it follows the finger, small vs big. Lower = heavier, laggier. | `22` and `9` | `FEEL.follow.rateLight`, `rateHeavy` |
 | 6 | **How easily cut-outs fall.** Tilt past which a card counts as down, and each weight class's mass and foot depth (deeper foot = harder to tip). | `50`° · light `0.3` / `0.07` … heavy `0.9` / `0.16` | `src/features/pins/content.ts` · `PINS.down.tiltDegrees`, `PINS.weight` |
 | 7 | **How lively a topple is.** Gravity (stronger = paper flops, weaker = floats) and the speed cap that stops cards flying off. | `-13` · `4.5` | `PINS.world.gravity` · `PINS.caps.linear` |
@@ -19,34 +19,83 @@ seconds, units per second.
 
 ## The numbers that make the throw satisfying
 
-Rachel (2026-11-25): the throw felt slow with no punch, the camera static, the lane too short. These change that the most:
+Rachel (2026-11-25): the throw felt slow with no punch, the camera static, the lane too short. Later the same day: the
+camera no longer followed, and the ball did not travel far or with enough force; it should roll all the way to the back,
+bounce off the paper sky and roll back. These change that the most:
 
 1. **Lane length**, `FEEL.lane.pinSpot` (`z -7.2`, 8.6 from the line `lineZ 1.4`; was 5.6). Everything follows it: pin formations, the village between the line and the pins (behind the pins it keeps its old spacing, `village.backDepthScale` in scenery), the calm snow and the paper sky behind the pins.
-2. **Top speed**, `FEEL.roll.speedSmall` / `speedBig` (`13.5` / `8.4`). Light ball to the pins in about 0.9 s, full ball about 1.35 s. The aim line still uses the same `stepRoll`, so it stays exact.
+2. **Top speed**, `FEEL.roll.speedSmall` / `speedBig` (`15.5` / `11.5`, a weak pull `weakPull 0.75` of that). Light ball to the pins in about 0.85 s, full ball about 1 s. The aim line still uses the same `stepRoll`, so it stays exact, bounce included.
 3. **The snap**, `FEEL.roll.snap` (`from 0.35`, `time 0.09` s). The ball leaves at 35% of its speed and reaches full speed in 0.09 s, like a band let go. Lower `from` = more visible kick.
-4. **Carry, then stop**, `FEEL.roll.early` (`dragShare 0.2` over `0.7` s) then `dragFresh 6.5`. The snow barely slows it at first, so it carries its speed down the long lane, then the drag stops it behind the pins.
+4. **Carry, then the wall**, `FEEL.roll.early` (`dragShare 0.2` over `0.7` s) then `dragFresh 4.2` (a full ball `dragBigShare 0.35` of that: heavy, but unstoppable). The snow barely slows it at first, so it carries its speed down the long lane, through the pins and on to the back wall (`FEEL.wall`, below).
 5. **Tension while pulling**, `FEEL.follow.tensionAtFull` (`0.55`), with `FEEL.thrower.leanAtFull` (`0.42`), `LOOK.ballSquash.pullLoad` (`0.08`) and the camera easing in (`GAME.camera.aim`, below).
 6. **The release**, `LOOK.thrower.lunge` (`distance 0.62`, `stiffness 95`: bigger and snappier, `minShare 0.45` on a weak pull), `LOOK.ballSquash.launchSquash` / `launch` (`0.2` squash against the snow, then `0.24` stretch), `LOOK.kick.release` (the puff behind the thrower) and the sound: a low push-off thump `FEEL.beats.pushThump` (`0.32`) and a second whoosh on a strong pull (`whooshDoubleFrom 0.45`).
 7. **The roll you see and hear**, `LOOK.kick.plume` (snow thrown up behind, grows with speed and size), `LOOK.kick.plough` (a big ball's bow wave ahead), `LOOK.clumps.perUnit` (`2.6`), `LOOK.ball.marks` / `markInk` (spin marks, `28` / `0.72`), and `FEEL.sound.crunchFullSpeed` (`11`: the crunch's pace follows the speed all the way down the lane).
 8. **Impact energy**, `PINS.impact` (`push 0.13`, `lift 0.24`, `tumble 0.062`), and `PINS.hitStop` (`0.14` s at `12%`, a full ball up to `+0.1` s at `7%`; thump `0.32 + 0.68 × size`).
 
-### The camera (`GAME.camera` in `src/features/game/content.ts`)
+### The back wall (`FEEL.wall` in `src/features/bowling/content.ts`)
+
+The paper theatre's sky (scenery's `Backdrop`) tells the roll where its wall stands (`src/features/bowling/wall.ts`); the
+ball meets it at the snow bank in front of the paper and bounces back toward the lane. Measured on flat snow from the
+middle of the line:
+
+| Pull | Meets the wall (s after letting go) | Speed into the wall | Rolls back to (z; pins at `-7.2`) |
+|---|---|---|---|
+| light (0.15) | 1.64 | 5.4 | `-11.8` (just off the bank) |
+| medium (0.55) | 1.51 | 7.7 | `-9.7` (behind the set) |
+| sweet spot (0.62) | 1.51 | 7.9 | `-9.0` (just behind the set) |
+| strong (0.8) | 1.56 | 8.1 | `-7.7` (back through the set) |
+| full (1.0) | 1.62 | 8.4 | `-5.4` (through it, a little in front) |
+
+| What you feel | Number(s) today | Where |
+|---|---|---|
+| **How bouncy the paper is.** Share of the speed kept straight off the wall, and along it (an angled throw comes back on a new line, where it can knock new cards). | `bounce 0.58` · `slide 0.8` | `FEEL.wall` |
+| **Where the wall is.** How far in front of the paper the ball meets it (the snow bank); at most this many bounces a roll. | `inset 0.55` · `most 2` | `FEEL.wall` |
+| **The hit.** A soft thump (size scale `thump` + `thumpPerSize` for a full ball, times how hard: `fullSpeed` straight at the wall = hardest), the ball's squash and a puff off the bank. | `0.22` + `0.3` · `7` /s · squash `0.3`, puff `0.12` | `FEEL.wall` · `LOOK.wallHit` |
+| **The paper's wobble.** How high a full hit lifts it and pushes it back, how wide along the arc, how fast it shivers and dies away. | `lift 0.2` · `push 0.22` · `width 3.2` · `2.6` waves/s · `damping 2.2` · `1.9` s | `WOBBLE` in `src/features/scenery/three/Backdrop.tsx` (move to scenery `content.ts` when that file is free) |
+| **The score is quick.** Each card's "+1" flies the moment it falls. "N down!" pops once the ball is through the crowd and no card has moved for `settle`, at the latest `within` after the first contact, even while the ball rolls on to the wall. Cards knocked after that (the roll back, a late chain) add their "+1" and tick "N down!" up (`recount`); a friend keeps its state from the count. The cards pop back once "N down!" has shown `showAtLeast` and the ball has poofed or stopped, at the latest `nextTurnCap` after the count. A ball back from the wall poofs once slower than `poofBelow`. | `settle 0.35` s · `within 1.3` s · `showAtLeast 1.0` s · `nextTurnCap 1.7` s · `poofBelow 0.8` /s | `IMPACT.count` (pins `impact.ts`) · `FEEL.wall` |
+
+Measured in the browser (5 to 6 throws each, light to full), before → after the quick count: first contact → "N down!"
+2.1–3.8 s → 1.2–1.6 s; "N down!" → the next player's turn 2.1–3.1 s → 2.1–2.7 s (a full clear keeps its longer
+celebration, about 3.2 s); a card's "+1" flies in the same frame it tips past "down" (unchanged). Cards first met by a
+ball rolling back from the wall can fall too, and they count. A standing friend (bunny, sleepy cat) never
+falls to the roll back: the ball poofs just short of it, `FEEL.wall.spareFriendsAhead` (`0.12` s of its travel) ahead, so
+the friend's +2 is decided on the way out.
+
+### The impact: heavy cards, a ball that gets smashed (Rachel: the most important part of the throw)
+
+| What you feel | Number(s) today | Where |
+|---|---|---|
+| **The ball breaks up.** Each card it strikes knocks off a share of its snow plus a fist of snow (times the card's weight: light `0.75`, medium `1`, heavy `1.5`); a small ball crumbles apart on a crowd, a big one loses a few chunks per card. The roll keeps its path; only the ball you see (and the one the cards feel) shrinks. | `share 0.07` + `volume 0.005` · crumbles below radius `0.1` | `FEEL.impact` (bowling) · `IMPACT.card.chip` (pins) |
+| **Chunks and powder.** Big chunks thrown out of the struck side that tumble and roll on the snow and dent it, a burst of powder, a squash of the ball. | `4` chunks per tenth of the snow lost (`2`–`9`), size `0.07`–`0.13`, roll slowing `2.6`, melt `1.4` s; crumble `12` chunks | `LOOK.chunks` (bowling) |
+| **Heavy cards.** Spin inertia times a plain board's; for the first moments after the touch a card spins at most `firstSpin.max` (it takes the blow, then tips); a bigger shove, less lift and tumble; a squash and a groove dug at its base. | inertia `×3` · `3.0` rad/s for `0.3` s · shove `×1.7`, lift `×0.5`, tumble `×0.35` · groove `0.32` long | `IMPACT.card` (pins `impact.ts`) |
+| **Landing with weight.** A soft thud under the paper flop (one per `0.14` s so chains stay soft) and a bigger snow puff. | thud `0.16` from strength `0.35` · puff `×1.6` | `IMPACT.landing` |
+| **The first contact.** The hit-stop grows with size and speed; a deep double "cr-ump" (the thump, then `0.6` of it `0.045` s later); vibration `hit` by size and speed; a small camera shake (`4` alternating pushes, each `0.55` of the last); the view slides `2.2` to the side so the cards show beside the ball. | hit-stop `+0.06` s / `-0.04` at `12` /s · shake push `2.2` · side `2.2` | `IMPACT.hitStop`, `IMPACT.crump` · `CAMERA.shake`, `CAMERA.chase.side` |
+
+Measured in the browser (development build logs `window.__falls`): cards that were standing when the ball touched
+them went down 0.12 to 1.7 s later, most 0.2 to 0.9 s (before: 33 to 75 ms, they flicked over). Cards already tipping from
+a neighbour can still go down quicker. More inertia than `×3` slowed the cards' own settling so much that one card in the
+classic crowd stood crooked at rest and fell by itself at the start of a throw (a free point), so it stays at `×3` and the
+first-moment spin cap carries the weight.
+
+### The camera (`src/features/game/camera.ts`, and `GAME.camera` in `src/features/game/content.ts`)
 
 One camera moves through five stages on critically damped springs, so it never jumps. A spring `rate` of about 2 is a
-calm glide, 6 follows with a little physical lag, 12 is tight. These change how the camera feels the most:
+calm glide, 6 follows with a little physical lag, 12 is tight. Every move is an offset on top of the player's own view.
+These change how the camera feels the most:
 
 | Stage | What you feel | Number(s) today |
 |---|---|---|
-| Aim | The view eases lower and closer behind the thrower as the pull loads | `aim.closer 0.16`, `lower 1.1`, `lookBack 1.4`, `rate 4` |
-| Launch | The push forward and the lens kick, times the pull's power; how fast it dives in | `launch.push 9`, `fovKick 45`, `rate 8.5` for `time 0.5` s, lens widens over `lensTime 0.55` s |
-| Chase | How far the camera pushes in (it never passes the snowman), how high, and how tightly the lens zooms on the ball | `chase.behind 3.4` (units behind the line), `height 2.3`, `followX 0.45`, `frame 3.4` units in view, lens `11`–`30`°, `rate 5` |
-| Impact | When it turns to the pins, how far it slides to the side (still behind the line), how close it zooms | `impact.triggerAhead 1.3`, `behind 3.6`, `height 2.6`, `side 1.6`, `frame 3.9` units, `rate 3.2` |
-| Return | The glide home once the pins pop back | `ret.rate 1.9` |
+| Aim | The view eases lower and closer behind the thrower as the pull loads | `GAME.camera.aim`: `closer 0.16`, `lower 1.1`, `lookBack 1.4`, `rate 4` |
+| Launch | The push forward and the lens kick, times the pull's power; how fast it dives in | `GAME.camera.launch`: `push 9`, `fovKick 45`, `rate 8.5` for `time 0.5` s |
+| Chase | The look-at point rides on the ball (to the wall and back), with a soft lag; the camera rises a little and glides in, never past the snowman: at full glide its head sits at the bottom edge while the ball is at the pins and slips just out of the frame while the ball is at the wall. Past the pins the look stays a little on the set. | `CAMERA.chase`: `lookRate 3.4`, `closer 0.25`, `rise 0.5`, `atPins 0.7` of the glide by the pins, lens `22` → `fovFar 24`°, `rate 2.6`, `keepPins 0.3` |
+| Settle | Once the ball has stopped or poofed, the look eases onto the pins and holds through "N down!" | `CAMERA.settle`: `rate 2.2`, `lookRate 2.6` |
+| Together | Both balls at once: the look leans toward the middle of the rolling balls, the camera glides a little in, then eases onto the pins. No key ends it (the other player's keys would). | `CAMERA.together`: `share 0.55` (at most `5` units), `closer 0.12`, `rate 2` |
+| Return | The glide home once the pins pop back | `GAME.camera.ret.rate 1.9` |
 
-Any drag, scroll, pinch or key during the chase or the impact hands the view back (`shots.takeoverRate` 3.5 in
-snow-scene `content.ts`); the next throw is filmed again. "Reduce motion" keeps only a gentle lean after the ball
-(`camera.reduced`). The throwing view itself is `village.view` in scenery `content.ts` (`pathAt 0.1`, `distance 1.9`,
-so the whole longer lane and the hills fit).
+`GAME.camera.chase` and `impact` in `content.ts` are no longer read (that file belonged to another session at the time);
+remove them when it is free. Any drag, scroll, pinch or key during the chase or the settle hands the view back
+(`shots.takeoverRate` 3.5 in snow-scene `content.ts`); the next throw is filmed again. "Reduce motion" keeps only a
+gentle lean after the ball (`camera.reduced`). The throwing view itself is `village.view` in scenery `content.ts`.
 
 Also part of the throw's feel: the snowman rolls on its round bottom when it slides (`LOOK.thrower.roll`, `idleRoll`),
 and wind curls and extra spray trail a fast ball (`LOOK.speed`, now `from 5` to `full 12` units per second).
@@ -119,11 +168,27 @@ Strike! start a chain, 44% at Hit the star, 41% at Let the bunny be, 64% at Litt
 Limits: flat snow, no old grooves, no hit-stop; a few shots thrown in the browser matched the replay within about
 one card.
 
+**After the stronger roll** (2026-11-25, the back-wall work: `FEEL.roll` faster and less slowed). The replay has no
+back wall, so it counts only the way out, not cards knocked on the way back:
+
+| Round set | Middle-full | Best shot | Best at full power | Best power |
+|---|---|---|---|---|
+| 1 Strike! (triangle) | 7.3 | 8.3 | 7.3 | 0.85 |
+| 2 Hit the star (crowd of friends) | 7.1 | 7.7 | 7.4 | 0.85 |
+| 3 Let the bunny be (ring) | 5.5 | 7.8 | 6.3 | 0.55 |
+| 4 Little mound (ten-pin triangle) | 7.5 (the faster ball punches through) | 7.9 | 7.9 | 0.85 = 1.0 |
+| 5 Sleepy cat (village) | 9.1 | 9.6 | 9.3 | 0.55 |
+
+Every shot scores more (a straight throw at the middle 7.3 on average, was 5.4). Straight at the middle at full power is
+still beaten in every round, but by less: 0.3 (Little mound) to 2.3 points (Let the bunny be). Full power ties for
+the best power in Little mound, where the mound no longer stops a fast heavy ball. If the rounds should ask for a
+gentler hand again, raise `FEEL.pull.sweet` heaviness or `FEEL.roll.soft.drag`.
+
 ## Also worth knowing
 
 - **Snow depth and how dark pressed snow gets:** `src/features/snow-scene/content.ts` (`ground.depth` 0.9, and the press colours).
 - **The score bar's spring:** `src/features/hud/content.ts` (`bar.stiffness`, `bar.damping`).
-- **The hit, readable (#47, #48, #52):** the ball poofs into snow once it is through the pins (`PINS.burst`: `pastMargin 0.2`, `slowSpeed 2.4`; the poof is `FEEL.roll.burstTime 0.32` s and `LOOK.burst` in bowling), and "N down!" pops as soon as the cards are still for `PINS.down.settleHold` (`0.25` s; a card lying in the snow may still slide at `lyingShare` `4`×), at most `timeoutAfterClear` (`1.4` s) after the ball is through. Fallen cards rest propped `PINS.rest.elevationDegrees` (`16`°) off the snow on a little heap (`rest.heap`); higher reads more like a standing card. While pulling, the ball sits beside the feet: `FEEL.pull.beside` (`base 0.2` + `share 1` × radius, eased in over `rampOver 0.45`).
+- **The hit, readable (#47, #48, #52; changed by the back wall):** the ball no longer poofs as soon as it is through the pins; it rolls on to the wall and back, and poofs when it slows among the cards on its way out (`PINS.burst`: `slowSpeed 2.4`, `amongMargin 0.3`) or, back from the wall, once slower than `FEEL.wall.poofBelow` (the poof is `FEEL.roll.burstTime 0.32` s and `LOOK.burst` in bowling). "N down!" pops once the ball is through the crowd and the cards are still for `IMPACT.count.settle` (`0.35` s; a card lying in the snow may still slide at `lyingShare` `4`×), at the latest `IMPACT.count.within` (`1.3` s) after the ball first meets a card; later cards add to it (`recount`). Fallen cards rest propped `PINS.rest.elevationDegrees` (`16`°) off the snow on a little heap (`rest.heap`); higher reads more like a standing card. While pulling, the ball sits beside the feet: `FEEL.pull.beside` (`base 0.2` + `share 1` × radius, eased in over `rampOver 0.45`).
 - **A ball left in the snow melts away** `GAME.timing.meltBallAfterResult` (1.1 s) after the count, so the reset never waits for it.
 - **Camera:** the throwing view comes from `throwingView()` in `src/features/scenery/`; turning and zoom limits are in snow-scene `content.ts` (`cameraPath`, `orbit`); the throw's camera moves are `GAME.camera` (above).
 
