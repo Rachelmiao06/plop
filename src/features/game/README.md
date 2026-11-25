@@ -6,11 +6,16 @@ Owner: Rachel. Page: `/` (renders `<Game />`).
 
 ## The match
 
-Before the first throw a small card asks the players' names, "3 or 5 rounds" and "two friends or just me"
-(`MatchStart` from the hud). The names live in `names.ts` (`readNames`, `saveNames`, `shownName`; remembered on this
+Before the first throw the hud's `StartFlow` asks on two cards how the two of you play (take turns or at the same
+time; "just me" is a small option on top), then the names, 3 or 5 rounds and "Let's roll!" (with a "how to throw"
+link, "New here?" the first time on this device). `startChoice.ts` remembers the
+choices (`GAME.start.choiceKey`) so a returning player gets "same as last time", marks "how to throw" as seen
+(`howToKey`) and estimates the minutes (`minutesFor`, `GAME.start.minutes`). The mode follows the cards live
+(`game.setMode`) so the scene shows one snowman or two; the score panel stays hidden until "Let's roll!", and the "?"
+in the corner opens `HowToCard` during play. The names live in `names.ts` (`readNames`, `saveNames`, `shownName`; remembered on this
 device under `GAME.names.key`, never empty when shown: a skipped name is the snowman's default) and are used for the
 panel, the turn note, "N down!", the end card, the board and the share sheet (exported for it). Arriving from an
-invite (`?from=&score=`) the card greets "小美 在等你" and picks "just me"; alone, the panel shows 小美's score to beat.
+invite (`?from=&score=`) the first card greets "小美 在等你" and picks "just me"; alone, the panel shows 小美's score to beat.
 Each round every player throws once at the same set, then the next round's set comes (`GAME.match.rounds` lists
 them, the sets are the pins' `ROUND_SETS`). After the last round the end card (`MatchEnd`) shows the totals, a crown
 for the winner (or two for a tie) and "play again". Alone, the best total per length is kept in `localStorage`
@@ -88,7 +93,9 @@ and `<GroupBoard>` (`GAME.board.limit` rows), passed to `MatchEnd` as children.
   view back; the next throw is filmed again. "Reduce motion" keeps only a gentle lean. Numbers: `camera.ts`
   (chase, settle, together) and `GAME.camera` in `content.ts` (aim, launch, return, reduce motion; its old `chase`
   and `impact` are no longer read).
-- `GameOverlay.tsx` the hint, the "Red Hat's turn!" note and the cancel button. `gameStyles.ts` the game's small scoped stylesheet.
+- `GameOverlay.tsx` the hint, the "Red Hat's turn!" note and the cancel button (the old "take turns / together" tab
+  over the start card is gone: the mode is a question in the hud's `StartFlow`). `startChoice.ts` the start's memory.
+  `gameStyles.ts` the game's small scoped stylesheet.
 - `RuleCard.tsx`, `RuleMarker.tsx` each round's rule card and scene marker. `names.ts` the players' names.
 - `ThrowingView.tsx` the default camera view: the scenery's `throwingView` on wide screens, `GAME.phoneView` on a
   phone held upright (#46).

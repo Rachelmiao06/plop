@@ -95,7 +95,7 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
   red-hat snowman.
 - There is a score (Rachel: hitting alone is not enough). Each cut-out knocked down is a point; a full clear
   gives a small bonus; the special cut-outs add theirs (section 6). See section 7b for how it looks.
-- One person can play alone ("just me" on the start card): one throw a round, against their own best.
+- One person can play alone (the small "Just me" on top of the first start card): one throw a round, against their own best.
 - "Together" mode: both throwers on the line at once, aiming at the same crowd (section 7d).
 
 ## 7b. Score display (Rachel may still redesign it, #31)
@@ -115,14 +115,29 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 
 ## 7c. The match (2026-11-25; Rachel changed her mind: draft 2 had endless turns and no winner screen)
 
-- **Before the first throw** a small hand-drawn card asks: **your name** ("你叫什么？ · Your name", one field per
-  snowman when two play, remembered on the device and filled in next time), 3 rounds or 5 (3 is the default), and
-  "two friends" or "just me". "Let's roll!" starts. A skipped name is the snowman's cute default ("Bucket" /
-  "Red Hat"). That one name is used everywhere: the score panel (over each total), "Red Hat's turn!", "N down!" in
-  together mode, the end card, the group board and invites (2026-11-25, Rachel: nobody noticed the name question
-  hidden in the share sheet).
-- **Arriving from a friend's invite** (`/?g=&from=小美&score=23`) the start card says "小美 在等你 · 小美 is waiting"
-  above the title and picks "just me"; playing alone, the panel's right side shows 小美's score "to beat" instead of
+- **Before the first throw** two hand-drawn paper cards (2026-11-25, Rachel: one crowded card confused first-timers,
+  then five steps felt too rigid for a simple game; two is right). English leads, Chinese beneath. The second card
+  slides in softly, "← back" returns, two snowball dots show where you are, and the snow scene stays visible:
+  1. **How do you two play?** Playing with a friend is the main case, so it is what the card asks: "Take turns ·
+     versus" (one rolls, then the other; most points wins, a PK) or "Team up · one team" (both snowmen on the line
+     at once and their points add up, with the key pictures W A D and ↑ ← →, or "each drags their own snowman" on
+     a touch screen). Playing alone is a small
+     "Just me →" option on top of the card. A tap goes on; the scene behind already shows one snowman or two.
+  2. **Names, rounds, go:** one name field alone, two (Bucket's and Red Hat's faces) with a friend, filled in from
+     the device (empty means "Bucket" / "Red Hat"); "3 rounds · about N min" or "5 rounds" (minutes from real play,
+     about 12 s a throw and 5 s to read each rule card, `GAME.start.minutes`: alone 1 / 2, taking turns 2 / 3, at
+     the same time 1 / 2); "Let's roll!". A link under it, "New here? How to throw" (just "How to throw" later), opens
+     a card with a little looping picture (the snowman pulls back, the ball grows, rolls and tips three friends over)
+     and four lines: hold Space or drag the snowman back, let go to roll, knock down as many as you can, each round
+     has one small rule. The "?" in the corner shows it again during a match.
+  A returning player gets one card instead: "又见面啦！ · Welcome back", last time's snowmen, names, way to play and
+  length, "和上次一样 · Same as last time" (one tap to play) and "换个玩法 · something else". Last time's choices
+  are kept on the device (`plop.start`). The score panel stays hidden until the match starts, and alone it shows
+  one player (and your best). The single name is used everywhere: the score panel (over each total), "Red Hat's
+  turn!", "N down!" in together mode, the end card, the group board and invites (2026-11-25, Rachel: nobody
+  noticed the name question hidden in the share sheet).
+- **Arriving from a friend's invite** (`/?g=&from=小美&score=23`) the first card says "小美 is waiting · 小美 在等你"
+  on top and has "Just me" marked; playing alone, the panel's right side shows 小美's score "to beat" instead of
   your best, and the end card says how it went ("you beat 小美's 23!" or "小美 has 23 · so close!").
 - **Each round** every player throws once at the same set (it pops back up between them), then the next round's
   set hops in. As it arrives a **rule card** fills the middle (2026-11-25, Rachel did not understand "let the bunny
@@ -158,10 +173,15 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - **The aim:** a good straight throw at the middle may score well (Rachel prefers the classic look); variety
   comes from the sweet spot on the pull, the small shifts, where the star stands, the bunny and the mounds.
   Measured with the real roll and physics (`src/features/game/measure`, numbers in `docs/TUNING.md`).
+- **Team up** (2026-11-25, Rachel: taking turns is a PK, rolling at the same time is a team): the panel shows both
+  faces with one team total, each throw's points fly into it, and the end card says "Team total!" with both snowmen
+  crowned and "lovely teamwork, Bucket & Red Hat"; no winner, no tie. Underneath the game still counts each
+  snowman's own points (7d); the group board gets one entry for the team, both names ("小美 & 阿雪") and the
+  points added up.
 - **The end card:** both snowmen's faces with their totals, a crown doodle and "hooray!" for the winner and a kind
   word for the other ("lovely rolling, Bucket"), or "A snowy tie! two crowns today". Alone: your total, and
   "a new best!" (with the crown) or your best so far. A line names the best single roll of the match. "Play again"
-  restarts the same match; "3 or 5 rounds?" goes back to the start card. Never "you lose".
+  restarts the same match; "换个玩法 · change how we play" walks the start cards again from the first one. Never "you lose".
 - **The group board on the end card:** when the page has an invite group (`?g=`, or this device made an invite and
   so owns a group), the end card shows "pop it on!" with the player's name already filled in (one per player when
   two play) and the group's top five. The invite card shows the same board under its message.
@@ -214,8 +234,8 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 
 ## 7d. Together mode (2026-11-25)
 
-- On the start card, a small paper tab above the card: "take turns" (default) or "together". Together is always
-  two players.
+- On the first start card, "At the same time" (taking turns is the other choice). Together
+  is always two players.
 - Both snowmen stand on the line at once: Bucket on the left half, Red Hat on the right (the middle stays free).
   Each pulled ball grows on its snowman's outer side, so the two never bump while pulling.
 - **Keys** (physical keys, one hand on each side of a Mac keyboard): Bucket slides and aims with A / D and pulls

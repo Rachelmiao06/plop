@@ -56,6 +56,12 @@ export type ScoreHudProps = {
    * whole round. `label` is read out instead of the words.
    */
   rule?: { icon: string; words: string; label: string } | null;
+  /** Show the panel (default true). The game leaves it out until the match starts; the corner switches stay. */
+  panel?: boolean;
+  /** Adds a "?" to the corner switches that opens "how to throw" again. */
+  onHelp?: () => void;
+  /** Team up (both snowmen at once): one team total on the left, both faces, instead of two players' scores. */
+  team?: boolean;
 };
 
 /**
@@ -97,6 +103,50 @@ function SoloBest({ best }: { best: number | null }) {
       <CrownDoodle size={26} />
       <span className="font-heading text-base">{content.text.soloBest}</span>
       <span className="font-heading text-2xl font-bold tabular-nums">{best ?? "–"}</span>
+    </div>
+  );
+}
+
+/** Team up: both faces side by side and one total; each player's points fly into it and it counts up. */
+function TeamScore({ players, gain }: { players: readonly [HudPlayer, HudPlayer]; gain?: GainEvent | null }) {
+  const a = useLandedTotal(players[0].total, gain, 0);
+  const b = useLandedTotal(players[1].total, gain, 1);
+  const total = a + b;
+  const flying = gain && gain.points > 0 ? gain : null;
+  return (
+    <div className="relative flex shrink-0 items-center gap-1.5">
+      {flying && (
+        <span
+          key={`gain-${flying.id}`}
+          aria-hidden
+          className={`pointer-events-none absolute top-1 left-16 z-10 font-heading text-3xl font-bold text-ink-deep ${styles.gain}`}
+          style={{ "--hud-gain": `${content.gain.duration}ms`, "--hud-rise": `${content.gain.rise}px`, "--hud-dx": "60px" } as CSSProperties}
+        >
+          {content.text.gain(flying.points)}
+        </span>
+      )}
+      <div className="relative flex h-10 items-center -space-x-3">
+        <div className={`absolute -inset-2 ${styles.glow}`}>
+          <HaloDoodle seed={2} />
+        </div>
+        <span className="relative">
+          <SnowmanFace look={players[0].look} size={36} seed={3} />
+        </span>
+        <span className="relative">
+          <SnowmanFace look={players[1].look} size={36} seed={8} />
+        </span>
+      </div>
+      <span className="flex flex-col items-center">
+        <span aria-hidden className="font-heading text-sm leading-none text-ink md:text-base">
+          {content.text.team}
+        </span>
+        <span
+          key={`total-${total}`}
+          className={`inline-block min-w-[1.4ch] text-center font-heading text-3xl leading-none font-bold text-ink-deep tabular-nums md:text-4xl ${total > 0 ? styles.pop : ""}`}
+        >
+          {total}
+        </span>
+      </span>
     </div>
   );
 }
@@ -179,6 +229,9 @@ export function ScoreHud({
   soloBest,
   rival,
   rule,
+  panel = true,
+  onHelp,
+  team,
 }: ScoreHudProps) {
   const solo = soloBest !== undefined;
   const [hiddenState, setHiddenState] = useState(false);
@@ -204,12 +257,12 @@ export function ScoreHud({
         {hudCss}
       </style>
       <div className="absolute top-3 left-3">
-        <CornerToggles hidden={hidden} onHiddenChange={setHidden} showAudio={showAudioToggles} />
+        <CornerToggles hidden={hidden} onHiddenChange={setHidden} showAudio={showAudioToggles} onHelp={onHelp} />
       </div>
 
       {/* Phone: full width below the row of corner toggles and the scene's top-right buttons. Wider: centred at the top. */}
       <div className="flex justify-center px-3 pt-16 md:pt-3">
-        {!hidden && (
+        {!hidden && panel && (
           <section
             aria-label={t.panelLabel}
             className={`pointer-events-auto relative w-full max-w-md rounded-[var(--radius)] md:max-w-lg px-4 pt-2 pb-2.5 ${styles.glass} ${styles.enter}`}
@@ -218,13 +271,16 @@ export function ScoreHud({
             <PencilFrame seed={17} radius={20} />
             <p className="sr-only" aria-live="polite">
               {round ? `${t.roundLabel(round.now, round.of)}. ` : ""}
-              {t.set(down, total)}. {t.total(players[0].name, players[0].total)}.{" "}
-              {solo
+              {t.set(down, total)}.{" "}
+              {team
+                ? `${t.teamTotal(players[0].name, players[1].name, players[0].total + players[1].total)}.`
+                : `${t.total(players[0].name, players[0].total)}. `}
+              {team || solo
                 ? ""
                 : `${t.total(players[1].name, players[1].total)}.${active === "both" ? "" : ` ${t.turn(players[active].name)}.`}`}
             </p>
             <div className="flex items-center gap-3">
-              <PlayerScore player={players[0]} active={active !== 1} side="left" gain={gain} />
+              {team ? <TeamScore players={players} gain={gain} /> : <PlayerScore player={players[0]} active={active !== 1} side="left" gain={gain} />}
               <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <div aria-hidden className="font-heading text-lg leading-none text-ink">
                   <span className="font-bold text-ink-deep tabular-nums">{down}</span>
@@ -234,7 +290,7 @@ export function ScoreHud({
                 </div>
                 <ProgressBar down={down} total={total} color={color} knock={knock} />
               </div>
-              {solo ? rival ? <Rival {...rival} /> : <SoloBest best={soloBest ?? null} /> : <PlayerScore player={players[1]} active={active !== 0} side="right" gain={gain} />}
+              {team ? null : solo ? rival ? <Rival {...rival} /> : <SoloBest best={soloBest ?? null} /> : <PlayerScore player={players[1]} active={active !== 0} side="right" gain={gain} />}
             </div>
             {round && (
               <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex items-center justify-center gap-2">

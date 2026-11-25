@@ -23,7 +23,8 @@ function RoundToggle({
   children,
 }: {
   label: string;
-  pressed: boolean;
+  /** Left out for a plain button (not a switch). */
+  pressed?: boolean;
   onClick: () => void;
   seed: number;
   audio?: boolean;
@@ -55,10 +56,13 @@ export function CornerToggles({
   hidden,
   onHiddenChange,
   showAudio = true,
+  onHelp,
 }: {
   hidden: boolean;
   onHiddenChange: (hidden: boolean) => void;
   showAudio?: boolean;
+  /** A "?" that opens "how to throw" again (left out = no button). */
+  onHelp?: () => void;
 }) {
   const audio = useSyncExternalStore(subscribeAudioSettings, getAudioSettings, getServerAudioSettings);
 
@@ -96,6 +100,13 @@ export function CornerToggles({
             <SpeakerIcon on={audio.effects} />
           </RoundToggle>
         </>
+      )}
+      {onHelp && (
+        <RoundToggle label={content.text.start.help} onClick={onHelp} seed={67}>
+          <span aria-hidden className="font-heading text-2xl leading-none font-bold">
+            ?
+          </span>
+        </RoundToggle>
       )}
     </div>
   );

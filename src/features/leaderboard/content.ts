@@ -7,6 +7,8 @@ export const BOARD = {
   groupLength: 8,
   /** Nicknames: 1 to this many characters after trimming (each emoji or Chinese character counts as one). */
   nameMax: 12,
+  /** A team-up entry's name, both nicknames joined: two of `nameMax` and " & " between. */
+  teamNameMax: 27,
   /** How many rows the board shows (and the GET route returns at most). */
   top: 10,
   /** The nickname is remembered on this device under this localStorage key (it works without it). */
@@ -64,6 +66,7 @@ export const TEXT = {
   failed: "the board is napping. try again in a moment",
   rounds: (n: number) => `${n} rounds`,
   together: "together",
+  team: "team",
   plays: (n: number) => (n === 1 ? "1 match" : `${n} matches`),
   latest: (n: number) => `last ${n}`,
   you: "you",
@@ -86,7 +89,7 @@ export const TEXT = {
     rude_name: "let's pick a kinder nickname",
     bad_score: "that score can't happen in this match",
     bad_rounds: "a match is 3 or 5 rounds",
-    bad_mode: "a match is turns or together",
+    bad_mode: "a match is turns, together or a team",
     rate_limited: "slow down a little, snow takes time ✿",
     server: "the board is napping. try again in a moment",
   } as Record<string, string>,

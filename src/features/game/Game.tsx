@@ -8,9 +8,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
-import { MatchEnd, MatchStart, ScoreHud } from "@/features/hud";
+import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, INVITE } from "@/features/invite";
-import { GroupBoard, SubmitScore } from "@/features/leaderboard";
+import { GroupBoard, SubmitScore, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
 import { getGroupId } from "@/features/share/group";
@@ -34,11 +34,12 @@ import { track } from "@/lib/analytics";
 import { GAME, TEXT, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
 import { createLink, GameBridge } from "./GameBridge";
-import { CancelPull, GameHint, ModePick, TurnNote } from "./GameOverlay";
+import { CancelPull, GameHint, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
 import { readNames, saveNames, savePlayerOne, serverNames, shownName, subscribeNames } from "./names";
 import { RuleCard, ruleFor, ruleIcon } from "./RuleCard";
 import { RuleMarker } from "./RuleMarker";
+import { choiceSnapshot, markHowTo, minutesFor, parseChoice, sawHowTo, saveChoice } from "./startChoice";
 import { createGame } from "./rules";
 import { ThrowingView } from "./ThrowingView";
 
@@ -95,6 +96,15 @@ export function Game() {
     const q = new URLSearchParams(search);
     return { name: cleanName(q.get("from")), score: cleanScore(q.get("score")) };
   }, [search]);
+  // The guided start: last time's choices (a returning player taps straight through) and whether "how to throw"
+  // was shown on this device. "Change how we play" on the end card walks the cards from the start instead.
+  const lastRaw = useSyncExternalStore(noSubscribe, choiceSnapshot, () => "");
+  const last = useMemo(() => parseChoice(lastRaw), [lastRaw]);
+  const firstTime = !useSyncExternalStore(noSubscribe, sawHowTo, () => true);
+  const [rechoose, setRechoose] = useState(false);
+  /** "How to throw" opened again from the "?" in the corner. */
+  const [help, setHelp] = useState(false);
+  const onMode = useCallback((m: PlayMode) => game.setMode(m), [game]);
   // The group board: the invite's group, or the one this device made when it sent an invite.
   const group = useSyncExternalStore(noSubscribe, readGroup, () => null);
 
@@ -137,7 +147,8 @@ export function Game() {
     const [a, b] = game.getState().scores;
     // No names: the length, the mode and how many played.
     track("match_end", { rounds: game.getState().rounds, mode: game.getState().mode, players: game.getState().players });
-    if (game.getState().players === 2 && a === b) playTie();
+    // Taking turns is a match (a tie gets its own tune); teaming up always wins together.
+    if (game.getState().players === 2 && game.getState().mode === "turns" && a === b) playTie();
     else playWin();
   }, [state.phase, game]);
 
@@ -156,9 +167,9 @@ export function Game() {
 
   /** A new match: the first round's set comes in (the cards pop back if it is already there). */
   const begin = useCallback(
-    (rounds: MatchLength, playing: 1 | 2, again: boolean) => {
+    (rounds: MatchLength, playing: 1 | 2, again: boolean, mode: PlayMode = game.getState().mode) => {
       if (again) game.again();
-      else game.start(rounds, playing, game.getState().mode);
+      else game.start(rounds, playing, mode);
       const first = game.setFor(0, rounds);
       if (pins.getState().formation !== first) pins.setFormation(first);
       else pins.reset();
@@ -169,6 +180,16 @@ export function Game() {
       saved.current = false;
     },
     [game, pins],
+  );
+
+  /** "Let's roll!" (or "same as last time"): remember the choices on this device and start. */
+  const onStart = useCallback(
+    (c: StartChoice) => {
+      saveChoice(c);
+      markHowTo();
+      begin(c.rounds as MatchLength, c.players, false, c.mode);
+    },
+    [begin],
   );
 
   // Playing alone: remember a new best once the match is over.
@@ -247,6 +268,11 @@ export function Game() {
         round={state.phase === "choosing" ? null : { now: state.round + 1, of: state.rounds }}
         soloBest={solo ? (state.phase === "over" ? Math.max(bestBefore ?? 0, state.scores[0]) : bestBefore) : undefined}
         rival={rival}
+        // Hidden until the match starts (the start cards ask first); alone it shows one player and your best.
+        panel={state.phase !== "choosing"}
+        // Team up: one team total for both snowmen (taking turns is a match between them).
+        team={together}
+        onHelp={state.phase === "playing" ? () => setHelp(true) : undefined}
         rule={
           rule
             ? { icon: ruleIcon(rule), words: `${rule.words.chip.zh} · ${rule.words.chip.en}`, label: `${rule.words.big.en}: ${rule.words.line.en(rule.points)}` }
@@ -254,6 +280,7 @@ export function Game() {
         }
       />
       <RuleCard game={game} names={names} />
+      {help && state.phase === "playing" && <HowToCard onClose={() => setHelp(false)} />}
       <CancelPull game={game} link={link} />
       {/* The start and end cards: every button there gives a soft paper tap (the cards are the hud's; the sound is the game's). */}
       <div
@@ -263,24 +290,23 @@ export function Game() {
         }}
       >
       {state.phase === "choosing" && (
-        <MatchStart
-          // Remounts once the address is read in the browser, so an invite's "just me" default applies.
-          key={invite.name ?? ""}
+        <StartFlow
+          // Opens again once the browser has read the address and this device's memory (the server knows neither).
+          key={`${invite.name ?? ""}|${rechoose ? "" : lastRaw}|${firstTime}`}
           lengths={GAME.match.lengths}
-          rounds={state.rounds}
-          // A friend's invite is a challenge: alone against their score, unless the player picks "two friends".
-          players={invite.name && state.turnId === 0 ? 1 : state.players}
-          onStart={(rounds, playing) => begin(rounds as MatchLength, playing, false)}
+          // A friend's invite is a challenge: alone against their score, unless the player picks "with a friend".
+          initial={{ players: invite.name ? 1 : state.players, mode: state.mode, rounds: state.rounds }}
+          last={rechoose ? null : last}
+          howTo={firstTime}
+          minutes={minutesFor}
           names={typed}
           fallbacks={fallbacks}
           nameMax={INVITE.link.nameMax}
           onNames={(next) => saveNames(next)}
-          together={together}
           greeting={invite.name ? { zh: TEXT.waiting.zh(invite.name), en: TEXT.waiting.en(invite.name) } : null}
+          onMode={onMode}
+          onStart={onStart}
         />
-      )}
-      {state.phase === "choosing" && (
-        <ModePick game={game} />
       )}
       {state.phase === "over" && (
         <MatchEnd
@@ -289,36 +315,52 @@ export function Game() {
             { ...players[1], total: state.scores[1] },
           ]}
           solo={solo ? { best: bestBefore } : null}
+          team={together}
           bestThrow={bestThrow}
           rival={rival}
           onAgain={() => begin(state.rounds, state.players, true)}
           onChoose={() => {
+            setRechoose(true);
             game.choose();
             if (getTimeOfDay() > 0) easeTimeOfDay(0, GAME.evening.back);
           }}
         >
           {group && (
             <>
-              {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
-              <SubmitScore
-                group={group}
-                score={state.scores[0]}
-                rounds={state.rounds}
-                mode={state.mode}
-                defaultName={typed[0] || undefined}
-                onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
-              />
-              {!solo && (
+              {together ? (
+                // Team up: one entry for the team, both names ("小美 & 阿雪") and the points added up.
                 <SubmitScore
                   group={group}
-                  score={state.scores[1]}
+                  score={state.scores[0] + state.scores[1]}
                   rounds={state.rounds}
-                  mode={state.mode}
-                  defaultName={typed[1] || undefined}
+                  mode="team"
+                  defaultName={teamName(names[0], names[1])}
                   remember={false}
                 />
+              ) : (
+                <>
+                  {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
+                  <SubmitScore
+                    group={group}
+                    score={state.scores[0]}
+                    rounds={state.rounds}
+                    mode={state.mode}
+                    defaultName={typed[0] || undefined}
+                    onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
+                  />
+                  {!solo && (
+                    <SubmitScore
+                      group={group}
+                      score={state.scores[1]}
+                      rounds={state.rounds}
+                      mode={state.mode}
+                      defaultName={typed[1] || undefined}
+                      remember={false}
+                    />
+                  )}
+                </>
               )}
-              <GroupBoard group={group} me={typed[0] || undefined} limit={GAME.board.limit} />
+              <GroupBoard group={group} me={together ? teamName(names[0], names[1]) : typed[0] || undefined} limit={GAME.board.limit} />
             </>
           )}
         </MatchEnd>

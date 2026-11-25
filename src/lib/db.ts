@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-export type MatchMode = "turns" | "together";
+export type MatchMode = "turns" | "together" | "team";
 
 export type ScoreInput = { group: string; name: string; score: number; rounds: 3 | 5; mode: MatchMode };
 

@@ -5,3 +5,4 @@ export { SubmitScore, type SubmitScoreProps } from "./SubmitScore";
 export { readNickname } from "./api";
 export type { BoardEntry, Submitted } from "./api";
 export type { MatchMode, Rounds } from "./rules";
+export { teamName } from "./rules";

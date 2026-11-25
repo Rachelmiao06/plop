@@ -31,9 +31,12 @@ spam and is never written anywhere.
   never talks to the database.
 - `rules.ts` checks every submission (on the server; the prompt uses the same checks to answer early):
   group id exactly 8 of `A-Z a-z 0-9 _ -`; nickname 1 to 12 characters after trimming, with control and invisible
-  characters removed and a small block-list of rude words in English and Chinese; rounds 3 or 5; mode turns or
-  together; score a whole number from 0 to the most a match of that length can make (`maxScore`, read from the
-  game's points and the pins' round sets, so it follows tuning: 33 for 3 rounds, 62 for 5 today).
+  characters removed and a small block-list of rude words in English and Chinese; rounds 3 or 5; mode turns,
+  together (older rows: each player's own score) or **team**; score a whole number from 0 to the most a match of
+  that length can make (`maxScore`, read from the game's points and the pins' round sets, so it follows tuning: 33
+  for 3 rounds, 62 for 5 today). A **team** entry (team-up mode on the end card) is one line for both players: their
+  names joined ("小美 & 阿雪", `teamName`, up to `BOARD.teamNameMax` = 27 characters), their points added up (up to
+  twice `maxScore`, `maxFor`). Needs `supabase/migrations/0002_team.sql` run once on the live database.
 - `rateLimit.ts`: 10 submits a minute per IP and group (`BOARD.rateLimit`), in the server's memory (best effort;
   each server instance counts on its own).
 - `src/lib/db.ts` stores: one line per nickname per group (same name in any case = same person), keeping their
