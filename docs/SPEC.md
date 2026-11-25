@@ -8,6 +8,9 @@ flies off like a slingshot. The point is how it feels in the hand, not winning.
 
 ## How it plays
 
+**Superseded by `docs/GAMEPLAY.md`** (paper bowling on snow: pull back to grow the ball, roll it through a crowd
+of paper cut-outs). The original fixed-spot version is kept below for history.
+
 - Press and hold a character, then pull back, away from where you want to shoot.
 - While pulling, the snowball really rolls on the snow, leaves a groove, and gets bigger.
 - Pull to the limit and it is fully charged: it stops growing and trembles a little.
