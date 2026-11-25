@@ -87,3 +87,13 @@ pop-up and score bounces become fades).
 | **Chimney smoke.** How long a puff lives, how high it rises, how far the wind takes it, how big it grows, how visible. | `6.5` s · `1.05` · `0.55` · `0.16` → `0.72` · `0.85` | `effects.ts` · `smoke` |
 | **Ice.** How see-through, the bright edge, the sun glint, the sparkles. | `body 0.45` · `edge 0.85` · `glint 1.6` · `sparkle 0.18` | `effects.ts` · `ice` |
 | **Snow banked at the hills' foot** (hides the low view's line; too tall shows as a ring from high up). | `height 0.11` · `radiusZ 1.3` · `arcShare 0.3` | `effects.ts` · `footBank` |
+
+## Time of day (a match from afternoon to evening)
+
+`setTimeOfDay(t)` from `@/features/snow-scene` (0 = afternoon, 0.5 = sunset, 1 = evening). Try it on `/dev/time`.
+
+| What you see | Number(s) today | Where |
+|---|---|---|
+| **The light at each time.** Sun height, direction, colour and strength; sky fill; shadow strength; exposure; sparkles; fog; flakes. Afternoon is the everyday light. | sunset: sun `20`° at `4.6`, exposure `1.12` · evening: moon `34`° at `1.9`, exposure `1.2` | snow-scene `content.ts` · `timeOfDay.keys` |
+| **How much the village lights come up toward evening.** From when to when, halo and point-light boost. | `0.3` → `0.95` · halos ×`2.4` · lights ×`3.6` | scenery `three/effects/effects.ts` · `lights.evening` |
+| **Smoke in sunset and moonlight.** | warm `0.55` · cool `0.35` | `effects.ts` · `smoke.sunsetWarm`, `eveningCool` |

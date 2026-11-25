@@ -4,15 +4,37 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  AMBIENCE,
   isAudioUnlocked,
+  playFullClear,
+  playNearMiss,
+  playRoundStart,
+  playStarHit,
+  playTap,
   playThump,
+  playTie,
+  playWin,
   playWhoosh,
+  setAmbienceVolume,
   setCrunch,
+  startAmbience,
+  stopAmbience,
   stopCrunch,
   unlockAudio,
   unlockAudioOnFirstTouch,
   whenRecordingsLoaded,
 } from "@/lib/audio";
+
+/** The named one-shots, in the order a match meets them. */
+const CUES = [
+  { label: "Round start", hint: "a soft chime", play: playRoundStart },
+  { label: "Star pin hit", hint: "a little sparkle", play: playStarHit },
+  { label: "Near miss", hint: "a tiny kitten mew", play: playNearMiss },
+  { label: "Full clear", hint: "a warm bell flourish", play: playFullClear },
+  { label: "Win", hint: "a happy jingle", play: playWin },
+  { label: "Tie", hint: "a gentle ding-dong", play: playTie },
+  { label: "Button tap", hint: "a soft paper tap", play: playTap },
+] as const;
 
 /** Timings of the "whole throw" demo, in milliseconds. */
 const DEMO = { roll: 1800, flight: 520 };
@@ -54,6 +76,8 @@ export function AudioTester() {
   const [size, setSize] = useState(30);
   const [power, setPower] = useState(70);
   const [rolling, setRolling] = useState(false);
+  const [ambience, setAmbience] = useState(false);
+  const [ambienceVolume, setAmbienceLevel] = useState(Math.round(AMBIENCE.volume * 100));
   const [soundOn, setSoundOn] = useState(false);
   const [source, setSource] = useState<"loading" | "recorded" | "synth">("loading");
   const demo = useRef<{ ramp: number; timers: number[] }>({ ramp: 0, timers: [] });
@@ -86,6 +110,7 @@ export function AudioTester() {
       clearInterval(running.ramp);
       running.timers.forEach(clearTimeout);
       stopCrunch();
+      stopAmbience();
     };
   }, []);
 
@@ -109,6 +134,18 @@ export function AudioTester() {
   const thump = () => {
     wake();
     playThump(size / 100);
+  };
+
+  const toggleAmbience = () => {
+    wake();
+    if (ambience) stopAmbience();
+    else startAmbience();
+    setAmbience(!ambience);
+  };
+
+  const changeAmbienceVolume = (value: number) => {
+    setAmbienceLevel(value);
+    setAmbienceVolume(value / 100);
   };
 
   /** Roll while the ball grows to the chosen size, launch, then land. */
@@ -208,6 +245,52 @@ export function AudioTester() {
       >
         Play a whole throw
       </Button>
+
+      <section className="flex flex-col gap-4 rounded-xl border bg-card p-4 text-card-foreground">
+        <h2 className="text-lg font-semibold">Village ambience</h2>
+        <p className="text-sm text-muted-foreground">
+          Soft wind with gusts and the cocoa-corner fire. Now and then distant wind chimes or
+          sleigh bells, and a chickadee. Give it a minute to hear them all.
+        </p>
+        <Slider
+          label="Ambience volume"
+          hint="Separate from the music and the effects."
+          value={ambienceVolume}
+          onChange={changeAmbienceVolume}
+        />
+        <Button
+          size="lg"
+          variant={ambience ? "secondary" : "default"}
+          className="h-12 text-base"
+          onClick={toggleAmbience}
+        >
+          {ambience ? "Stop ambience" : "Start ambience"}
+        </Button>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-xl border bg-card p-4 text-card-foreground">
+        <h2 className="text-lg font-semibold">Game moments</h2>
+        <p className="text-sm text-muted-foreground">
+          Named sounds for the match to call later.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {CUES.map((cue) => (
+            <Button
+              key={cue.label}
+              size="lg"
+              variant="outline"
+              className="flex h-auto flex-col items-start gap-0.5 py-3 text-left"
+              onClick={() => {
+                wake();
+                cue.play();
+              }}
+            >
+              <span className="text-base">{cue.label}</span>
+              <span className="text-xs font-normal text-muted-foreground">{cue.hint}</span>
+            </Button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

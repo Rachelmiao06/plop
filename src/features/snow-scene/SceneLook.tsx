@@ -7,11 +7,13 @@ import {
   BufferGeometry,
   Color,
   type DirectionalLight,
+  type HemisphereLight,
   ShaderMaterial,
   Vector3,
 } from "three";
 import { content } from "./content";
-import { sunDirection } from "./layout";
+import { sunDirection, sunDirectionAt } from "./layout";
+import { getTimeOfDay, type Lighting, lightingAt } from "./timeOfDay";
 import { sharedUniforms } from "./sharedUniforms";
 import { SnowContext } from "./snowContext";
 
@@ -34,12 +36,42 @@ export function Sharpness() {
   return null;
 }
 
-/** Low warm sun plus a cool sky fill, so shadows read soft blue. */
+/**
+ * Low warm sun plus a cool sky fill, so shadows read soft blue. Both follow the time of day (setTimeOfDay): the sun
+ * sinks and warms toward sunset, then a cool moon takes over for the evening; the sky fill, shadow strength, sparkles,
+ * fog, flakes and exposure move with it (numbers in content.timeOfDay). Only recomputed when the time changes.
+ */
 export function Lights() {
   const l = content.light;
   const sun = useRef<DirectionalLight>(null);
+  const sky = useRef<HemisphereLight>(null);
   const [sx, sy, sz] = sunDirection();
   const far = 40;
+  const lit = useRef<{ t: number; out: Lighting | undefined }>({ t: -1, out: undefined });
+
+  useFrame(({ gl }) => {
+    const t = getTimeOfDay();
+    const light = sun.current;
+    const fill = sky.current;
+    if (!light || !fill || t === lit.current.t) return;
+    lit.current.t = t;
+    const o = lightingAt(t, lit.current.out);
+    lit.current.out = o;
+    const [x, y, z] = sunDirectionAt(o.sunElevation, o.sunAzimuth);
+    light.position.set(x * far * 0.5, y * far * 0.5, z * far * 0.5);
+    light.color.copy(o.sun);
+    light.intensity = o.sunStrength;
+    light.shadow.intensity = o.shadeStrength;
+    fill.color.copy(o.skyFill);
+    fill.groundColor.copy(o.groundBounce);
+    fill.intensity = o.skyStrength;
+    gl.toneMappingExposure = o.exposure;
+    sharedUniforms.uFogTop.value.copy(o.fogTop);
+    sharedUniforms.uFogBottom.value.copy(o.fogBottom);
+    sharedUniforms.uSparkleColor.value.copy(o.sparkle);
+    sharedUniforms.uSparkle.value.w = o.sparkleStrength;
+    flakeClock.uColor.value.copy(o.snowflake);
+  });
 
   useEffect(() => {
     const light = sun.current;
@@ -51,6 +83,7 @@ export function Lights() {
   return (
     <>
       <hemisphereLight
+        ref={sky}
         args={[content.colors.skyFill, content.colors.groundBounce, l.skyStrength]}
       />
       <directionalLight
@@ -121,7 +154,7 @@ export function Backdrop() {
 }
 
 // Changed every frame, so it lives outside the component.
-const flakeClock = { uTime: { value: 0 }, uHeavy: { value: 0 } };
+const flakeClock = { uTime: { value: 0 }, uHeavy: { value: 0 }, uColor: { value: new Color(content.colors.snowflake) } };
 
 /**
  * Light snowfall. The flakes are moved on the graphics card, not in script.
@@ -181,7 +214,6 @@ export function Snowfall() {
           uCenterZ: { value: content.ground.centerZ },
           // fall speed, sideways drift, flake size, opacity
           uFlake: { value: [s.fallSpeed, s.drift, s.size, s.opacity] },
-          uColor: { value: new Color(content.colors.snowflake) },
           // how much bigger and faster the fresh-snowfall flakes are
           uHeavyLook: { value: [f.heavySize, f.heavySpeed] },
         },
