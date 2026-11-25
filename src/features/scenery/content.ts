@@ -519,6 +519,13 @@ export const village = {
   sideMargin: 0,
 
   /**
+   * Behind the pins the layout keeps this depth scale (drawn units to game units) however long the lane is,
+   * so the far cluster, the calm snow and the paper sky sit as close behind the pins as on the first 5.6-unit
+   * lane (5.6 / 6.5). Only the stretch between the line and the pins grows with a longer lane.
+   */
+  backDepthScale: 0.862,
+
+  /**
    * The throwing view for the snow scene camera (useSnowCameraView): behind and above the line, looking
    * down the lane. The point looked at sits `lookAtShare` of the way from the line to the pin spot.
    * `pathAt` 0.15 is about 24 degrees above the snow on the camera path; `distance` pulls it back so the
@@ -528,7 +535,7 @@ export const village = {
     lookAtShare: 0.45,
     lookAtHeight: 0.4,
     pathAt: 0.15,
-    distance: 1.6,
+    distance: 2.05,
     turn: 0,
   },
 
@@ -597,8 +604,13 @@ export const village = {
  * Colours: the sky is `--paper` blending toward `--snow-shadow` higher up; the art is drawn as is.
  */
 export const backdrop = {
-  /** Distance from the look-at point to the backdrop (scene units, on the game's lane), and how much of the circle it covers. */
+  /**
+   * Distance from the look-at point to the backdrop (scene units), and how much of the circle it covers. Set for a
+   * lane `laneLength` deep (line to pin spot); on a deeper lane the wall moves back with the pins, so it stays as
+   * far behind them as it was.
+   */
   radius: 9.6,
+  laneLength: 5.6,
   arc: 220, // degrees, centred straight back
   /**
    * On a phone held upright the score panel covers the top of the screen, so the backdrop comes this much
@@ -613,6 +625,12 @@ export const backdrop = {
   tintShare: 0.55,
   /** Far hills band: height on the wall (width follows the drawing), how far its foot sinks into the snow. */
   hillsHeight: 0.95,
+  /**
+   * The share of `far-hills.webp`'s width that holds the drawing (its first and last 9 columns are empty), so no
+   * white gap shows where copies meet. The two ends do not match, so copies alternate mirrored and each joint meets
+   * its own mirror image. A version Rachel draws to tile would be best.
+   */
+  hillsCrop: [10 / 2126, 2116 / 2126] as [number, number],
   hillsSink: 0.12,
   /** The far hills fade this much toward `--snow-shadow` (distance haze), so they sit behind the village on the lit snow. */
   haze: 0.3,

@@ -24,6 +24,19 @@ export const drawnGameLane: GameLane = {
   pinSpot: { x: drawnLane.pinZone.x, z: drawnLane.pinZone.z },
 };
 
+/**
+ * Depth fit from the drawn layout to the game's lane. Between the line and the pin zone the drawing stretches
+ * so its line and pin zone land on the lane's; behind the pins it keeps `village.backDepthScale` (the scale it
+ * had on the first, shorter lane, or less if the lane is shorter still), so the far cluster, the calm snow
+ * behind the pins and the paper sky stay as close behind the pins as before on a longer lane.
+ */
+export function fitZ(z: number, lane: GameLane = drawnGameLane): number {
+  const drawn = drawnGameLane;
+  const front = (lane.lineZ - lane.pinSpot.z) / (drawn.lineZ - drawn.pinSpot.z);
+  if (z >= drawn.pinSpot.z) return lane.lineZ + (z - drawn.lineZ) * front;
+  return lane.pinSpot.z + (z - drawn.pinSpot.z) * Math.min(front, village.backDepthScale);
+}
+
 /** One frame prop placed on the game's lane. */
 export type VillageProp = {
   key: string;
@@ -40,13 +53,12 @@ export type VillageProp = {
 };
 
 /**
- * The frame layout fitted onto a lane: depth stretched so the drawn line and pin zone land on the
- * lane's line and pin spot, side props moved out by the lane's extra slide room. Pins (the friend
+ * The frame layout fitted onto a lane: depth fitted with `fitZ` (stretched from the line to the pins, the
+ * far end kept close behind the pins), side props moved out by the lane's extra slide room. Pins (the friend
  * cut-outs) are never part of it; they belong to the pins feature.
  */
 export function villageLayout(lane: GameLane = drawnGameLane): VillageProp[] {
   const drawn = drawnGameLane;
-  const k = (lane.lineZ - lane.pinSpot.z) / (drawn.lineZ - drawn.pinSpot.z);
   const shift = Math.max(lane.halfWidth - drawn.halfWidth, 0) + village.sideMargin;
   return layout.map((p, i) => {
     const scale = p.scale ?? 1;
@@ -55,7 +67,7 @@ export function villageLayout(lane: GameLane = drawnGameLane): VillageProp[] {
       key: `village-${p.prop}-${i}`,
       id: p.prop,
       x: p.x + out + (lane.pinSpot.x - drawn.pinSpot.x),
-      z: lane.lineZ + (p.z - drawn.lineZ) * k,
+      z: fitZ(p.z, lane),
       scale,
       flip: p.flip ?? false,
       height: propSettings(p.prop)!.height * scale,
@@ -102,11 +114,10 @@ export function villageProblems(
 ): string[] {
   const problems: string[] = [];
   const margin = drawnLane.clear.maxX - drawnLane.throwLine.halfWidth;
-  const k = (lane.lineZ - lane.pinSpot.z) / (drawnGameLane.lineZ - drawnGameLane.pinSpot.z);
   const clear = {
     halfX: lane.halfWidth + margin,
-    maxZ: lane.lineZ + (drawnLane.clear.maxZ - drawnLane.throwLine.z) * k,
-    minZ: lane.lineZ + (drawnLane.clear.minZ - drawnLane.throwLine.z) * k,
+    maxZ: fitZ(drawnLane.clear.maxZ, lane),
+    minZ: fitZ(drawnLane.clear.minZ, lane),
   };
   for (const p of villageLayout(lane)) {
     const name = `${p.id} at (${p.x.toFixed(2)}, ${p.z.toFixed(2)})`;
@@ -138,8 +149,7 @@ export function villageProblems(
 /** Drawn lane coordinates (layout space) to the game's lane, the same fit as `villageLayout`. */
 export function fitPoint(x: number, z: number, lane: GameLane = drawnGameLane): [number, number] {
   const drawn = drawnGameLane;
-  const k = (lane.lineZ - lane.pinSpot.z) / (drawn.lineZ - drawn.pinSpot.z);
   const shift = Math.max(lane.halfWidth - drawn.halfWidth, 0) + village.sideMargin;
   const out = Math.abs(x) > drawnLane.clear.maxX ? Math.sign(x) * shift : 0;
-  return [x + out + (lane.pinSpot.x - drawn.pinSpot.x), lane.lineZ + (z - drawn.lineZ) * k];
+  return [x + out + (lane.pinSpot.x - drawn.pinSpot.x), fitZ(z, lane)];
 }

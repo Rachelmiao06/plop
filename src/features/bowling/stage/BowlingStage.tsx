@@ -197,7 +197,19 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
         const pulled = map.get("pull");
         map.delete("pull");
         if (pulled) map.set(e.ballId, { ...pulled, rolled: 0 });
-        kick(e.ballId, -LOOK.ballSquash.launch * (0.5 + 0.5 * e.plan.power));
+        // Pushed off: squashed flat against the snow for a moment, then the spring throws it into a stretch.
+        const p = 0.5 + 0.5 * e.plan.power;
+        const m = map.get(e.ballId);
+        if (m) m.squash.q = Math.max(m.squash.q, LOOK.ballSquash.launchSquash * p);
+        kick(e.ballId, -LOOK.ballSquash.launch * p);
+        // A puff of snow kicked up behind the thrower's feet, thrown back and up.
+        const r = LOOK.kick.release;
+        const foot = game.thrower.foot;
+        snow.kickUpSnow(foot.x, foot.z + r.back, r.radius, {
+          amount: r.amount * p,
+          velocityX: -e.plan.direction.x * r.speed * p,
+          velocityZ: -e.plan.direction.z * r.speed * p,
+        });
       }
       if (e.type === "cancelled") {
         map.delete("pull");
@@ -259,6 +271,38 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     mark.pressed = { ...to };
   };
 
+  /**
+   * Snow a rolling ball throws besides its groove: a plume behind that grows with speed and size, and for a
+   * big ball a bow wave ahead and out to the sides, so it visibly bulldozes the snow (`LOOK.kick`).
+   */
+  const throwSnow = (ball: Bowling["balls"][number], fast: number, dt: number) => {
+    const k = LOOK.kick;
+    const r = ball.plan.radius;
+    const d = ball.plan.direction;
+    const big = Math.max(0, Math.min(1, (r - FEEL.ball.radiusSmall) / (FEEL.ball.radiusBig - FEEL.ball.radiusSmall)));
+    const { x, z } = ball.position;
+    const plume = k.plume.amount * fast * (k.plume.sizeFloor + (1 - k.plume.sizeFloor) * big) * dt;
+    if (plume > 0) {
+      const s = k.plume.speed * (0.5 + 0.5 * fast);
+      snow.kickUpSnow(x - d.x * r * k.plume.behind, z - d.z * r * k.plume.behind, r * 0.8, {
+        amount: plume,
+        velocityX: -d.x * s,
+        velocityZ: -d.z * s,
+      });
+    }
+    const heavy = Math.max(0, (r - k.plough.fromRadius) / Math.max(0.01, FEEL.ball.radiusBig - k.plough.fromRadius));
+    const going = Math.min(1, ball.speed / LOOK.speed.from);
+    const plough = k.plough.amount * heavy * going * dt;
+    if (plough > 0) {
+      const s = k.plough.speed * (0.6 + 0.4 * going);
+      snow.kickUpSnow(x + d.x * r * k.plough.ahead, z + d.z * r * k.plough.ahead, r * 0.9, {
+        amount: plough,
+        velocityX: d.x * s,
+        velocityZ: d.z * s,
+      });
+    }
+  };
+
   useFrame((state, delta) => {
     const inputs = io.current;
     if (!inputs) return;
@@ -294,6 +338,7 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
       const fast = Math.max(0, Math.min(1, (ball.speed - LOOK.speed.from) / (LOOK.speed.full - LOOK.speed.from)));
       const boost = 1 + (LOOK.speed.sprayBoost - 1) * fast;
       pressAlong(ball.id, ball.position, ball.plan.radius, { x: ball.velocity.x * boost, z: ball.velocity.z * boost }, 0);
+      if (ball.rolling) throwSnow(ball, fast, dt);
     }
 
     // ---- The snowman.

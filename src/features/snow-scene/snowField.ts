@@ -50,7 +50,16 @@ export type SnowApi = {
    * overlap take the taller of the two, never stack. For scenery bases.
    */
   heapSnow: (x: number, z: number, radiusX: number, radiusZ: number, height: number) => void;
+  /**
+   * Throw up a puff of snow dust and clumps here without denting the snow (a kick-off, a plume, a bow
+   * wave). `amount` is how much snow, on the same scale a press pushes away (0.02 is a small puff,
+   * 0.06 a big one); the velocity is the way it is thrown (units per second).
+   */
+  kickUpSnow: (x: number, z: number, radius: number, options?: KickUpOptions) => void;
 };
+
+/** Options for `kickUpSnow`. */
+export type KickUpOptions = { amount?: number; velocityX?: number; velocityZ?: number };
 
 /** Options for a fresh snowfall. */
 export type FreshSnowfallOptions = {
@@ -348,6 +357,21 @@ export class SnowField implements SnowApi {
   packedAt = (x: number, z: number): number => {
     const tile = this.tileAt(x, z);
     return tile ? clamp01(tile.sample(tile.pressed, x, z)) : 0;
+  };
+
+  kickUpSnow = (x: number, z: number, radius: number, options?: KickUpOptions): void => {
+    const amount = options?.amount ?? 0.02;
+    if (amount <= 0 || this.kicks.length >= 64) return;
+    this.kicks.push({
+      x,
+      y: this.heightAt(x, z),
+      z,
+      radius: Math.max(radius, this.cell),
+      volume: amount,
+      velocityX: options?.velocityX ?? 0,
+      velocityZ: options?.velocityZ ?? 0,
+      burst: false,
+    });
   };
 
   heapSnow = (x: number, z: number, radiusX: number, radiusZ: number, height: number): void => {

@@ -15,6 +15,7 @@ import {
   ShaderMaterial,
   SRGBColorSpace,
   type Texture,
+  Vector3,
 } from "three";
 
 import { useSnow } from "@/features/snow-scene";
@@ -29,13 +30,25 @@ const DEG = Math.PI / 180;
 const fade = { uOpacity: { value: 1 } };
 
 /** A flat drawing shown exactly as drawn (no light, no tone mapping), fading with the backdrop. */
-function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, mirror = false) {
+/**
+ * `tile` lays the drawing along the band `repeat` times: every other copy mirrored so each joint meets its own
+ * mirror image (the panorama's two ends do not match), using only `crop` (share of the width that has art,
+ * without the empty margin), shifted by `phase` copies.
+ */
+type Tile = { repeat: number; crop: [number, number]; phase: number };
+
+function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile | null = null, mirror = false) {
   return new ShaderMaterial({
     side: mirror ? BackSide : DoubleSide,
     transparent: true,
     depthWrite: false,
     toneMapped: false,
-    uniforms: { uMap: { value: map }, uRepeat: { value: repeat }, uPaper: { value: paper }, uHaze: { value: haze }, ...fade },
+    uniforms: {
+      uMap: { value: map },
+      uRepeat: { value: tile?.repeat ?? 1 },
+      uCrop: { value: tile?.crop ?? [0, 1] },
+      uPhase: { value: tile?.phase ?? 0 },
+      uPaper: { value: paper }, uHaze: { value: haze }, ...fade },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
       void main() {
@@ -46,6 +59,8 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
     fragmentShader: /* glsl */ `
       uniform sampler2D uMap;
       uniform float uRepeat;
+      uniform vec2 uCrop;
+      uniform float uPhase;
       uniform vec3 uPaper;
       uniform float uHaze;
       uniform float uOpacity;
@@ -53,7 +68,11 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
       void main() {
         // Seen from inside the curve, the drawing runs the other way round (so it is not mirrored).
         float u = ${mirror ? "1.0 - vUv.x" : "vUv.x"};
-        vec4 art = texture2D(uMap, vec2(u * uRepeat, vUv.y));
+        ${tile ? `float t = u * uRepeat + uPhase;
+        float f = fract(t);
+        if (mod(floor(t), 2.0) >= 1.0) f = 1.0 - f;
+        u = mix(uCrop.x, uCrop.y, f);` : ""}
+        vec4 art = texture2D(uMap, vec2(u, vUv.y));
         if (art.a < 0.02) discard;
         gl_FragColor = vec4(mix(art.rgb, uPaper, uHaze), art.a * uOpacity);
         #include <colorspace_fragment>
@@ -65,6 +84,8 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
 type Props = {
   /** The point the backdrop curves round (the throwing view's look-at point). */
   center: [number, number, number];
+  /** Extra distance to the wall (scene units), so it stays as far behind the pins on a longer lane. */
+  reach?: number;
 };
 
 /**
@@ -72,7 +93,9 @@ type Props = {
  * foot, and a few flat sky doodles drifting slowly. Fades out as the camera rises (see `backdrop` in content.ts).
  * Nothing here is lit: the sky is a blend of two tokens, the art is drawn exactly as drawn.
  */
-export function Backdrop({ center }: Props) {
+const look = new Vector3();
+
+export function Backdrop({ center, reach = 0 }: Props) {
   // On a phone held upright the backdrop comes a little closer and the hills grow (see `backdrop.portrait`).
   const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
   const narrow = Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
@@ -82,13 +105,13 @@ export function Backdrop({ center }: Props) {
     const lift = backdrop.hillsHeight * (grow - 1);
     return {
       ...backdrop,
-      radius: backdrop.radius + (p.radius - backdrop.radius) * narrow,
+      radius: backdrop.radius + (p.radius - backdrop.radius) * narrow + reach,
       hillsHeight: backdrop.hillsHeight * grow,
       tintFrom: backdrop.tintFrom + lift,
       sky: backdrop.sky.map((s) => ({ ...s, y: s.y + lift })),
       bird: { ...backdrop.bird, y: backdrop.bird.y + lift },
     };
-  }, [narrow]);
+  }, [narrow, reach]);
   const paper = usePaper();
   const snow = useSnow();
   const reduced = useReducedMotion();
@@ -172,16 +195,19 @@ export function Backdrop({ center }: Props) {
   // Far hills band: the panorama repeated along the arc, just inside the wall.
   const hillsTex = textures["far-hills"];
   const px = propPx("far-hills");
-  const copyWidth = px ? (b.hillsHeight * px.w) / px.h : b.hillsHeight * 14;
+  const crop = b.hillsCrop;
+  const copyWidth = (px ? (b.hillsHeight * px.w) / px.h : b.hillsHeight * 14) * (crop[1] - crop[0]);
   const hillsRadius = b.radius - 0.05;
-  const repeats = (hillsRadius * arc) / copyWidth;
+  // A whole number of copies (never stretched much), mirrored at every joint, with a copy's middle straight back.
+  const repeats = Math.max(1, Math.round((hillsRadius * arc) / copyWidth));
+  const phase = 0.5 - ((repeats * 0.5) % 1);
   const hills = useMemo(
     () => new CylinderGeometry(hillsRadius, hillsRadius, b.hillsHeight, 96, 1, true, Math.PI - arc / 2, arc),
     [hillsRadius, b.hillsHeight, arc],
   );
   const hillsMaterial = useMemo(
-    () => artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, repeats, true),
-    [hillsTex, repeats, paper, b.haze],
+    () => artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, { repeat: repeats, crop, phase }, true),
+    [hillsTex, repeats, crop, phase, paper, b.haze],
   );
 
   // Sky doodles: small flat planes on the wall, facing the middle.
@@ -227,10 +253,10 @@ export function Backdrop({ center }: Props) {
   useFrame(({ camera, clock }) => {
     const g = root.current;
     if (!g) return;
-    // Fade with the camera's height above the snow, seen from the middle of the scene.
-    const dx = camera.position.x - cx;
-    const dz = camera.position.z - cz;
-    const pitch = Math.atan2(camera.position.y - center[1], Math.hypot(dx, dz)) / DEG;
+    // Fade with how steeply the camera looks down at the snow (from the throwing view that is its height
+    // seen from the middle of the scene; a camera riding low behind the ball looks nearly level and keeps it).
+    camera.getWorldDirection(look);
+    const pitch = Math.asin(Math.min(Math.max(-look.y, -1), 1)) / DEG;
     const opacity = 1 - Math.min(Math.max((pitch - b.fadeFrom) / (b.fadeTo - b.fadeFrom), 0), 1);
     g.visible = opacity > 0.001;
     fade.uOpacity.value = opacity;

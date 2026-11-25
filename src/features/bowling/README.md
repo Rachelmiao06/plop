@@ -5,9 +5,9 @@ on the throwing line, slides left and right to pick a spot, pulls back so a snow
 its feet, and lets go; the ball rolls down the lane along the aim line, pressing a groove and
 throwing dust, and stops by itself. See `docs/GAMEPLAY.md`. Owner: Rachel.
 
-Test page: `/dev/bowling` (add `?fps` for the frame rate). Pins, toppling, counting, turns and
-formations come later (#7, #25, #26) and build on this page; the faint dashed ring down the lane
-(`lane.pinSpot`) marks the clear spot where pins will stand.
+Test page: `/dev/bowling` (add `?fps` for the frame rate). The faint dashed ring down the lane
+(`lane.pinSpot`) marks where the pins stand: 8.6 units from the line since the long lane (was 5.6);
+pins, the village and the paper sky all follow it.
 
 ## Files
 
@@ -24,6 +24,11 @@ formations come later (#7, #25, #26) and build on this page; the faint dashed ri
 - `stage/ThrowerStandee.tsx` the thrower: Rachel's bucket snowman (player one) or red-hat snowman (player two) as the scenery feature's thick paper standee, with idle wobble and breath, a shuffling slide, lean back and crouch while pulling (leaning toward the ball's side), a strain shiver at full charge, a stretchy hop and a happy bounce. Built from scenery's `bodyGeometry`, `artGeometry`, `toonMaterial`, `artMaterial` (deep imports, like pins' `PinCard`); scenery could export a `StandeeBody` for both.
 - `stage/snowballLook.ts` the drawn ball: flat `--paper`, a hatched `--snow-shadow` side fixed to the drawing light, paper fibres, pencil arcs and crumbs fixed to the ball so it visibly turns, and an uneven `--ink` outline shell (about the cut-outs' line weight). Never lit or glossy.
 - `stage/clumps.ts` clumps of snow that fall off big rolling balls and plop into the snow (a tiny `punchCrater`).
+- Power you can see and hear (`LOOK.kick`, `FEEL.beats`): on letting go the ball squashes against the snow then
+  stretches away, the snowman lunges harder the stronger the pull, a puff of snow is kicked up behind its feet, and
+  you hear a low push-off thump under the whoosh (a second whoosh on a strong pull). While rolling, a plume of snow
+  is thrown up behind the ball (more when faster and bigger) and a big ball pushes a bow wave of snow ahead
+  (the snow scene's `kickUpSnow`); the crunch's pace follows the speed all the way down the lane.
 - Look and motion numbers: `LOOK` in `content.ts`. Screenshots next to the source art: `review/`.
 
 ## Units and directions
@@ -94,12 +99,10 @@ Pins (#7) will listen to the balls' positions each frame and to `stopped`.
 
 ## Camera
 
-The snow scene's camera always looks at the middle of the scene from the front and offers no
-way to set a different starting view from outside (`snowView` only has `reset` and `state`).
-So the lane is laid out to suit its play view instead: thrower near the bottom of the screen,
-pin spot near the top. A real "throwing view" (lower, behind the thrower, looking down the lane)
-needs a small addition in the snow scene, for example a way to set the look-at point and the
-start position on its camera path.
+The throwing view is set by the game with the snow scene's `useSnowCameraView` (from scenery's
+`throwingView`), and the camera moves of a throw (aim, launch, chase, impact, return) are directed by
+the game (`src/features/game/CameraDirector.tsx`) through the snow scene's camera shots. This feature
+draws and simulates the throw only; it never moves the camera.
 
 ## Input notes
 

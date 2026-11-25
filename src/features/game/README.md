@@ -26,7 +26,13 @@ One person alone simply keeps throwing: the snowmen alternate.
 - `GameBridge.tsx` inside the canvas: feeds bowling and pins events into the rules, runs the timers on the scene
   clock, locks the throw, swaps the thrower.
 - `bowlingLink.ts` everything taken from the bowling feature that its public API lacks (see below).
-- `CameraFollow.tsx` the short camera follow while the ball rolls (see "Asked of other features").
+- `CameraDirector.tsx` films each throw through the snow scene's camera shots: **aim** (the player's view eases
+  lower and closer as the pull loads), **launch** (a push forward and a lens kick, times the power), **chase**
+  (the camera pushes in part of the way but never past the snowman, Rachel's rule, and follows the ball by
+  zooming in), **impact** (from behind the line, a little to the side, zoomed in on the pins while they fall,
+  held through "N down!") and **return** (a calm glide home when the
+  pins pop back). Any drag, scroll or key during the chase or impact hands the view back; the next throw is filmed
+  again. "Reduce motion" keeps only a gentle lean after the ball. Numbers: `GAME.camera` in `content.ts`.
 - `GameOverlay.tsx` the hint, the turn note and the cancel button. `gameStyles.ts` their small scoped stylesheet.
 - `Game.tsx` puts it all together.
 
@@ -43,7 +49,5 @@ One person alone simply keeps throwing: the snowmen alternate.
      throwers differently, change only those two ids in `content.ts`.
 - **snow-scene:** the temporary "Look / Press" switch and its hint show on every page. The home page hides them
   with CSS (`gameStyles.ts`). Wanted: remove the temporary hook, or `<SnowScene testControls={false}>`.
-- **snow-scene (camera):** an additive, eased look offset, e.g. `nudgeSnowCamera({ x, z })` applied inside the
-  camera rig. `useSnowCameraView` only sets the home view and jumps there (it resets the player's turn and path),
-  so it cannot follow a ball. For now `CameraFollow.tsx` adds a small offset to the camera after the rig places
-  it each frame. That relies on the rig's frame callback running first (it is mounted before the scene's children).
+- **snow-scene (camera):** done. The snow scene now has camera shots (`setSnowCameraShot`, `kickSnowCamera`), and
+  the old `CameraFollow.tsx` workaround is gone.

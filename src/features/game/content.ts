@@ -30,10 +30,68 @@ export const GAME = {
   },
 
   /**
-   * The short camera follow while the ball rolls: the view slides this share of the ball's way down the
-   * lane, at most `max` units, easing in at `easeIn` and back at `easeBack` (share per second) after the hit.
+   * The camera choreography of a throw (`CameraDirector.tsx`, through the snow scene's camera shots).
+   * `rate`s are spring rates per second: about 2 = a calm glide, 6 = follows with a little physical lag,
+   * 12 = tight. Distances in scene units (one unit = one character height), angles and fov in degrees.
    */
-  cameraFollow: { share: 0.22, max: 1.1, easeIn: 3, easeBack: 1.8 },
+  camera: {
+    /**
+     * Aim: as the pull grows (share of full pull, to the power `curve`) the player's view moves `closer` of
+     * the way toward what it looks at, `lower` units down, its look point `lookBack` units back toward the
+     * thrower and `followSlide` of the thrower's slide sideways. The player can still turn and zoom.
+     */
+    aim: { closer: 0.16, lower: 1.1, lookBack: 1.4, followSlide: 0.35, curve: 1.3, rate: 4 },
+    /**
+     * Launch: a push forward (units per second) and a field-of-view kick (degrees per second) on the camera's
+     * springs, times the pull's power (never less than `minShare`), and for the first `time` seconds the
+     * camera follows the ball at the quicker `rate` before settling into the chase. The lens widens to the
+     * chase lens over `lensTime` seconds, while the camera dives in (widening it while still far away
+     * would look like a zoom out).
+     */
+    launch: { push: 9, fovKick: 45, minShare: 0.35, time: 0.5, rate: 8.5, lensTime: 0.55 },
+    /**
+     * Chase: the camera pushes in only part of the way and never passes the snowman (Rachel): it settles
+     * `behind` units behind the throwing line, `height` up (high enough to see over the snowman), following
+     * `followX` of the ball's sideways way, and looks at the ball (`ahead` units in front of it, at
+     * `lookHeight`). It follows by zooming: the lens keeps about `frame` units of snow in view around the ball (across the
+     * narrow side of the screen, so a phone held upright is not zoomed in tighter),
+     * between `fovMin` and `fovMax` degrees, so the ball stays big all the way down the lane.
+     */
+    chase: {
+      behind: 3.4,
+      height: 2.3,
+      followX: 0.45,
+      ahead: 0.9,
+      lookHeight: 0.3,
+      frame: 3.4,
+      fovMin: 11,
+      fovMax: 40,
+      rate: 5,
+      lookRate: 8,
+    },
+    /**
+     * Impact: when the ball is `triggerAhead` units before the pin spot (or the hit-stop starts, or it
+     * stops), the camera, still behind the line (`behind`, `height`), slides `side` units toward the side the
+     * ball is on (`sideDeadZone`: straight balls go right) for a little angle, and zooms in so about `frame`
+     * units around the pins fill the view, looking `lookBack` behind the pin spot. It holds through "N down!".
+     */
+    impact: {
+      triggerAhead: 1.3,
+      sideDeadZone: 0.25,
+      behind: 3.6,
+      height: 2.6,
+      side: 1.6,
+      frame: 3.9,
+      lookBack: -0.4,
+      lookHeight: 0.4,
+      rate: 3.2,
+      lookRate: 4,
+    },
+    /** Return: the calm glide back to the throwing view once the pins pop back up. */
+    ret: { rate: 1.9 },
+    /** "Reduce motion": no swoops, the view only leans `share` of the ball's way down the lane (at most `max`). */
+    reduced: { share: 0.22, max: 1.1, rate: 2.5 },
+  },
 
   timing: {
     /**

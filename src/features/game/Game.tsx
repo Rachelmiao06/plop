@@ -13,7 +13,7 @@ import { throwingView, Village } from "@/features/scenery";
 import { SnowCameraView, SnowScene } from "@/features/snow-scene";
 
 import { GAME } from "./content";
-import { CameraFollow } from "./CameraFollow";
+import { CameraDirector } from "./CameraDirector";
 import { createLink, GameBridge } from "./GameBridge";
 import { CancelPull, GameHint, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
@@ -53,7 +53,7 @@ export function Game() {
         <BowlingStage />
         <PinsStage pins={pins} />
         <GameBridge game={game} pins={pins} link={link} />
-        <CameraFollow pins={pins} link={link} />
+        <CameraDirector pins={pins} link={link} />
       </SnowScene>
       <GameHint game={game} />
       <TurnNote game={game} />

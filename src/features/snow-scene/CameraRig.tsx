@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import type { Camera } from "three";
+import { type Camera, PerspectiveCamera, Vector3 } from "three";
+import { playerMovedCamera, snowCameraShots, springStep } from "./cameraShot";
 import { content } from "./content";
 import { cameraDistance, getLayout } from "./layout";
 import { snowCameraHome, snowPointers, snowView } from "./pointers";
@@ -126,7 +127,8 @@ class CameraView {
     this.yaw += (this.goalYaw - this.yaw) * (1 - Math.exp(-input.turnEase * seconds));
   }
 
-  apply(camera: Camera, time: number): void {
+  /** The player's own view this frame: camera position and the point it looks at (written into `pos`, `look`). */
+  pose(time: number, pos: Vector3, look: Vector3): void {
     const c = content.camera;
     const p = content.cameraPath;
 
@@ -165,12 +167,12 @@ class CameraView {
     const sway = c.swayAmount * Math.min(level, 1);
     const across = Math.sin(t) * sway;
     const [tx, ty, tz] = this.target;
-    camera.position.set(
+    pos.set(
       tx + flat * Math.sin(yaw) + across * Math.cos(yaw),
       ty + d * Math.sin(pitch) + Math.cos(t * 1.3) * sway * 0.5,
       tz + flat * Math.cos(yaw) - across * Math.sin(yaw),
     );
-    camera.lookAt(tx, ty, tz);
+    look.set(tx, ty, tz);
   }
 
   /** For measuring: where on the path and how far turned. */
@@ -186,15 +188,86 @@ class CameraView {
   }
 }
 
+/**
+ * The camera shot on top of the player's view (see cameraShot.ts): an offset of the camera position, of the
+ * look-at point and of the field of view, each pulled toward the shot by a critically damped spring.
+ * No shot = the offsets spring back to zero, so the view glides home and then follows the player exactly.
+ */
+class ShotFollower {
+  private off = { pos: new Vector3(), look: new Vector3(), fov: 0 };
+  private vel = { pos: new Vector3(), look: new Vector3(), fov: 0 };
+  private goalPos = new Vector3();
+  private goalLook = new Vector3();
+  private dir = new Vector3();
+  private seen = new Vector3();
+
+  apply(camera: Camera, pos: Vector3, look: Vector3, seconds: number): void {
+    const store = snowCameraShots;
+    const shot = store.shot;
+    const baseFov = content.camera.fieldOfView;
+    let goalFov: number = baseFov;
+    let rate = store.releaseRate;
+    let lookRate = rate;
+    this.goalPos.copy(pos);
+    this.goalLook.copy(look);
+    if (shot) {
+      if (shot.position) this.goalPos.set(...shot.position);
+      else {
+        if (shot.closer) this.goalPos.lerp(look, Math.min(Math.max(shot.closer, 0), 0.9));
+        if (shot.lower) this.goalPos.y -= shot.lower;
+      }
+      if (shot.lookAt) this.goalLook.set(...shot.lookAt);
+      else if (shot.lookShift) this.goalLook.add(this.seen.set(...shot.lookShift));
+      if (shot.fov !== undefined) goalFov = shot.fov;
+      rate = shot.rate;
+      lookRate = shot.lookRate ?? shot.rate;
+    }
+    // One-off pushes (a launch): velocity along the way the camera looks, and a wider lens.
+    if (store.kicks.length) {
+      this.dir.copy(look).add(this.off.look).sub(this.seen.copy(pos).add(this.off.pos)).normalize();
+      for (const k of store.kicks) {
+        if (k.forward) this.vel.pos.addScaledVector(this.dir, k.forward);
+        if (k.fov) this.vel.fov += k.fov;
+      }
+      store.kicks.length = 0;
+    }
+    // Offsets wanted, then one spring step per number.
+    this.goalPos.sub(pos);
+    this.goalLook.sub(look);
+    const dt = Math.min(seconds, 0.1);
+    for (const axis of ["x", "y", "z"] as const) {
+      [this.off.pos[axis], this.vel.pos[axis]] = springStep(this.off.pos[axis], this.vel.pos[axis], this.goalPos[axis], rate, dt);
+      [this.off.look[axis], this.vel.look[axis]] = springStep(this.off.look[axis], this.vel.look[axis], this.goalLook[axis], lookRate, dt);
+    }
+    [this.off.fov, this.vel.fov] = springStep(this.off.fov, this.vel.fov, goalFov - baseFov, rate, dt);
+
+    camera.position.copy(pos).add(this.off.pos);
+    camera.lookAt(this.seen.copy(look).add(this.off.look));
+    if (camera instanceof PerspectiveCamera) {
+      const s = content.shots;
+      const fov = Math.min(Math.max(baseFov + this.off.fov, s.fovMin), s.fovMax);
+      if (Math.abs(camera.fov - fov) > 1e-4) {
+        camera.fov = fov;
+        camera.updateProjectionMatrix();
+      }
+    }
+  }
+}
+
 type Touch = { x: number; y: number; time: number; mouse: boolean };
 type GestureLike = Event & { scale?: number };
 
 export function CameraRig() {
   const canvas = useThree((s) => s.gl.domElement);
   const view = useMemo(() => new CameraView(), []);
+  const follower = useMemo(() => new ShotFollower(), []);
+  const scratch = useMemo(() => ({ pos: new Vector3(), look: new Vector3() }), []);
 
   useEffect(() => {
-    snowView.reset = () => view.reset();
+    snowView.reset = () => {
+      playerMovedCamera();
+      view.reset();
+    };
     snowView.state = () => view.state();
     const input = content.cameraInput;
     // The whole scene (canvas and the buttons over it).
@@ -215,6 +288,7 @@ export function CameraRig() {
       const dx = e.deltaX * lines;
       const dy = e.deltaY * lines;
       if (dx === 0 && dy === 0) return;
+      playerMovedCamera();
       const sinceLast = e.timeStamp - lastWheel;
       lastWheel = e.timeStamp;
       const scroll = input.invertScroll ? -1 : 1;
@@ -271,6 +345,7 @@ export function CameraRig() {
       if (!overScene(e)) return;
       e.preventDefault();
       const scale = e.scale ?? 1;
+      playerMovedCamera();
       if (scale > 0 && lastScale > 0) {
         view.movePath(-Math.log(scale / lastScale) * input.gesturePath);
       }
@@ -334,6 +409,7 @@ export function CameraRig() {
         const gap = Math.hypot(a.x - b.x, a.y - b.y);
         // Fingers together = rise, the same as a trackpad pinch.
         if (lastGap > 0 && gap > 0) {
+          playerMovedCamera();
           view.movePath(Math.log(lastGap / gap) * input.touchPinchPath);
         }
         lastGap = gap;
@@ -345,6 +421,7 @@ export function CameraRig() {
       // toward the high view.
       const yaw = -dx * input.dragTurn;
       const path = dy * input.dragPath;
+      if (yaw !== 0 || path !== 0) playerMovedCamera();
       view.turn(yaw);
       view.movePath(path);
       dragging = e.pointerId;
@@ -366,7 +443,14 @@ export function CameraRig() {
       if (pair && pair.includes(e.pointerId)) endPinch();
     };
 
+    // Any key (not a modifier, not a repeat) also hands the view back during an interruptible shot.
+    const key = (e: KeyboardEvent) => {
+      if (e.repeat || ["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
+      playerMovedCamera();
+    };
+
     window.addEventListener("wheel", wheel, { passive: false });
+    window.addEventListener("keydown", key);
     window.addEventListener("gesturestart", gestureStart, { passive: false });
     window.addEventListener("gesturechange", gestureChange, { passive: false });
     window.addEventListener("gestureend", gestureEnd, { passive: false });
@@ -376,6 +460,7 @@ export function CameraRig() {
     window.addEventListener("pointercancel", up);
     return () => {
       window.removeEventListener("wheel", wheel);
+      window.removeEventListener("keydown", key);
       window.removeEventListener("gesturestart", gestureStart);
       window.removeEventListener("gesturechange", gestureChange);
       window.removeEventListener("gestureend", gestureEnd);
@@ -389,10 +474,21 @@ export function CameraRig() {
     };
   }, [canvas, view]);
 
+  // Drop any shot left over when the scene goes away.
+  useEffect(
+    () => () => {
+      snowCameraShots.shot = null;
+      snowCameraShots.kicks.length = 0;
+      snowCameraShots.taken = false;
+    },
+    [],
+  );
+
   useFrame((state, delta) => {
     view.setAspect(state.size.width / Math.max(state.size.height, 1));
     view.update(Math.min(delta, 0.1));
-    view.apply(state.camera, state.clock.elapsedTime);
+    view.pose(state.clock.elapsedTime, scratch.pos, scratch.look);
+    follower.apply(state.camera, scratch.pos, scratch.look, delta);
   });
 
   return null;
