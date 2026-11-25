@@ -13,8 +13,14 @@ export type ThrowerPhase = "ready" | "pulling" | "thrown";
 
 /** The snowball while it is being pulled back behind the thrower. */
 export type PulledBall = {
-  /** Centre of the ball, on the ground. */
+  /** Centre of the ball, on the ground (where it is drawn and presses the snow): `track` plus `beside`. */
   position: Vec2;
+  /** The point on the pull line the ball follows (the pull is `track - foot`). */
+  track: Vec2;
+  /** Where the ball sits beside the pull line, so it never covers the snowman (`pull.beside`). */
+  beside: Vec2;
+  /** Which side of the pull line it sits on: 1 = the thrower's right (+x when pulling straight back), -1 = left. */
+  side: number;
   radius: number;
   /** Growth 0..1. Only goes up. */
   size: number;
@@ -79,6 +85,8 @@ export type RollingBall = {
   /** The roll's own speed before the launch snap, and seconds since letting go (see roll.ts). */
   baseSpeed: number;
   age: number;
+  /** Seconds since `burst()` poofed it into snow (null = not bursting). It is removed after `roll.burstTime`. */
+  bursting: number | null;
 };
 
 export type BowlEvent =
@@ -94,6 +102,8 @@ export type BowlEvent =
       reason: "short" | "interrupted";
     }
   | { type: "stopped"; thrower: string; ballId: number; at: Vec2; radius: number; size: number }
+  /** A ball poofs into snow (see `burst`); `removed` follows once it has gone. */
+  | { type: "burst"; ballId: number; at: Vec2; radius: number; velocity: Vec2 }
   | { type: "removed"; ballId: number };
 
 export type BowlListener = (event: BowlEvent) => void;
@@ -184,8 +194,13 @@ export class Bowling {
     t.target = { ...t.foot };
     t.pull = { x: 0, z: 0 };
     t.aim = null;
+    // Beside the feet toward the middle of the lane (to the right when standing in the middle).
+    const b = this.feel.pull.beside;
     t.ball = {
       position: { ...t.foot },
+      track: { ...t.foot },
+      beside: { x: 0, z: 0 },
+      side: t.x > b.middle ? -1 : 1,
       radius: this.feel.ball.radiusSmall,
       size: 0,
       reach: 0,
@@ -214,7 +229,7 @@ export class Bowling {
     const t = this.thrower;
     if (t.phase !== "pulling" || !t.ball) return;
     // Same function and inputs as the aim line drawn last frame.
-    const plan = planRoll(t.foot, t.pull, t.ball.size, t.ball.radius, this.feel, this.ground);
+    const plan = planRoll(t.foot, t.pull, t.ball.size, t.ball.radius, this.feel, this.ground, t.ball.beside);
     if (!plan) {
       this.crumble("short");
       return;
@@ -232,6 +247,7 @@ export class Bowling {
       restAge: 0,
       baseSpeed: plan.startSpeed,
       age: 0,
+      bursting: null,
     });
     t.phase = "thrown";
     t.launchAge = 0;
@@ -244,6 +260,20 @@ export class Bowling {
   /** Drop a pull without throwing (the ball crumbles). */
   cancel(reason: "short" | "interrupted" = "interrupted"): void {
     if (this.thrower.phase === "pulling") this.crumble(reason);
+  }
+
+  /**
+   * Poof a rolling or resting ball into snow: it keeps rolling for a moment while it flattens and shrinks
+   * away (drawn by the stage, with a puff of snow), then it is removed. The pins ask for this once the ball
+   * has rolled through them, so it never parks over the fallen cards. Returns false if there is no such ball
+   * or it is already bursting.
+   */
+  burst(ballId: number): boolean {
+    const ball = this.balls.find((b) => b.id === ballId);
+    if (!ball || ball.bursting !== null) return false;
+    ball.bursting = 0;
+    this.emit({ type: "burst", ballId, at: { ...ball.position }, radius: ball.plan.radius, velocity: { ...ball.velocity } });
+    return true;
   }
 
   /**
@@ -353,7 +383,7 @@ export class Bowling {
     t.target = this.pullTarget();
 
     // Snow just ahead of the ball, in the way it is heading (its own groove is under and behind it).
-    const toward = sub(t.target, ball.position);
+    const toward = sub(t.target, ball.track);
     const gapNow = length(toward);
     const heading = gapNow > 1e-6 ? scale(toward, 1 / gapNow) : ball.rollDirection;
     const packed = clamp01(
@@ -366,38 +396,47 @@ export class Bowling {
     // Follow with lag: heavier (bigger) balls lag more, a packed track lets it run.
     // The rate itself eases, so crossing an old track never jerks the ball.
     // Tension: the farther it is pulled, the more it resists, like a band loading up.
-    const loaded = Math.pow(clamp01(distance(ball.position, t.foot) / Math.max(1e-6, feel.pull.max)), feel.follow.tensionCurve);
+    const loaded = Math.pow(clamp01(distance(ball.track, t.foot) / Math.max(1e-6, feel.pull.max)), feel.follow.tensionCurve);
     const wanted =
       lerp(feel.follow.rateLight, feel.follow.rateHeavy, ball.size) *
       lerp(1, feel.follow.packedBoost, packed) *
       lerp(1, feel.follow.tensionAtFull, loaded);
     ball.follow += (wanted - ball.follow) * ease(feel.follow.smoothing, dt);
-    let next = add(ball.position, scale(toward, ease(ball.follow, dt)));
+    let next = add(ball.track, scale(toward, ease(ball.follow, dt)));
     const gap = sub(t.target, next);
     const gapLength = length(gap);
     if (gapLength > feel.follow.maxTrail) {
       next = sub(t.target, scale(gap, feel.follow.maxTrail / gapLength));
     }
-
-    // Rolling.
-    const move = sub(next, ball.position);
-    const moved = length(move);
-    ball.rolled += moved;
-    if (moved > 1e-6) ball.rollDirection = scale(move, 1 / moved);
-    const instant = dt > 0 ? scale(move, 1 / dt) : { x: 0, z: 0 };
-    ball.velocity = add(ball.velocity, scale(sub(instant, ball.velocity), ease(20, dt)));
-    ball.speed = length(ball.velocity);
-    ball.position = next;
+    ball.track = next;
 
     // Growth: only while reaching farther than before, and less over packed snow.
     const max = Math.max(1e-6, feel.pull.max);
-    const reach = Math.min(distance(next, t.foot), max);
+    const pulledBy = distance(next, t.foot);
+    const reach = Math.min(pulledBy, max);
     if (reach > ball.reach) {
       const freshness = lerp(1, feel.ball.growthOnPacked, packed);
       ball.size = clamp01(ball.size + ((reach - ball.reach) / max) * freshness);
       ball.reach = reach;
     }
     ball.radius = lerp(feel.ball.radiusSmall, feel.ball.radiusBig, Math.pow(ball.size, feel.ball.growthCurve));
+
+    // Beside the feet: to the side of the pull line, easing in as the pull starts, wider for a bigger ball.
+    const b = feel.pull.beside;
+    const back = pulledBy > 1e-6 ? scale(sub(next, t.foot), 1 / pulledBy) : { x: 0, z: 1 };
+    const aside = (b.base + b.share * ball.radius) * clamp01(pulledBy / Math.max(1e-6, b.rampOver)) * ball.side;
+    ball.beside = { x: back.z * aside, z: -back.x * aside };
+    const drawn = add(next, ball.beside);
+
+    // Rolling.
+    const move = sub(drawn, ball.position);
+    const moved = length(move);
+    ball.rolled += moved;
+    if (moved > 1e-6) ball.rollDirection = scale(move, 1 / moved);
+    const instant = dt > 0 ? scale(move, 1 / dt) : { x: 0, z: 0 };
+    ball.velocity = add(ball.velocity, scale(sub(instant, ball.velocity), ease(20, dt)));
+    ball.speed = length(ball.velocity);
+    ball.position = drawn;
 
     ball.dwell = moved / Math.max(dt, 1e-9) < feel.ball.stillSpeed ? ball.dwell + dt : 0;
 
@@ -411,7 +450,7 @@ export class Bowling {
     ball.trembleOffset = { x: Math.sin(w) * amount, z: Math.cos(w * 1.37) * amount };
 
     t.pull = sub(next, t.foot);
-    t.aim = planRoll(t.foot, t.pull, ball.size, ball.radius, feel, this.ground);
+    t.aim = planRoll(t.foot, t.pull, ball.size, ball.radius, feel, this.ground, ball.beside);
   }
 
   private tickRolls(dt: number) {
@@ -444,6 +483,14 @@ export class Bowling {
     }
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const ball = this.balls[i];
+      if (ball.bursting !== null) {
+        ball.bursting += dt;
+        if (ball.bursting >= this.feel.roll.burstTime) {
+          this.balls.splice(i, 1);
+          this.emit({ type: "removed", ballId: ball.id });
+        }
+        continue;
+      }
       if (ball.rolling) continue;
       ball.restAge += dt;
       if (ball.restAge >= this.feel.roll.restTime) {

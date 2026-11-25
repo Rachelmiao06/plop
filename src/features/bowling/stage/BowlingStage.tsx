@@ -215,6 +215,16 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
         map.delete("pull");
         snow.punchCrater(e.at.x, e.at.z, e.radius); // the ball crumbles into the snow
       }
+      if (e.type === "burst") {
+        // Poof: a puff of snow and clumps thrown up where it is, carried a little along its roll.
+        const b = LOOK.burst;
+        const big = e.radius / game.feel.ball.radiusBig;
+        snow.kickUpSnow(e.at.x, e.at.z, e.radius * b.radius, {
+          amount: b.amount * big * motionShare(),
+          velocityX: e.velocity.x * b.carry,
+          velocityZ: e.velocity.z * b.carry,
+        });
+      }
       if (e.type === "removed") map.delete(e.ballId);
     });
     io.current = { keyboard, feedback };
@@ -367,14 +377,16 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     }
     for (const ball of game.balls) {
       const fadeLeft = feel.roll.restTime - ball.restAge;
+      // Bursting: it flattens (the squash spring's goal) and shrinks away, quick at the end.
+      const burst = ball.bursting === null ? 0 : Math.min(1, ball.bursting / Math.max(1e-6, feel.roll.burstTime));
       shown.push({
         key: ball.id,
         at: ball.position,
         radius: ball.plan.radius,
         rolled: ball.rolled,
         dir: ball.plan.direction,
-        scale: Math.min(1, fadeLeft / 0.4),
-        load: 0,
+        scale: Math.min(1, fadeLeft / 0.4) * (1 - burst * burst),
+        load: burst > 0 ? LOOK.burst.flatten : 0,
       });
     }
     ballRefs.current.forEach((mesh, i) => {

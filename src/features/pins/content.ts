@@ -83,9 +83,15 @@ export const PINS = {
     /** ...or spins faster than this (radians per second)... */
     settleSpin: 0.5,
     /** ...for this long. */
-    settleHold: 0.35,
-    /** Give up waiting this long after the ball stops (cards still rocking count as they are). */
-    timeoutAfterStop: 2.2,
+    settleHold: 0.25,
+    /** A card already lying in the snow (down and landed) counts as still at this many times those speeds. */
+    lyingShare: 4,
+    /**
+     * The count is certain (and "N down!" pops) as soon as no ball of the throw can touch a card any more (it has
+     * burst, see `burst`) and every card has been still for `settleHold`. Give up waiting this long after the
+     * ball is clear (cards still rocking count as they are).
+     */
+    timeoutAfterClear: 1.4,
     /** And this long after the throw at the latest. */
     timeoutAfterLaunch: 12,
   },
@@ -209,9 +215,33 @@ export const PINS = {
   /**
    * Extra energy when the ball itself touches a card (once per card per throw), on top of the physics
    * push: a shove along the ball's way (per unit of mass, per unit of ball speed), a little lift, and a
-   * tumble (spin that tips it over the way the ball goes, plus a touch of random twist).
+   * tumble (spin that tips it over the way the ball goes, plus a touch of random twist). `faceUp` adds a tip
+   * backward, away from the throwing line, so more cards land face-up toward the camera (issue #48).
    */
-  impact: { push: 0.13, lift: 0.24, tumble: 0.062, twist: 0.014 },
+  impact: { push: 0.13, lift: 0.24, tumble: 0.062, twist: 0.014, faceUp: 0.03 },
+
+  /**
+   * The ball never parks over the fallen cards (issue #47): once it has rolled past every card's foot (by its
+   * radius plus `pastMargin`; a fallen card's head may still lie ahead, and the ball bursts on it), or it slows below `slowSpeed` while within `amongMargin` of a card, the pins ask the
+   * bowling game to burst it into a puff of snow. From the low impact camera a ball resting even a few units
+   * behind the set still covers the cards lying on the snow, so it poofs as soon as it is through.
+   */
+  burst: { pastMargin: 0.2, amongMargin: 0.3, slowSpeed: 2.4 },
+
+  /**
+   * A fallen card rests a little propped up on a heap of snow, so from the low throwing view it reads as a
+   * picture, not a sliver (issue #48). Drawing only: the physics card lies flat and the count is unchanged.
+   * Once it has landed, the drawing lifts its head (turning on its bottom edge) until it rests `elevationDegrees`
+   * off the snow, easing in at `rate` (share of the gap per second) and back down when it pops up again.
+   * The heap is a soft paper-snow mound under the lifted card (the scenery's mound look): `at` share of the card's
+   * length from its foot, `fill` share of the gap it props up, `widthShare` of the card's width and `lengthShare`
+   * of its length across.
+   */
+  rest: {
+    elevationDegrees: 16,
+    rate: 6,
+    heap: { at: 0.45, fill: 0.9, widthShare: 0.7, lengthShare: 0.45 },
+  },
 
   /** With "reduce motion" on: the card squash keeps this share and the pop-up only fades (vibration and sound stay). */
   reducedMotion: 0.3,
