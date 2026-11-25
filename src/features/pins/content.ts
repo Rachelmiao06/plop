@@ -46,9 +46,9 @@ export const PINS = {
    * harder to tip. Light ones tip at a touch, heavy ones need a real hit.
    */
   weight: {
-    light: { mass: 0.3, footShare: 0.55, footDepth: 0.07, friction: 0.7, restitution: 0.14, linearDamping: 0.35, angularDamping: 0.55 },
-    medium: { mass: 0.5, footShare: 0.6, footDepth: 0.1, friction: 0.8, restitution: 0.12, linearDamping: 0.45, angularDamping: 0.75 },
-    heavy: { mass: 0.9, footShare: 0.65, footDepth: 0.16, friction: 0.9, restitution: 0.1, linearDamping: 0.6, angularDamping: 0.95 },
+    light: { mass: 0.3, footShare: 0.55, footDepth: 0.07, friction: 0.7, restitution: 0.14, linearDamping: 0.4, angularDamping: 0.7 },
+    medium: { mass: 0.5, footShare: 0.6, footDepth: 0.1, friction: 0.8, restitution: 0.12, linearDamping: 0.5, angularDamping: 0.9 },
+    heavy: { mass: 0.9, footShare: 0.65, footDepth: 0.16, friction: 0.9, restitution: 0.1, linearDamping: 0.65, angularDamping: 1.1 },
   } satisfies Record<Weight, { mass: number; footShare: number; footDepth: number; friction: number; restitution: number; linearDamping: number; angularDamping: number }>,
 
   /** Speed limits, so nothing ever flies off absurdly. Checked after every physics step. */
@@ -74,13 +74,13 @@ export const PINS = {
     /** Tilted more than this from upright (degrees). */
     tiltDegrees: 50,
     /** Everything counts as settled when no card moves faster than this... */
-    settleSpeed: 0.15,
+    settleSpeed: 0.2,
     /** ...or spins faster than this (radians per second)... */
-    settleSpin: 0.35,
+    settleSpin: 0.5,
     /** ...for this long. */
-    settleHold: 0.4,
+    settleHold: 0.35,
     /** Give up waiting this long after the ball stops (cards still rocking count as they are). */
-    timeoutAfterStop: 3.5,
+    timeoutAfterStop: 2.2,
     /** And this long after the throw at the latest. */
     timeoutAfterLaunch: 12,
   },

@@ -18,7 +18,7 @@ const DOODLES: Doodle[] = [
   { src: "/assets/effects/star.webp", size: 2.4, x: 92, y: -22, turn: 14, delay: 0.12 },
 ];
 const FULL_CLEAR_DOODLES: Doodle[] = [
-  { src: "/assets/effects/snow-ring.webp", size: 11, x: 50, y: 50, turn: 0, delay: 0 },
+  { src: "/assets/effects/snow-ring.webp", size: 3.2, x: 88, y: 118, turn: 0, delay: 0.34 },
   { src: "/assets/effects/surprise-lines.webp", size: 4, x: -10, y: -34, turn: -20, delay: 0.05 },
   { src: "/assets/effects/star.webp", size: 3, x: 98, y: -30, turn: 16, delay: 0.1 },
   { src: "/assets/effects/star.webp", size: 2, x: 8, y: 108, turn: -10, delay: 0.22 },
@@ -79,7 +79,7 @@ export function PinsPopup({ pins }: { pins: Pins }) {
   const doodles = big ? FULL_CLEAR_DOODLES : result.down === 0 ? [] : DOODLES;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[18%] flex justify-center" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-[24%] flex justify-center" aria-live="polite">
       <style>{STYLE}</style>
       <div
         key={shown.id}
@@ -102,7 +102,7 @@ export function PinsPopup({ pins }: { pins: Pins }) {
                 "--turn": `${d.turn}deg`,
                 transform: `translate(-50%, -50%) rotate(${d.turn}deg)`,
                 animation: `pins-doodle 0.45s ${d.delay + 0.15}s cubic-bezier(.2,.9,.3,1.3) both`,
-                zIndex: d.src.includes("snow-ring") ? 0 : 2,
+                zIndex: 2,
               } as React.CSSProperties
             }
           />

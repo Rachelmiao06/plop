@@ -120,6 +120,8 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
   const bodies = useRef<(RapierRigidBody | null)[]>([]);
   const visuals = useRef<(Group | null)[]>([]);
   const runtime = useRef<PinRuntime[]>([]);
+  /** Which set `runtime` was made for (it is replaced in an effect, a moment after the new set mounts). */
+  const runtimeFor = useRef<string | null>(null);
   const ballBodies = useRef<(RapierRigidBody | null)[]>([]);
   const ballColliders = useRef<(RapierCollider | null)[]>([]);
   const flow = useRef({
@@ -142,12 +144,15 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     off: null as null | (() => void),
     /** Ball id → collider slot, so a ball never jumps from one slot to another. */
     slots: new Map<number, number>(),
+    /** Ball id → the height it came to rest at. A resting ball stays put even when landing cards dent the snow under it. */
+    restY: new Map<number, number>(),
     groundChecked: false,
   });
 
   // A new set: fresh per-pin state (hidden if it is about to hop in).
   useEffect(() => {
     runtime.current = specs.map(() => ({ down: false, landed: false, anim: null, boingAt: -10, hidden: entry.arrive }));
+    runtimeFor.current = entry.id;
     if (!entry.arrive) pins.emit({ type: "ready", formation: entry.id, total: specs.length });
   }, [specs, entry, pins]);
 
@@ -328,7 +333,12 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
       const fade = ball.rolling ? 1 : clamp01((game.feel.roll.restTime - ball.restAge) / PINS.ball.fadeTime);
       const r = ball.plan.radius * fade;
       collider.setRadius(Math.max(0.005, r * PINS.ball.radiusShare));
-      const at = { x: ball.position.x, y: snow.heightAt(ball.position.x, ball.position.z) + r * (1 - game.feel.ball.sink), z: ball.position.z };
+      let ground = snow.heightAt(ball.position.x, ball.position.z);
+      if (!ball.rolling) {
+        if (!f.restY.has(ball.id)) f.restY.set(ball.id, ground);
+        ground = f.restY.get(ball.id)!;
+      }
+      const at = { x: ball.position.x, y: ground + r * (1 - game.feel.ball.sink), z: ball.position.z };
       // A new ball is placed, not swept from where its slot was parked (that would hit like a cannon).
       if (isNew) body.setTranslation(at, true);
       body.setNextKinematicTranslation(at);
@@ -336,6 +346,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     for (const [id, slot] of f.slots) {
       if (live.has(id)) continue;
       f.slots.delete(id);
+      f.restY.delete(id);
       const body = ballBodies.current[slot];
       body?.setTranslation({ x: slot * 3, y: PARK_Y, z: 0 }, false);
       body?.setNextKinematicTranslation({ x: slot * 3, y: PARK_Y, z: 0 });
@@ -415,6 +426,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     // A new set mounted hidden: hop it in once its bodies exist.
     if (
       f.arriveFor === entry.id &&
+      runtimeFor.current === entry.id &&
       runtime.current.length === specs.length &&
       specs.every((_, i) => bodies.current[i] && runtime.current[i].hidden)
     ) {
@@ -517,6 +529,11 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
           standReady();
         }
       }
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      // Handy from the browser console while tuning: window.__pins.runtime
+      (window as unknown as { __pins?: unknown }).__pins = { flow: f, runtime: runtime.current, bodies: bodies.current, specs, entry };
     }
 
     // Development check: the physics ground lines up with the drawn snow.
