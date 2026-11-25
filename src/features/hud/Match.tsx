@@ -6,7 +6,7 @@
  * for a tie, your best when alone, "play again"). Props only: the game decides; these show and ask.
  * Frosted paper with a pencil outline, like the score panel. Put them in the same `relative` box as the scene.
  */
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -254,6 +254,9 @@ export function MatchEnd({ players, solo, bestThrow, rival, onAgain, onChoose, c
   const winner = solo ? null : a.total > b.total ? 0 : b.total > a.total ? 1 : null;
   const newBest = !!solo && (solo.best === null || a.total > solo.best);
   const title = solo ? t.end.solo : tie ? t.end.tie : t.end.wins(players[winner!].name);
+  // "Play again" takes the focus for the keyboard, without scrolling a tall card (one with the board) to its end.
+  const again = useRef<HTMLButtonElement>(null);
+  useEffect(() => again.current?.focus({ preventScroll: true }), []);
   const sub = solo
     ? newBest
       ? t.end.newBest
@@ -287,8 +290,8 @@ export function MatchEnd({ players, solo, bestThrow, rival, onAgain, onChoose, c
       {bestThrow && <p className="mt-1 font-heading text-base leading-tight opacity-80">{t.end.bestThrow(bestThrow.name, bestThrow.points, bestThrow.round)}</p>}
       {children && <div className="mt-3 flex flex-col items-center gap-3">{children}</div>}
       <Button
+        ref={again}
         size="lg"
-        autoFocus
         onClick={onAgain}
         className="mt-4 h-12 w-full rounded-full bg-sky-blue font-heading text-2xl font-bold text-ink-deep hover:bg-sky-blue/80"
       >

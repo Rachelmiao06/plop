@@ -58,7 +58,7 @@ export const GAME = {
    */
   rule: {
     pop: 0.55,
-    marker: { lift: 0.22, bounce: 0.09, bounceFor: 1.1, size: 54 },
+    marker: { lift: 0.03, bounce: 0.09, bounceFor: 1.1, size: 60 },
   },
 
   score: {

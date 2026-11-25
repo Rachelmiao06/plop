@@ -143,13 +143,19 @@ function PlayerScore({
           <SnowmanFace look={player.look} size={38} seed={side === "left" ? 3 : 8} />
         </div>
       </div>
-      <span
-        key={`total-${total}`}
-        className={`inline-block min-w-[1.4ch] text-center font-heading text-3xl leading-none font-bold tabular-nums md:text-4xl ${
-          active ? "text-ink-deep" : "text-ink"
-        } ${total > 0 ? styles.pop : ""}`}
-      >
-        {total}
+      {/* The player's name from the start card over their total, so everyone knows whose score is whose. */}
+      <span className="flex flex-col items-center">
+        <span aria-hidden className="max-w-[5.5rem] truncate font-heading text-sm leading-none text-ink md:max-w-[7rem] md:text-base">
+          {player.name}
+        </span>
+        <span
+          key={`total-${total}`}
+          className={`inline-block min-w-[1.4ch] text-center font-heading text-3xl leading-none font-bold tabular-nums md:text-4xl ${
+            active ? "text-ink-deep" : "text-ink"
+          } ${total > 0 ? styles.pop : ""}`}
+        >
+          {total}
+        </span>
       </span>
     </div>
   );
