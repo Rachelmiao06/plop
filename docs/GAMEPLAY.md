@@ -77,10 +77,21 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 
 - Players take turns, one ball each, like bowling. The thrower swaps between the bucket snowman and the
   red-hat snowman.
-- A small, soft tally at the top shows how many each knocked down in their last throw and in total. No rounds,
-  no winner screen; it is just for fun and can be hidden.
+- There is a score (Rachel: hitting alone is not enough). Each cut-out knocked down is a point; a full clear
+  gives a small bonus. See section 7b for how it looks.
 - One person can simply keep throwing.
-- Later option: both throwers on the line at once, aiming at the same crowd (chaos mode).
+- Later mode: both throwers on the line at once, aiming at the same crowd ("together" mode). Turns come first.
+
+## 7b. Score display (first version; Rachel will design it properly later)
+
+- Floats at the top of the screen over the snow, never covering the lane.
+- A translucent frosted-glass panel (soft blur of the snow behind it, like Apple's translucent bars), with a
+  hand-drawn feel on top: a wobbly brown pencil outline, handwritten numbers, the effect doodles for flourishes.
+- A hand-drawn progress bar for the current set: how many cut-outs are down out of how many, filling with a
+  coloured-pencil stroke as they fall, and a little burst when it fills (full clear).
+- Each player's total next to their snowman's little face (bucket snowman, red-hat snowman); the player whose turn
+  it is glows softly. Points fly up into the bar from the fallen cut-outs.
+- Can be hidden with one tap. Colours and fonts from the tokens.
 
 ## 8. Controls
 
