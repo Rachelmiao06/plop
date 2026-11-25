@@ -500,6 +500,8 @@ export const SPECIALS = {
   friend: {
     /** Points when every friend is still standing after the throw. Knocked over, it simply scores nothing. */
     bonus: 2,
+    /** A ball that passed within this gap of a friend (edge to edge) that is still standing gets a little mew. */
+    nearMiss: 0.35,
   },
 } as const;
 

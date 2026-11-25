@@ -36,7 +36,7 @@ import {
   type Texture,
 } from "three";
 
-import { playThump } from "@/lib/audio";
+import { playNearMiss, playStarHit, playThump } from "@/lib/audio";
 import { haptic } from "@/lib/haptics";
 
 import type { BowlEvent, Bowling } from "@/features/bowling";
@@ -86,6 +86,8 @@ type PinRuntime = {
   lift: number;
   /** When a star card went down (for its star's pop), on the pins clock. */
   starAt?: number;
+  /** Its sparkle sound has played in this throw. */
+  sparkled?: boolean;
 };
 
 const MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -168,6 +170,7 @@ function clearCounts(list: PinRuntime[]) {
     rt.down = false;
     rt.landed = false;
     rt.struck = false;
+    rt.sparkled = false;
   }
 }
 
@@ -246,6 +249,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     groundChecked: false,
     /** The ball has met a card in this throw (the hit-stop plays once per throw). */
     hitThisThrow: false,
+    /** The closest a ball of this throw came to a friend (gap between their edges), for the near-miss mew. */
+    friendGap: Infinity,
     /** A hit-stop is slowing the physics (it is paused and stepped by hand). */
     slowing: false,
   });
@@ -306,6 +311,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     f.settledFor = 0;
     f.pendingThrow = false;
     f.hitThisThrow = false;
+    f.friendGap = Infinity;
     clearCounts(runtime.current);
     pins.emit({ type: "knocked", down: 0, total: counted });
     setPhase("throw");
@@ -379,6 +385,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const f = flow.current;
     const result = countThrow(formation, runtime.current.map((rt) => rt.down));
     const { down, fullClear } = result;
+    // The ball came close to the bunny and it is still standing: a tiny surprised mew.
+    if (result.friend === "safe" && f.friendGap < SPECIALS.friend.nearMiss) playNearMiss();
     f.fullClear = fullClear;
     f.throwBalls.clear();
     pins.emit({ type: "result", result });
@@ -617,10 +625,25 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const loose = isDown && rt.landed ? d.lyingShare : 1;
       if (!b.isSleeping() && (Math.hypot(x, y, z) > d.settleSpeed * loose || spin > d.settleSpin * loose)) moving = true;
 
-      if (f.phase === "throw" && isDown && !rt.down) newlyDown = true;
+      if (f.phase === "throw" && isDown && !rt.down) {
+        newlyDown = true;
+        // A star friend tipping over: a little rising sparkle (once a throw, even if it rocks).
+        if (specs[i]?.kind === "star" && !rt.sparkled) {
+          rt.sparkled = true;
+          playStarHit();
+        }
+      }
       if (f.phase === "throw") rt.down = isDown;
     });
     if (f.phase !== "throw") return;
+    for (const ball of f.game?.balls ?? []) {
+      if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
+      specs.forEach((s, i) => {
+        if (s.kind !== "friend" || runtime.current[i]?.down) return;
+        const gap = Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) - ball.plan.radius - s.card[0];
+        if (gap < f.friendGap) f.friendGap = gap;
+      });
+    }
     if (newlyDown) {
       pins.emit({ type: "knocked", down: runtime.current.filter((rt, i) => rt.down && specs[i]?.kind !== "friend").length, total: counted });
     }
