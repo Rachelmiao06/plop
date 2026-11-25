@@ -57,13 +57,15 @@ export type VillageProp = {
  * far end kept close behind the pins), side props moved out by the lane's extra slide room. Pins (the friend
  * cut-outs) are never part of it; they belong to the pins feature.
  */
-export function villageLayout(lane: GameLane = drawnGameLane): VillageProp[] {
+export function villageLayout(lane: GameLane = drawnGameLane, portrait = false): VillageProp[] {
   const drawn = drawnGameLane;
   const shift = Math.max(lane.halfWidth - drawn.halfWidth, 0) + village.sideMargin;
-  return layout.map((p, i) => {
+  const screen = portrait ? "portrait" : "landscape";
+  return layout.flatMap((p, i) => {
+    if (p.view && p.view !== screen) return [];
     const scale = p.scale ?? 1;
     const out = p.side === "left" ? -shift : p.side === "right" ? shift : 0;
-    return {
+    return [{
       key: `village-${p.prop}-${i}`,
       id: p.prop,
       x: p.x + out + (lane.pinSpot.x - drawn.pinSpot.x),
@@ -74,7 +76,7 @@ export function villageLayout(lane: GameLane = drawnGameLane): VillageProp[] {
       width: propWidth(p.prop) * scale,
       side: p.side,
       lift: p.lift ?? 0,
-    };
+    }];
   });
 }
 
@@ -111,6 +113,7 @@ export function throwingView(lane: GameLane = drawnGameLane): SnowViewSettings {
 export function villageProblems(
   lane: GameLane = drawnGameLane,
   camera?: { x: number; y: number; z: number },
+  portrait = false,
 ): string[] {
   const problems: string[] = [];
   const margin = drawnLane.clear.maxX - drawnLane.throwLine.halfWidth;
@@ -119,7 +122,7 @@ export function villageProblems(
     maxZ: fitZ(drawnLane.clear.maxZ, lane),
     minZ: fitZ(drawnLane.clear.minZ, lane),
   };
-  for (const p of villageLayout(lane)) {
+  for (const p of villageLayout(lane, portrait)) {
     const name = `${p.id} at (${p.x.toFixed(2)}, ${p.z.toFixed(2)})`;
     const half = p.width / 2;
     const inLane =

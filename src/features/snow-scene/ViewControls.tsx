@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RotateCcw, Snowflake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { content } from "./content";
+import { DoodleButton, ResetDoodle, SnowflakeDoodle } from "./DoodleButton";
 import { freshSnowfall } from "./freshSnow";
 import { snowPointers, snowView } from "./pointers";
 
@@ -57,20 +57,16 @@ export function ViewControls() {
             {content.tempPress}
           </Button>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          aria-keyshortcuts="N"
-          title={`${content.freshSnow.buttonLabel} (N)`}
-          onClick={() => freshSnowfall()}
-        >
-          <Snowflake data-icon="inline-start" />
-          {content.freshSnow.buttonLabel}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => snowView.reset()}>
-          <RotateCcw data-icon="inline-start" />
-          {content.resetView}
-        </Button>
+        {/* Round hand-drawn buttons (#49), side by side in the top-right corner: on a phone the score
+            panel leaves this band free for them. */}
+        <div className="flex gap-2">
+          <DoodleButton label={content.freshSnow.buttonLabel} shortcut="N" seed={67} onClick={() => freshSnowfall()}>
+            <SnowflakeDoodle />
+          </DoodleButton>
+          <DoodleButton label={content.resetView} seed={79} onClick={() => snowView.reset()}>
+            <ResetDoodle />
+          </DoodleButton>
+        </div>
       </div>
       <p
         data-temp-hint
