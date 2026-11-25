@@ -290,11 +290,11 @@ export type Placement = {
 export const layout: Placement[] = [
   // far end: tree back right, cocoa corner back left, the middle left open
   { prop: "tree-snowmen", x: 4.0, z: -10.6, side: "far" },
-  { prop: "pine-snow-tall", x: -5.0, z: -11.4, scale: 1.05, side: "far" },
+  { prop: "pine-snow-tall", x: -4.6, z: -10.4, scale: 1.05, side: "far" },
   { prop: "cocoa-stall", x: -3.55, z: -10.6, side: "far" },
   { prop: "fairy-lights", x: -3.15, z: -9.2, scale: 0.95, side: "far" },
   { prop: "pine-snow-short", x: 5.6, z: -9.4, flip: true, side: "far" },
-  { prop: "bush-snow", x: -2.6, z: -11.4, scale: 0.8, side: "far" },
+  { prop: "bush-snow", x: -2.6, z: -11.0, scale: 0.8, side: "far" },
   { prop: "mound-snow", x: 2.7, z: -9.0, scale: 0.85, side: "far" },
 
   // left side: home
@@ -600,6 +600,11 @@ export const backdrop = {
   /** Distance from the look-at point to the backdrop (scene units, on the game's lane), and how much of the circle it covers. */
   radius: 9.6,
   arc: 220, // degrees, centred straight back
+  /**
+   * On a phone held upright the score panel covers the top of the screen, so the backdrop comes this much
+   * closer and the hills grow by `hillsGrow` (both in full at `portraitAspect` and narrower).
+   */
+  portrait: { aspect: 0.6, radius: 8.3, hillsGrow: 1.3 },
   /** Height of the paper sky wall (above the snow); tall enough that its top edge never shows below 40 degrees. */
   height: 7,
   /** Sky colour: `--paper` up to `tintFrom`, mixing toward `--snow-shadow` by `tintShare` at `tintTo` (heights). */

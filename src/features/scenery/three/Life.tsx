@@ -16,11 +16,11 @@ import { useReducedMotion } from "./motion";
  * apart, growing and fading. A flat doodle that faces the camera; it holds still (half risen) for reduced motion.
  */
 export function ChimneySmoke({ placed }: { placed: (VillageProp & { baseY: number })[] }) {
-  const tex = useTexture(propSrc("chimney-smoke")) as Texture;
-  useMemo(() => {
-    tex.colorSpace = SRGBColorSpace;
-    tex.needsUpdate = true;
-  }, [tex]);
+  const tex = useTexture(propSrc("chimney-smoke"), (loaded) => {
+    const t = loaded as Texture;
+    t.colorSpace = SRGBColorSpace;
+    t.needsUpdate = true;
+  }) as Texture;
   const reduced = useReducedMotion();
   const s = village.smoke;
 

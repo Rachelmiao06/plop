@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import {
   BackSide,
@@ -10,7 +10,6 @@ import {
   DoubleSide,
   type Group,
   type Mesh,
-  MeshBasicMaterial,
   PlaneGeometry,
   RepeatWrapping,
   ShaderMaterial,
@@ -26,6 +25,43 @@ import { usePaper } from "./treatment";
 
 const DEG = Math.PI / 180;
 
+// Changed every frame (the fade as the view rises), so it lives outside the component, shared by every layer.
+const fade = { uOpacity: { value: 1 } };
+
+/** A flat drawing shown exactly as drawn (no light, no tone mapping), fading with the backdrop. */
+function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, mirror = false) {
+  return new ShaderMaterial({
+    side: mirror ? BackSide : DoubleSide,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+    uniforms: { uMap: { value: map }, uRepeat: { value: repeat }, uPaper: { value: paper }, uHaze: { value: haze }, ...fade },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D uMap;
+      uniform float uRepeat;
+      uniform vec3 uPaper;
+      uniform float uHaze;
+      uniform float uOpacity;
+      varying vec2 vUv;
+      void main() {
+        // Seen from inside the curve, the drawing runs the other way round (so it is not mirrored).
+        float u = ${mirror ? "1.0 - vUv.x" : "vUv.x"};
+        vec4 art = texture2D(uMap, vec2(u * uRepeat, vUv.y));
+        if (art.a < 0.02) discard;
+        gl_FragColor = vec4(mix(art.rgb, uPaper, uHaze), art.a * uOpacity);
+        #include <colorspace_fragment>
+      }
+    `,
+  });
+}
+
 type Props = {
   /** The point the backdrop curves round (the throwing view's look-at point). */
   center: [number, number, number];
@@ -37,7 +73,22 @@ type Props = {
  * Nothing here is lit: the sky is a blend of two tokens, the art is drawn exactly as drawn.
  */
 export function Backdrop({ center }: Props) {
-  const b = backdrop;
+  // On a phone held upright the backdrop comes a little closer and the hills grow (see `backdrop.portrait`).
+  const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
+  const narrow = Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
+  const b = useMemo(() => {
+    const p = backdrop.portrait;
+    const grow = 1 + (p.hillsGrow - 1) * narrow;
+    const lift = backdrop.hillsHeight * (grow - 1);
+    return {
+      ...backdrop,
+      radius: backdrop.radius + (p.radius - backdrop.radius) * narrow,
+      hillsHeight: backdrop.hillsHeight * grow,
+      tintFrom: backdrop.tintFrom + lift,
+      sky: backdrop.sky.map((s) => ({ ...s, y: s.y + lift })),
+      bird: { ...backdrop.bird, y: backdrop.bird.y + lift },
+    };
+  }, [narrow]);
   const paper = usePaper();
   const snow = useSnow();
   const reduced = useReducedMotion();
@@ -49,15 +100,14 @@ export function Backdrop({ center }: Props) {
     () => Object.fromEntries(["far-hills", ...skyIds].map((id) => [id, propSrc(id)])),
     [skyIds],
   );
-  const textures = useTexture(urls) as Record<string, Texture>;
-  useMemo(() => {
-    for (const [id, tex] of Object.entries(textures)) {
+  const textures = useTexture(urls, (loaded) => {
+    for (const tex of Object.values(loaded as Record<string, Texture>)) {
       tex.colorSpace = SRGBColorSpace;
       tex.anisotropy = 8;
-      if (id === "far-hills") tex.wrapS = RepeatWrapping;
+      tex.wrapS = RepeatWrapping;
       tex.needsUpdate = true;
     }
-  }, [textures]);
+  }) as Record<string, Texture>;
 
   // The foot of the wall: the average snow height along the arc, so the hills sit in the snow, not on a drift.
   const arc = b.arc * DEG;
@@ -89,7 +139,7 @@ export function Backdrop({ center }: Props) {
           uTint: { value: new Color(paper.shade) },
           uBand: { value: [b.tintFrom, b.tintTo, b.tintShare] },
           uFoot: { value: foot },
-          uOpacity: { value: 1 },
+          ...fade,
         },
         vertexShader: /* glsl */ `
           varying float vHeight;
@@ -127,42 +177,7 @@ export function Backdrop({ center }: Props) {
     [hillsRadius, b.hillsHeight, arc],
   );
   const hillsMaterial = useMemo(
-    () =>
-      new ShaderMaterial({
-        side: BackSide,
-        transparent: true,
-        depthWrite: false,
-        toneMapped: false,
-        uniforms: {
-          uMap: { value: hillsTex },
-          uRepeat: { value: repeats },
-          uPaper: { value: new Color(paper.paper) },
-          uHaze: { value: b.haze },
-          uOpacity: { value: 1 },
-        },
-        vertexShader: /* glsl */ `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          uniform sampler2D uMap;
-          uniform float uRepeat;
-          uniform vec3 uPaper;
-          uniform float uHaze;
-          uniform float uOpacity;
-          varying vec2 vUv;
-          void main() {
-            // Seen from inside the curve, so run the drawing the other way round (not mirrored).
-            vec4 art = texture2D(uMap, vec2((1.0 - vUv.x) * uRepeat, vUv.y));
-            if (art.a < 0.02) discard;
-            gl_FragColor = vec4(mix(art.rgb, uPaper, uHaze), art.a * uOpacity);
-            #include <colorspace_fragment>
-          }
-        `,
-      }),
+    () => artPlaneMaterial(hillsTex, new Color(paper.paper), b.haze, repeats, true),
     [hillsTex, repeats, paper, b.haze],
   );
 
@@ -173,10 +188,10 @@ export function Backdrop({ center }: Props) {
       Object.fromEntries(
         skyIds.map((id) => [
           id,
-          new MeshBasicMaterial({ map: textures[id], transparent: true, depthWrite: false, toneMapped: false, side: DoubleSide }),
+          artPlaneMaterial(textures[id], new Color(paper.paper), 0),
         ]),
       ),
-    [skyIds, textures],
+    [skyIds, textures, paper],
   );
   const skyRefs = useRef<(Mesh | null)[]>([]);
   const birdRef = useRef<Mesh>(null);
@@ -215,10 +230,8 @@ export function Backdrop({ center }: Props) {
     const pitch = Math.atan2(camera.position.y - center[1], Math.hypot(dx, dz)) / DEG;
     const opacity = 1 - Math.min(Math.max((pitch - b.fadeFrom) / (b.fadeTo - b.fadeFrom), 0), 1);
     g.visible = opacity > 0.001;
+    fade.uOpacity.value = opacity;
     if (!g.visible) return;
-    wallMaterial.uniforms.uOpacity.value = opacity;
-    hillsMaterial.uniforms.uOpacity.value = opacity;
-    for (const m of Object.values(skyMaterials)) m.opacity = opacity;
 
     const t = reduced ? 0 : clock.elapsedTime;
     b.sky.forEach((s, i) => {
