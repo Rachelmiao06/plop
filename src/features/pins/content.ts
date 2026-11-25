@@ -59,11 +59,11 @@ export const PINS = {
   /** Speed limits, so nothing ever flies off absurdly. Checked after every physics step. */
   caps: {
     /** Fastest a card may slide, any direction (units per second). */
-    linear: 4.5,
+    linear: 5.2,
     /** Fastest a card may move upward (a hop, never a launch). */
-    up: 1.6,
+    up: 1.9,
     /** Fastest a card may spin (radians per second). */
-    angular: 11,
+    angular: 13,
   },
 
   /** The ball as the physics sees it: a pushing sphere following the bowling roll exactly. */
@@ -171,7 +171,46 @@ export const PINS = {
     /** Seconds it stays up (a full clear stays a little longer). */
     showFor: 1.8,
     showForFullClear: 2.4,
+    /** Seconds it takes to bounce in: stretch up, squash wide, settle (a full clear bounces longer and bigger). */
+    bounceIn: 0.6,
+    bounceInFullClear: 0.8,
+    /** How far it stretches and squashes on the way in (share of its size), and on a full clear. */
+    squash: 0.16,
+    squashFullClear: 0.24,
+    /** The little "pop" sound under it: loudness, and the notes of the full-clear chime (Hz). */
+    popVolume: 0.22,
+    chime: [784, 988, 1175, 1568],
+    chimeStep: 0.09,
   },
+
+  /** A card squashes a little when it flops into the snow, then springs back (drawing only). */
+  flop: {
+    /** Squash at the hardest landing (share of the card's length); a soft lay-down squashes less. */
+    squash: 0.14,
+    stiffness: 260,
+    damping: 11,
+  },
+
+  /**
+   * Hit-stop: when the ball meets the first card of a throw, time runs slow for a moment (the ball, the
+   * thrower and the physics), then eases back. `slowest` is the share of normal speed right at the hit.
+   */
+  hitStop: {
+    seconds: 0.14,
+    slowest: 0.12,
+    /** The impact thump under it: a share of the ball's size on the thump sound's scale. */
+    thump: 0.5,
+  },
+
+  /**
+   * Extra energy when the ball itself touches a card (once per card per throw), on top of the physics
+   * push: a shove along the ball's way (per unit of mass, per unit of ball speed), a little lift, and a
+   * tumble (spin that tips it over the way the ball goes, plus a touch of random twist).
+   */
+  impact: { push: 0.11, lift: 0.18, tumble: 0.05, twist: 0.012 },
+
+  /** With "reduce motion" on: the card squash keeps this share and the pop-up only fades (vibration and sound stay). */
+  reducedMotion: 0.3,
 } as const;
 
 export type PinsFeel = typeof PINS;

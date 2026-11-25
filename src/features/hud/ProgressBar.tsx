@@ -62,35 +62,47 @@ export function ProgressBar({ down, total, color, knock }: Props) {
   return (
     <div ref={box} className="relative w-full" style={{ height: h }} aria-hidden>
       {w > 0 && (
-        <svg width={w} height={h} className="absolute inset-0 overflow-visible">
-          <defs>
-            <clipPath id={clipId}>
-              <path d={track} />
-            </clipPath>
-          </defs>
-          {/* paper-white groove */}
-          <path d={track} fill="var(--paper)" opacity={0.7} />
-          {/* coloured-pencil fill: a light wash with hatching on top, ragged at the front */}
-          <g clipPath={`url(#${clipId})`}>
-            <clipPath id={`${clipId}-fill`}>
-              <path d={raggedFill(fillWidth, h, jitter)} />
-            </clipPath>
-            <g clipPath={`url(#${clipId}-fill)`}>
-              <rect x={0} y={0} width={w} height={h} fill={color} opacity={content.bar.wash} />
-              {hatch.map((s, i) => (
-                <path key={i} d={s.d} stroke={color} strokeWidth={s.width} opacity={s.opacity} strokeLinecap="round" fill="none" />
-              ))}
+        <div
+          key={knock?.id ?? 0}
+          className={`absolute inset-0 ${knock && knock.count > 0 ? styles.bump : ""}`}
+          style={
+            {
+              "--hud-bump": `${content.bump.duration}ms`,
+              "--hud-sq": content.bump.squash,
+              animationDelay: `${Math.round(content.plusOne.duration * content.bump.at)}ms`,
+            } as CSSProperties
+          }
+        >
+          <svg width={w} height={h} className="absolute inset-0 overflow-visible">
+            <defs>
+              <clipPath id={clipId}>
+                <path d={track} />
+              </clipPath>
+            </defs>
+            {/* paper-white groove */}
+            <path d={track} fill="var(--paper)" opacity={0.7} />
+            {/* coloured-pencil fill: a light wash with hatching on top, ragged at the front */}
+            <g clipPath={`url(#${clipId})`}>
+              <clipPath id={`${clipId}-fill`}>
+                <path d={raggedFill(fillWidth, h, jitter)} />
+              </clipPath>
+              <g clipPath={`url(#${clipId}-fill)`}>
+                <rect x={0} y={0} width={w} height={h} fill={color} opacity={content.bar.wash} />
+                {hatch.map((s, i) => (
+                  <path key={i} d={s.d} stroke={color} strokeWidth={s.width} opacity={s.opacity} strokeLinecap="round" fill="none" />
+                ))}
+              </g>
             </g>
-          </g>
-          <path
-            d={outline}
-            fill="none"
-            stroke="var(--ink)"
-            strokeWidth={content.pencil.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+            <path
+              d={outline}
+              fill="none"
+              stroke="var(--ink)"
+              strokeWidth={content.pencil.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       )}
 
       {flights.map((f) => (

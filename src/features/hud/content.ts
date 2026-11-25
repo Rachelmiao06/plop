@@ -75,9 +75,19 @@ export const content = {
     duration: 1400,
   },
 
-  /** Number pop when a total goes up. */
+  /** Number pop when a total goes up: a squash-and-stretch bounce. */
   pop: {
+    duration: 480,
+  },
+
+  /**
+   * The bar gives a little springy bump when a "+1" drops into it: how long, how much it stretches up
+   * and squashes (share of its height), and when, as a share of the "+1" flight (it lands at about 0.72).
+   */
+  bump: {
     duration: 420,
+    squash: 0.22,
+    at: 0.72,
   },
 } as const;
 

@@ -5,7 +5,7 @@
  * Step it with `step(seconds)`; feed it slides and pull targets; read its state; listen to its events.
  */
 import type { Feel } from "./content";
-import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, planRoll, stepRoll } from "./roll";
+import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, movingSpeed, planRoll, snapShare, stepRoll } from "./roll";
 import { type Vec2, add, clamp01, distance, ease, length, lerp, scale, sub } from "./vec";
 
 /** ready (sliding allowed) → pulling → thrown (a little hop) → ready. */
@@ -76,6 +76,9 @@ export type RollingBall = {
   rolling: boolean;
   /** Seconds since it stopped (0 while rolling). */
   restAge: number;
+  /** The roll's own speed before the launch snap, and seconds since letting go (see roll.ts). */
+  baseSpeed: number;
+  age: number;
 };
 
 export type BowlEvent =
@@ -111,6 +114,7 @@ export class Bowling {
   private listeners = new Set<BowlListener>();
   private nextBallId = 1;
   private rollClock = 0;
+  private slow = { left: 0, length: 1, slowest: 1 };
 
   /** `feel` is read live. `ground` tells it how packed the snow is (the snow scene's `useSnow()` fits). */
   constructor(feel: Feel, ground: Ground = FRESH_SNOW, throwerId = "one") {
@@ -221,11 +225,13 @@ export class Bowling {
       thrower: t.id,
       plan,
       position: { ...plan.start },
-      speed: plan.startSpeed,
-      velocity: scale(plan.direction, plan.startSpeed),
+      speed: plan.startSpeed * snapShare(0, this.feel),
+      velocity: scale(plan.direction, plan.startSpeed * snapShare(0, this.feel)),
       rolled: 0,
       rolling: true,
       restAge: 0,
+      baseSpeed: plan.startSpeed,
+      age: 0,
     });
     t.phase = "thrown";
     t.launchAge = 0;
@@ -238,6 +244,32 @@ export class Bowling {
   /** Drop a pull without throwing (the ball crumbles). */
   cancel(reason: "short" | "interrupted" = "interrupted"): void {
     if (this.thrower.phase === "pulling") this.crumble(reason);
+  }
+
+  /**
+   * Hit-stop: slow the whole throw down to `slowest` (share of normal speed) for a moment, easing back
+   * to full speed over `seconds` of real time. The stage turns real frames into game time with
+   * `slowFrame`; other features (the pins' physics) read `timeScale` to slow down with it.
+   */
+  hitStop(seconds: number, slowest: number): void {
+    if (seconds <= 0) return;
+    this.slow = { left: seconds, length: seconds, slowest: clamp01(slowest) };
+  }
+
+  /** How fast game time runs right now (1 = normal, less during a hit-stop). */
+  get timeScale(): number {
+    const s = this.slow;
+    if (s.left <= 0) return 1;
+    const u = 1 - s.left / s.length; // 0 at the hit .. 1 when back to normal
+    return lerp(s.slowest, 1, u * u);
+  }
+
+  /** A real frame length turned into game time (and the hit-stop counted down). Call once per frame. */
+  slowFrame(realSeconds: number): number {
+    if (this.slow.left <= 0) return realSeconds;
+    const scaled = realSeconds * this.timeScale;
+    this.slow.left -= realSeconds;
+    return scaled;
   }
 
   /** Advance by `seconds` (any frame length; long ones are split up). */
@@ -333,9 +365,12 @@ export class Bowling {
 
     // Follow with lag: heavier (bigger) balls lag more, a packed track lets it run.
     // The rate itself eases, so crossing an old track never jerks the ball.
+    // Tension: the farther it is pulled, the more it resists, like a band loading up.
+    const loaded = Math.pow(clamp01(distance(ball.position, t.foot) / Math.max(1e-6, feel.pull.max)), feel.follow.tensionCurve);
     const wanted =
       lerp(feel.follow.rateLight, feel.follow.rateHeavy, ball.size) *
-      lerp(1, feel.follow.packedBoost, packed);
+      lerp(1, feel.follow.packedBoost, packed) *
+      lerp(1, feel.follow.tensionAtFull, loaded);
     ball.follow += (wanted - ball.follow) * ease(feel.follow.smoothing, dt);
     let next = add(ball.position, scale(toward, ease(ball.follow, dt)));
     const gap = sub(t.target, next);
@@ -386,10 +421,12 @@ export class Bowling {
       this.rollClock -= ROLL_STEP;
       for (const ball of this.balls) {
         if (!ball.rolling) continue;
-        const state = { position: ball.position, speed: ball.speed, rolled: ball.rolled };
+        const state = { position: ball.position, speed: ball.baseSpeed, rolled: ball.rolled, age: ball.age };
         const still = stepRoll(state, ball.plan, this.feel, this.ground);
         ball.position = state.position;
-        ball.speed = state.speed;
+        ball.baseSpeed = state.speed;
+        ball.age = state.age;
+        ball.speed = still ? movingSpeed(state, this.feel) : 0;
         ball.rolled = state.rolled;
         ball.velocity = scale(ball.plan.direction, ball.speed);
         if (!still) {

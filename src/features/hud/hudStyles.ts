@@ -13,6 +13,7 @@ export const styles = {
   burst: "plop-hud-burst",
   lines: "plop-hud-lines",
   toggle: "plop-hud-toggle",
+  bump: "plop-hud-bump",
 } as const;
 
 export const hudCss = `
@@ -54,13 +55,41 @@ export const hudCss = `
   }
 }
 
-/* A total that just went up. */
+/* A total that just went up: shoots up tall, lands wide, springs back. Pivot at the bottom. */
 .plop-hud-pop {
-  animation: plop-hud-pop var(--hud-pop) cubic-bezier(0.34, 1.8, 0.64, 1);
+  animation: plop-hud-pop var(--hud-pop) cubic-bezier(0.3, 0.7, 0.4, 1);
+  transform-origin: 50% 90%;
 }
 @keyframes plop-hud-pop {
-  40% {
-    transform: scale(1.35) rotate(-6deg);
+  30% {
+    transform: scale(0.85, 1.4) rotate(-6deg);
+  }
+  55% {
+    transform: scale(1.25, 0.82) rotate(3deg);
+  }
+  78% {
+    transform: scale(0.96, 1.06) rotate(-1deg);
+  }
+}
+
+/* The bar when a "+1" drops into it: a small springy bump, kept to its own height. */
+.plop-hud-bump {
+  animation: plop-hud-bump var(--hud-bump) cubic-bezier(0.3, 0.7, 0.4, 1) both;
+  transform-origin: 50% 100%;
+}
+@keyframes plop-hud-bump {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: scale(0.99, calc(1 - var(--hud-sq)));
+  }
+  55% {
+    transform: scale(1.005, calc(1 + var(--hud-sq) * 0.6));
+  }
+  80% {
+    transform: scale(1, calc(1 - var(--hud-sq) * 0.15));
   }
 }
 
@@ -80,13 +109,20 @@ export const hudCss = `
   20% {
     opacity: 1;
   }
-  75% {
+  62% {
+    transform: translate(0, -6px) scale(0.92, 1.18) rotate(4deg);
+  }
+  72% {
     opacity: 1;
-    transform: translate(0, 0) scale(1.1) rotate(4deg);
+    transform: translate(0, 0) scale(1.28, 0.78) rotate(2deg);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(0, -3px) scale(0.95, 1.08) rotate(-1deg);
   }
   100% {
     opacity: 0;
-    transform: translate(0, -4px) scale(0.7);
+    transform: translate(0, -4px) scale(0.75);
   }
 }
 
@@ -147,6 +183,7 @@ export const hudCss = `
   .plop-hud-enter,
   .plop-hud-glow,
   .plop-hud-pop,
+  .plop-hud-bump,
   .plop-hud-toggle,
   .plop-hud-toggle:active {
     animation: none;

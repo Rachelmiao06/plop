@@ -37,7 +37,23 @@ export type RollPlan = {
   duration: number;
 };
 
-export type RollState = { position: Vec2; speed: number; rolled: number };
+/** `speed` is the roll's own speed (slowed by the snow); `age` is seconds since letting go. */
+export type RollState = { position: Vec2; speed: number; rolled: number; age: number };
+
+/**
+ * The snap of letting go: like a stretched band, the ball leaves at `snap.from` of its speed and reaches
+ * full speed within `snap.time` (easing out), so the first moment visibly accelerates.
+ */
+export function snapShare(age: number, feel: Feel): number {
+  const s = feel.roll.snap;
+  const u = clamp01(age / Math.max(1e-6, s.time));
+  return lerp(s.from, 1, 1 - (1 - u) * (1 - u));
+}
+
+/** How fast a rolling ball actually moves now (its speed times the snap). */
+export function movingSpeed(state: Pick<RollState, "speed" | "age">, feel: Feel): number {
+  return state.speed * snapShare(state.age, feel);
+}
 
 /**
  * Advance a rolling ball by one `ROLL_STEP`. Returns false once it has stopped.
@@ -58,16 +74,20 @@ export function stepRoll(
       state.position.z + plan.direction.z * ahead,
     ),
   );
+  // Less drag early in the roll: it eases in over `early.time`, so the ball carries its snap.
+  const early = lerp(r.early.dragShare, 1, clamp01(state.age / Math.max(1e-6, r.early.time)) ** 2);
   const slowing =
     (r.dragFresh + r.dragPerSpeed * state.speed) *
     lerp(1, r.dragOnPacked, packed) *
-    lerp(1, r.dragBigShare, plan.size);
+    lerp(1, r.dragBigShare, plan.size) *
+    early;
   state.speed = Math.max(0, state.speed - slowing * dt);
   if (state.speed < r.stopSpeed) {
     state.speed = 0;
     return false;
   }
-  const move = state.speed * dt;
+  const move = movingSpeed(state, feel) * dt;
+  state.age += dt;
   state.position = {
     x: state.position.x + plan.direction.x * move,
     z: state.position.z + plan.direction.z * move,
@@ -99,7 +119,7 @@ export function planRoll(
   const startSpeed = lerp(r.speedSmall, r.speedBig, s) * lerp(r.weakPull, 1, power);
   const start = { x: foot.x + pull.x, z: foot.z + pull.z };
 
-  const state: RollState = { position: { ...start }, speed: startSpeed, rolled: 0 };
+  const state: RollState = { position: { ...start }, speed: startSpeed, rolled: 0, age: 0 };
   const shape = { direction, size: s, radius };
   let steps = 0;
   const most = LONGEST_ROLL / ROLL_STEP;
