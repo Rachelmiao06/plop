@@ -147,10 +147,14 @@ function paintSky(m: SkyMats, day: number, skyProps: string[], birdProp: string)
   for (const [band, uni] of [["low", u.uLow], ["mid", u.uMid], ["high", u.uHigh]] as const) {
     (uni.value as Color).copy(mixed(k0[band], tmpA)).lerp(mixed(k1[band], tmpB), f);
   }
-  // The far hills dim toward dusk with their windows lit; the clouds take on the sky's colour.
+  // The far hills take on the light like the fog on the far snow, their windows lit; the clouds take the sky's colour.
   const h = m.hills.uniforms;
-  mixed(ev.dusk, h.uDusk.value as Color);
-  h.uDuskAmt.value = ev.duskShare * ramp(0.35, 1, day);
+  const hk = ev.hills;
+  let j = 0;
+  while (j < hk.length - 2 && day > hk[j + 1].t) j++;
+  const g = Math.min(Math.max((day - hk[j].t) / (hk[j + 1].t - hk[j].t), 0), 1);
+  (h.uDusk.value as Color).copy(mixed(hk[j].tint, tmpA)).lerp(mixed(hk[j + 1].tint, tmpB), g);
+  h.uDuskAmt.value = hk[j].share + (hk[j + 1].share - hk[j].share) * g;
   (h.uGlow.value as Color).copy(token("--butter")).lerp(token("--paper"), 0.25);
   h.uGlowAmt.value = ev.windowGlow * ramp(0.55, 0.9, day);
   for (const id of skyProps) {

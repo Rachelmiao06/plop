@@ -746,9 +746,16 @@ export const backdrop = {
     /** How far band edges wave along the sky (share of the band range) and how grainy they are (share of one band). */
     wobble: 0.035,
     grain: 0.45,
-    /** At full evening the far hills dim toward `dusk` by `dusk[2]`... */
-    dusk: ["--sky-blue", "--slate", 0.5] as TokenMix,
-    duskShare: 0.42,
+    /**
+     * The far hills take on the light like the far snow in front of them (the same hues as the snow scene's fog
+     * at each time: `content.timeOfDay` in snow-scene), so no pale band shows between the fog and the sky:
+     * `tint` mixed in by `share`...
+     */
+    hills: [
+      { t: 0, tint: ["--paper", "--snow-shadow", 0.2], share: 0 },
+      { t: 0.5, tint: ["--snow-shadow", "--blush", 0.45], share: 0.22 },
+      { t: 1, tint: ["--sky-blue", "--slate", 0.45], share: 0.42 },
+    ] as { t: number; tint: TokenMix; share: number }[],
     /** ...while the yellow windows of their houses stay lit (`--butter`, a little toward `--paper`). */
     windowGlow: 0.9,
     /** Clouds take on the sky's colour this much at full evening; the bird flies home between these times. */

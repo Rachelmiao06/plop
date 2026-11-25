@@ -249,7 +249,8 @@ second points this one at the shared store.
   before the hills); her crescent moon (`sky-moon`) rises on the right from t = 0.5; seven tiny stars (the `star`
   effect doodle) appear one by one after t = 0.66 and twinkle a little (still for reduced motion). The clouds take on
   the sky's colour and the bird flies home.
-- **Far hills:** dim toward a dusk blue at evening while the yellow windows of their little houses stay lit (a colour
+- **Far hills:** take on the light like the fog on the far snow in front of them (the same hues as the snow scene's
+  `content.timeOfDay` fog: a blush wash at sunset, a dusk blue at evening), while the yellow windows of their little houses stay lit (a colour
   mask on the drawn panes; doors and chimneys are more orange and are left alone).
 - **`/dev/sky`:** the real game with a time-of-day slider, jumps to afternoon / sunset / evening, and the frame rate;
   `?t=0.5` starts at sunset. Screenshots: `review/sky-time-of-day.webp`.
