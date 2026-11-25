@@ -2,15 +2,17 @@
 
 // ─────────────────────────────────────────────────────────────────────────
 // TEMPORARY TEST HOOK. Delete this file when the real characters arrive.
-// Dragging a finger or the mouse on the snow presses a dent that stays, and
-// adding ?guides to the address shows two stand-in blocks where the
-// characters will stand. Both exist only to check the snow scene (issue #2).
-// To remove: delete this file, its two lines in SnowCanvas.tsx, the hint in
+// It exists only to check the snow scene (issue #2):
+//   - drag a finger or the mouse on the snow: presses a groove that stays
+//   - double click or double tap: punches a crater
+//   - add ?guides to the address: two stand-in blocks where characters stand
+//   - add ?fps to the address: frame rate replaces the hint at the bottom
+// To remove: delete this file, its lines in SnowCanvas.tsx, the hint in
 // SnowScene.tsx, and `tempHint`, `tempDrag`, `colors.tempGuide` in content.ts.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from "react";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { Plane, Raycaster, Vector2, Vector3 } from "three";
 import { content } from "./content";
 import { useSnow, useSnowLayout } from "./snowContext";
@@ -48,9 +50,14 @@ export function TempDragPress() {
     const down = (e: PointerEvent) => {
       const p = pointOnSnow(e);
       if (!p) return;
-      canvas.setPointerCapture(e.pointerId);
       last.set(e.pointerId, p);
       snow.pressGroove(p.x, p.z, radius);
+      // Keep following the finger even if it slides off the canvas.
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        // Not every pointer can be captured; dragging still works without it.
+      }
     };
 
     const move = (e: PointerEvent) => {
@@ -75,12 +82,27 @@ export function TempDragPress() {
       last.delete(e.pointerId);
     };
 
+    // A double click or double tap punches a crater, to try that part too.
+    let lastTap = { time: 0, x: 0, y: 0 };
+    const tap = (e: PointerEvent) => {
+      const near = Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+      if (near && e.timeStamp - lastTap.time < 350) {
+        const p = pointOnSnow(e);
+        if (p) snow.punchCrater(p.x, p.z, content.tempDrag.craterRadius);
+        lastTap = { time: 0, x: 0, y: 0 };
+      } else {
+        lastTap = { time: e.timeStamp, x: e.clientX, y: e.clientY };
+      }
+    };
+
     canvas.addEventListener("pointerdown", down);
+    canvas.addEventListener("pointerdown", tap);
     canvas.addEventListener("pointermove", move);
     canvas.addEventListener("pointerup", up);
     canvas.addEventListener("pointercancel", up);
     return () => {
       canvas.removeEventListener("pointerdown", down);
+      canvas.removeEventListener("pointerdown", tap);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);
       canvas.removeEventListener("pointercancel", up);
@@ -113,3 +135,52 @@ export function TempGuides() {
     </>
   );
 }
+
+/**
+ * TEMPORARY: with ?fps in the address, writes the frame rate into the hint
+ * line at the bottom of the screen (averaged over each second).
+ */
+export function TempFps() {
+  const [show] = useState(() =>
+    new URLSearchParams(window.location.search).has("fps"),
+  );
+  const get = useThree((s) => s.get);
+
+  useEffect(() => {
+    if (!show) return;
+    // For measuring the cost of one frame when the page cannot animate freely.
+    const bench = (frames: number) => {
+      const { advance, gl } = get();
+      const context = gl.getContext();
+      const pixel = new Uint8Array(4);
+      const start = performance.now();
+      for (let n = 0; n < frames; n++) {
+        advance(performance.now() / 1000);
+        // Reading a pixel back makes the graphics card finish the frame.
+        context.readPixels(0, 0, 1, 1, context.RGBA, context.UNSIGNED_BYTE, pixel);
+      }
+      return (performance.now() - start) / frames;
+    };
+    const w = window as unknown as { __plopBench?: typeof bench };
+    w.__plopBench = bench;
+    return () => {
+      delete w.__plopBench;
+    };
+  }, [show, get]);
+
+  useFrame(() => {
+    if (!show) return;
+    const now = performance.now();
+    fpsCount.frames++;
+    if (now - fpsCount.since < 1000) return;
+    const fps = (fpsCount.frames * 1000) / (now - fpsCount.since);
+    fpsCount.frames = 0;
+    fpsCount.since = now;
+    const label = document.querySelector("[data-temp-hint]");
+    if (label) label.textContent = `${fps.toFixed(0)} frames per second`;
+  });
+
+  return null;
+}
+
+const fpsCount = { frames: 0, since: 0 };

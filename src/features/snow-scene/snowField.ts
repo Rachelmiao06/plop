@@ -225,6 +225,23 @@ export class SnowField implements SnowApi {
           }
         }
       }
+
+      // Third pass: soften the piled-up ring a little, so it reads as loose
+      // snow instead of single sharp points.
+      const soften = content.press.rimSoften;
+      for (let j = Math.max(j0, 1); j <= Math.min(j1, rows - 2); j++) {
+        const dz = this.zAt(j) - z;
+        for (let i = Math.max(i0, 1); i <= Math.min(i1, cols - 2); i++) {
+          const dx = this.xAt(i) - x;
+          const d2 = dx * dx + dz * dz;
+          if (d2 < r2 || d2 >= outer2) continue;
+          const k = j * cols + i;
+          if (height[k] <= base[k]) continue;
+          const around =
+            (height[k - 1] + height[k + 1] + height[k - cols] + height[k + cols]) / 4;
+          height[k] += (Math.max(around, base[k]) - height[k]) * soften;
+        }
+      }
     }
 
     this.markDirty(i0, i1, j0, j1);
@@ -239,9 +256,10 @@ export class SnowField implements SnowApi {
     k: number,
   ): number {
     const t = (Math.sqrt(d2) - radius) / (radius * rim.rimWidth);
-    // A soft hump across the ring; packed snow (an older groove) takes none.
+    // A soft hump across the ring; snow already pushed down (an older groove) takes none.
     let w = Math.sin(Math.PI * Math.min(Math.max(t, 0), 1));
-    w *= (1 - this.pressed[k]) ** 2;
+    const sunk = (this.base[k] - this.height[k]) / content.press.rimSkipDepth;
+    w *= Math.min(Math.max(1 - sunk, 0), 1);
     if (rim.lumpiness > 0) {
       const angle = Math.atan2(dz, dx);
       const lump = smoothNoise(angle * 2.5 + k * 0.0001, radius * 9.1);

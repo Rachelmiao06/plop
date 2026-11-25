@@ -17,7 +17,10 @@ export function SnowScene({ children }: { children?: ReactNode }) {
       <h1 className="sr-only">{content.title}</h1>
       <SnowCanvas>{children}</SnowCanvas>
       {/* TEMPORARY: hint for the drag test hook, see TempDragPress.tsx */}
-      <p className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-sm text-muted-foreground">
+      <p
+        data-temp-hint
+        className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-sm text-muted-foreground"
+      >
         {content.tempHint}
       </p>
     </section>

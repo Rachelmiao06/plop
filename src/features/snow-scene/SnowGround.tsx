@@ -42,12 +42,23 @@ function buildGeometry(field: SnowField): BufferGeometry {
       const b = a + 1;
       const c = a + cols;
       const d = c + 1;
-      indices[n++] = a;
-      indices[n++] = c;
-      indices[n++] = b;
-      indices[n++] = b;
-      indices[n++] = c;
-      indices[n++] = d;
+      // Alternate which way each square is split, so steep groove walls
+      // do not turn into a saw-tooth in one diagonal direction.
+      if ((i + j) % 2 === 0) {
+        indices[n++] = a;
+        indices[n++] = c;
+        indices[n++] = b;
+        indices[n++] = b;
+        indices[n++] = c;
+        indices[n++] = d;
+      } else {
+        indices[n++] = a;
+        indices[n++] = c;
+        indices[n++] = d;
+        indices[n++] = a;
+        indices[n++] = d;
+        indices[n++] = b;
+      }
     }
   }
 

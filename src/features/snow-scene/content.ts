@@ -10,11 +10,11 @@ export const content = {
 
   ground: {
     // Size of the snow mesh and where its middle sits (the play area is at 0, 0).
-    sizeX: 16,
-    sizeZ: 14.4,
+    sizeX: 14,
+    sizeZ: 13.2,
     centerZ: -1.2,
     // Width of one grid square. Smaller = finer dents, more work for the phone.
-    cell: 0.06,
+    cell: 0.05,
     // How far down the snow can be pressed before it hits hard ground.
     depth: 0.5,
     // Gentle drifts so the surface is not a flat sheet.
@@ -26,12 +26,16 @@ export const content = {
 
   press: {
     // How deep a rolling ball sinks, as a share of its radius.
-    sinkPerRadius: 0.55,
+    sinkPerRadius: 0.42,
     // Share of the pushed-away snow that piles up at the edge (the rest packs down).
     rimShare: 0.5,
     // Rim width as a share of the dent's radius, and its tallest allowed height.
     rimWidth: 0.55,
     rimMaxHeight: 0.07,
+    // Snow already sunk this deep gets no rim piled on it, so grooves stay clean.
+    rimSkipDepth: 0.03,
+    // How much the rim is smoothed each time it is touched (0 = sharp, 1 = very soft).
+    rimSoften: 0.35,
     // Depth at which pressed snow reaches its full darker, bluer tint.
     fullTintDepth: 0.14,
   },
@@ -50,7 +54,7 @@ export const content = {
     // Not pure white: leaves headroom for sun highlights and sparkles.
     snow: "#dfe7f2",
     snowPressed: "#a9c0e0",
-    sun: "#ffd9ae",
+    sun: "#ffe2bd",
     skyFill: "#a9c8ff",
     groundBounce: "#dfe6f5",
     sparkle: "#fff6e6",
@@ -67,8 +71,8 @@ export const content = {
     // 0 = shining from the right, 90 = from behind the scene toward the viewer.
     sunElevation: 24,
     sunAzimuth: 128,
-    sunStrength: 2.6,
-    skyStrength: 1.15,
+    sunStrength: 5,
+    skyStrength: 1.7,
     exposure: 1.0,
     // Shadows: sharpness and softness.
     shadowMapSize: 2048,
@@ -80,14 +84,14 @@ export const content = {
 
   surface: {
     // Fine grain: size of the bumps and how strongly they catch the light.
-    grainScale: 55,
-    grainStrength: 0.32,
-    grainTint: 0.05,
+    grainScale: 85,
+    grainStrength: 0.13,
+    grainTint: 0.03,
     roughness: 0.92,
     // Sparkles: size of one glint, how many light up, how fast they flicker
     // as the view shifts, and how bright they get.
     sparkleCell: 0.02,
-    sparkleAmount: 0.035,
+    sparkleAmount: 0.022,
     sparkleSensitivity: 900,
     sparkleStrength: 2.2,
   },
@@ -109,13 +113,13 @@ export const content = {
     // How far apart the two characters stand, and how much of the screen
     // width they may use before they are staggered front-to-back instead.
     characterDistance: 4.4,
-    widthShare: 0.5,
+    widthShare: 0.6,
   },
 
   fog: {
     // The ground fades to fog between these two points, measured from the
     // middle of the mesh (0) to its edge (1).
-    start: 0.5,
+    start: 0.55,
     end: 0.94,
   },
 
@@ -134,6 +138,7 @@ export const content = {
   // TEMPORARY: the drag-to-dent test hook.
   tempDrag: {
     ballRadius: 0.28,
+    craterRadius: 0.5,
     // Distance between stamps while dragging, as a share of the radius.
     spacing: 0.25,
   },

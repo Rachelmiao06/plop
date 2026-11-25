@@ -10,3 +10,8 @@ One line per decision: date, what, why.
 - 2026-11-24 · No scores, no online play in the first version. It is a toy; two people share one device.
 - 2026-11-24 · Realistic snow ground, AI-drawn half-3D layered characters. Art that an image model can make.
 - 2026-11-24 · Feel prototype with plain shapes comes before any art. The project succeeds or fails on feel.
+- 2026-11-24 · Scene units: one unit is one character height. The camera keeps a character at a fifth of the screen height on every screen, so narrow screens show less width instead of smaller characters.
+- 2026-11-24 · On screens too narrow for two characters side by side (phone portrait), the two spots are staggered front-to-back, left one further away, and stay the same distance apart. Keeps the throw distance equal on every device. Other features read the spots from `useSnowLayout()`.
+- 2026-11-24 · The snow fades into a fog colour in its own shader (not Three.js scene fog), and the backdrop is that same colour. Scene fog is applied before tone mapping and left a visible seam at the mesh edge.
+- 2026-11-24 · The camera sways very slightly all the time. Sparkles only glint when the view shifts, and the view is otherwise fixed.
+- 2026-11-24 · Other features use the snow only through `useSnow()` and `useSnowLayout()` from `@/features/snow-scene`, as children of `<SnowScene>`. Pointer rays skip the snow mesh (too many triangles); aim at a flat plane and correct with `heightAt`.

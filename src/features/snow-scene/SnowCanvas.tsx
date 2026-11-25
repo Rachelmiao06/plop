@@ -9,7 +9,7 @@ import { Backdrop, CameraRig, Lights, Snowfall } from "./SceneLook";
 import { SnowContext } from "./snowContext";
 import { SnowField } from "./snowField";
 import { SnowGround } from "./SnowGround";
-import { TempDragPress, TempGuides } from "./TempDragPress";
+import { TempDragPress, TempFps, TempGuides } from "./TempDragPress";
 
 // The 3D canvas. Loaded in the browser only (see SnowScene.tsx).
 export default function SnowCanvas({ children }: { children?: ReactNode }) {
@@ -42,6 +42,7 @@ export default function SnowCanvas({ children }: { children?: ReactNode }) {
         {/* TEMPORARY test hook, see TempDragPress.tsx */}
         <TempDragPress />
         <TempGuides />
+        <TempFps />
         {children}
       </SnowContext>
     </Canvas>
