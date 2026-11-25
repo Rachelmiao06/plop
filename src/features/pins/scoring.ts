@@ -4,10 +4,10 @@
  *
  * - Plain and star cards count: `down` of `total`, and a full clear when every one of them is down.
  * - A star card down adds `SPECIALS.star.bonus`.
- * - Friends (the rabbit) never count as cards. All friends still standing adds `SPECIALS.friend.bonus`;
+ * - Friends (the rabbit, the sleeping cat) never count as cards. All friends still standing adds `SPECIALS.friend.bonus`;
  *   knocking one over simply scores nothing for it (no taking points away: Rachel, never punishing).
  */
-import { SPECIALS, type Formation } from "./content";
+import { SPECIALS, type Formation, type FormationPin } from "./content";
 
 export type PinsResult = {
   down: number;
@@ -19,6 +19,8 @@ export type PinsResult = {
   friend: "safe" | "bumped" | null;
   /** Extra points from the special cut-outs (stars down, friends safe). */
   bonus: number;
+  /** Which cut-out the friend is (the rabbit, the bench with the sleeping cat), for its words; null without one. */
+  friendProp: FormationPin["prop"] | null;
   /**
    * "Together" mode (two throwers at once): the count for each thrower id, from the cards their ball knocked
    * first (`countByThrower`). Left out when one thrower threw.
@@ -33,9 +35,11 @@ export function countThrow(formation: Formation, downs: readonly boolean[]): Pin
   let stars = 0;
   let friends = 0;
   let friendsDown = 0;
+  let friendProp: FormationPin["prop"] | null = null;
   formation.pins.forEach((p, i) => {
     if (p.kind === "friend") {
       friends++;
+      friendProp ??= p.prop;
       if (downs[i]) friendsDown++;
       return;
     }
@@ -47,7 +51,7 @@ export function countThrow(formation: Formation, downs: readonly boolean[]): Pin
   });
   const friend = friends === 0 ? null : friendsDown === 0 ? "safe" : "bumped";
   const bonus = stars * SPECIALS.star.bonus + (friend === "safe" ? SPECIALS.friend.bonus : 0);
-  return { down, total, fullClear: total > 0 && down === total, stars, friend, bonus };
+  return { down, total, fullClear: total > 0 && down === total, stars, friend, bonus, friendProp };
 }
 
 /**

@@ -295,6 +295,11 @@ export type Formation = {
   pins: FormationPin[];
   /** The whole set stands this far left (-) or right (+) of the lane's middle. Pins' `dx` are from there. */
   shift?: number;
+  /**
+   * The whole set (pins and mounds) turned this many degrees about its middle; positive turns its right side a
+   * little away down the lane. Only a few degrees, so it still reads as the same crowd.
+   */
+  turn?: number;
   /** Soft snow mounds in front of the set that slow a slow, heavy ball (`Mound`). */
   mounds?: Mound[];
   /** One line under the round number in a match: what this set asks of the throw. */
@@ -303,7 +308,7 @@ export type Formation = {
 
 /*
   Airy formations (Rachel: "far too crowded"). Rules, checked by overlap.ts on /dev/pins:
-  - 5 to 8 pins; only the small friends. Never the throwers (snowman-bucket-hat, the red-hat snowman)
+  - 5 to 8 pins (the round sets' ten-pin triangle has 10); only the small friends. Never the throwers (snowman-bucket-hat, the red-hat snowman)
     or things that look like they are moving (penguin-slide, skier: they are village decoration now).
   - From the throwing view no card hides more than 15% of another (`OVERLAP.maxHidden`): pins in a row
     stand about 1.5 card widths apart, the row behind is staggered into the gaps, and rows step back
@@ -384,92 +389,104 @@ export const FORMATIONS: Formation[] = [
 ];
 
 /*
-  Round sets (a match, docs/GAMEPLAY.md section 7c). Each asks a different shot so "full power straight at the
-  middle" is not always best (measured with `src/features/game/measure`, numbers in docs/TUNING.md):
-  - off to one side, with a star friend on the far corner (an angled shot from the other side gets it),
-  - two groups with a gap in the middle (a ball down the middle rolls through the gap),
-  - a long slanted row with a soft mound in front of its middle (a slow heavy ball sticks in it),
-  - a picnic: the white rabbit sits in front of a group and should be left alone,
-  - a snowy village with two mounds, the rabbit and a star.
+  Round sets (a match, docs/GAMEPLAY.md section 7c). Rachel (2026-11-25): without a bowling-pin crowd there is
+  nothing to knock down, so every round is the classic crowd standing in the middle of the lane, built from the
+  formations above, and it only changes a little from one round to the next (a sideways shift of at most 0.3, a
+  turn of a few degrees, who stands where). The variety is one small rule per round, named in a few words under
+  the round number (`note`): just bowl, hit the star friend, let the bunny be, a little soft mound in front of one
+  side, don't wake the sleepy cat. Never an empty middle, never a few cards off to one side.
   Same airy rules as above (checked by overlap.ts on /dev/pins), and every card stays within about 1.9 of the
   lane's middle (shift + dx + half its width), so a phone held upright shows the whole set.
   The game's round order is `GAME.match.rounds`.
 */
 export const ROUND_SETS: Formation[] = [
   {
-    id: "round-corner",
-    label: "Off to the side",
-    note: "they're standing off to the right",
-    shift: 0.45,
-    // The triangle's places without its back-left card, so the set leans right; the star stands back right.
+    id: "round-strike",
+    label: "Strike!",
+    note: "Strike!",
+    // The free-play triangle: 1, 2, 3, the front pin pointing at the thrower. No special card: just bowl.
     pins: [
       { prop: "penguin-bag", dx: 0, dz: 0.7 },
       { prop: "girl-earmuffs", dx: -0.55, dz: 0, scale: 0.95 },
       { prop: "signpost-snowman", dx: 0.57, dz: 0, flip: true, scale: 0.9 },
+      { prop: "pine-walking", dx: -1.1, dz: -0.75 },
       { prop: "boy-snowman", dx: 0, dz: -0.8 },
-      { prop: "snowman-newspaper", dx: 1.13, dz: -0.75, flip: true, kind: "star" },
+      { prop: "snowman-newspaper", dx: 1.13, dz: -0.75, flip: true },
     ],
   },
   {
-    id: "round-split",
-    label: "Two little groups",
-    note: "two groups, a gap in the middle",
-    pins: [
-      { prop: "penguin-bag", dx: -1.1, dz: 0.55 },
-      { prop: "girl-earmuffs", dx: -1.5, dz: -0.2, scale: 0.95 },
-      { prop: "pine-walking", dx: -0.92, dz: -0.6, flip: true },
-      { prop: "penguin-bag", dx: 1.15, dz: 0.55, flip: true, scale: 0.95 },
-      { prop: "snowman-newspaper", dx: 1.55, dz: -0.25, flip: true },
-      { prop: "flag-blue", dx: 0.95, dz: -0.85, scale: 0.85, kind: "star" },
-    ],
-  },
-  {
-    id: "round-slant",
-    label: "Slanted row and a snow mound",
-    note: "a soft snow mound in the way",
-    shift: -0.1,
-    mounds: [{ dx: 0.1, dz: 2.7, radius: 0.85 }],
-    // Like the domino row: each card just overlaps the next sideways, so a card knocked back and to the right tips the next.
-    pins: [
-      { prop: "penguin-bag", dx: -1.3, dz: 1.1 },
-      { prop: "girl-earmuffs", dx: -0.65, dz: 0.5 },
-      { prop: "snowman-newspaper", dx: 0, dz: -0.1, flip: true },
-      { prop: "pine-walking", dx: 0.65, dz: -0.7, flip: true },
-      { prop: "flag-blue", dx: 1.3, dz: -1.3, scale: 0.85, kind: "star" },
-    ],
-  },
-  {
-    id: "round-picnic",
-    label: "Bunny's picnic",
-    note: "let the bunny be",
+    id: "round-star",
+    label: "Hit the star",
+    note: "Hit the star",
     shift: -0.2,
-    mounds: [{ dx: 1.55, dz: 2.4, radius: 0.75 }],
+    // The free-play crowd of friends; the star friend stands inside it, a little right of the middle at the back.
     pins: [
-      { prop: "rabbit", dx: 0.0, dz: 1.05, kind: "friend" },
-      { prop: "pine-walking", dx: -0.72, dz: 0.3 },
-      { prop: "signpost-snowman", dx: 0.72, dz: 0.3, flip: true, scale: 0.9 },
-      { prop: "girl-earmuffs", dx: -1.35, dz: -0.78, scale: 0.95 },
-      { prop: "snowman-newspaper", dx: 0.0, dz: -0.5 },
-      { prop: "boy-snowman", dx: 1.3, dz: -0.72, flip: true, kind: "star" },
+      { prop: "penguin-bag", dx: -0.3, dz: 0.95, turn: 8 },
+      { prop: "penguin-bag", dx: 0.6, dz: 0.8, flip: true, scale: 0.9, turn: -6 },
+      { prop: "girl-earmuffs", dx: -1.05, dz: 0.15, turn: 10 },
+      { prop: "snowman-newspaper", dx: -0.05, dz: 0.05, turn: -4 },
+      { prop: "boy-snowman", dx: 1.15, dz: -0.15, flip: true, turn: -10 },
+      { prop: "pine-walking", dx: -0.58, dz: -1.3, turn: 6 },
+      { prop: "girl-earmuffs", dx: 0.55, dz: -1.2, flip: true, scale: 0.95, turn: -8, kind: "star" },
     ],
   },
   {
-    id: "round-village",
-    label: "Snowy village",
-    note: "mounds, a star and the bunny",
+    id: "round-bunny",
+    label: "Let the bunny be",
+    note: "Let the bunny be",
     shift: 0.25,
-    mounds: [
-      { dx: -1.05, dz: 2.5, radius: 0.75 },
-      { dx: 1.0, dz: 2.9, radius: 0.7 },
-    ],
+    turn: 6,
+    // The free-play ring with its front pair and its sides swapped (the light girl on the outer left sometimes
+    // tipped over as the set hopped in); the bunny sits just in front, between the front pair.
     pins: [
-      { prop: "penguin-bag", dx: -0.55, dz: 0.95 },
-      { prop: "rabbit", dx: 0.5, dz: 1.0, kind: "friend" },
-      { prop: "signpost-snowman", dx: -1.2, dz: 0.3, scale: 0.9 },
-      { prop: "girl-earmuffs", dx: 0.0, dz: 0.25, flip: true, scale: 0.95 },
-      { prop: "pine-walking", dx: 1.15, dz: 0.2, flip: true },
-      { prop: "snowman-newspaper", dx: -0.6, dz: -0.6 },
-      { prop: "bench-snowmen", dx: 0.65, dz: -0.95, kind: "star" },
+      { prop: "rabbit", dx: 0, dz: 1.5, kind: "friend" },
+      { prop: "signpost-snowman", dx: -0.4, dz: 0.9, scale: 0.9 },
+      { prop: "penguin-bag", dx: 0.4, dz: 0.9, flip: true },
+      { prop: "snowman-newspaper", dx: -1.15, dz: 0.05 },
+      { prop: "girl-earmuffs", dx: 1.15, dz: 0.05, flip: true },
+      { prop: "pine-walking", dx: -0.45, dz: -0.85 },
+      { prop: "boy-snowman", dx: 0.5, dz: -0.85, flip: true },
+    ],
+  },
+  {
+    id: "round-mound",
+    label: "Little mound",
+    note: "Little mound",
+    shift: -0.1,
+    // Real bowling's ten: 1, 2, 3, 4, each row in the gaps of the row in front, short ones in front and tall ones
+    // at the back so the fourth row shows over the second. A small soft mound just in front of the right side:
+    // a straight ball brushes it and slows, never the whole middle.
+    mounds: [{ dx: 0.65, dz: 2.15, radius: 0.45 }],
+    pins: [
+      { prop: "penguin-bag", dx: 0, dz: 1.1 },
+      { prop: "penguin-bag", dx: -0.52, dz: 0.4, flip: true },
+      { prop: "girl-earmuffs", dx: 0.52, dz: 0.4, scale: 0.8 },
+      { prop: "signpost-snowman", dx: -1.0, dz: -0.35, scale: 0.85 },
+      { prop: "snowman-newspaper", dx: 0, dz: -0.35, scale: 0.9 },
+      { prop: "pine-walking", dx: 0.98, dz: -0.35, flip: true, scale: 0.9 },
+      { prop: "pine-walking", dx: -1.55, dz: -1.15, scale: 0.95 },
+      { prop: "flag-blue", dx: -0.52, dz: -1.15, scale: 0.9 },
+      { prop: "flag-blue", dx: 0.52, dz: -1.15, flip: true, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: 1.58, dz: -1.15, flip: true, scale: 0.85 },
+    ],
+  },
+  {
+    id: "round-cat",
+    label: "Sleepy cat",
+    note: "Sleepy cat: don't wake it",
+    shift: -0.15,
+    // The free-play village; the bench with the sleeping cat sits beside its front right (a friend, like the
+    // bunny), and the star friend is the bench of snowmen at the back.
+    pins: [
+      { prop: "bench-cat", dx: 1.25, dz: 1.05, flip: true, kind: "friend" },
+      { prop: "penguin-bag", dx: 0, dz: 1.0 },
+      { prop: "signpost-snowman", dx: -0.75, dz: 0.45, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: 0.72, dz: 0.45, flip: true, scale: 0.95 },
+      { prop: "pine-walking", dx: -1.3, dz: -0.4 },
+      { prop: "snowman-newspaper", dx: 0, dz: -0.4 },
+      { prop: "boy-snowman", dx: 1.36, dz: -0.45, flip: true },
+      { prop: "bench-snowmen", dx: -0.7, dz: -1.5, kind: "star" },
+      { prop: "log-music", dx: 0.68, dz: -1.85 },
     ],
   },
 ];
@@ -500,6 +517,8 @@ export const SPECIALS = {
   friend: {
     /** Points when every friend is still standing after the throw. Knocked over, it simply scores nothing. */
     bonus: 2,
+    /** The small picture beside its words under "N down!", per friend cut-out (the rabbit when not listed). */
+    art: { rabbit: "/assets/scenery/rabbit.webp", "bench-cat": "/assets/scenery/bench-cat.webp" } as Partial<Record<PropId, string>>,
     /** A ball that passed within this gap of a friend (edge to edge) that is still standing gets a little mew. */
     nearMiss: 0.35,
   },
@@ -521,8 +540,11 @@ export const TEXT = {
   fullClear: "All down!",
   /** Small lines under "N down!" for the special cut-outs. */
   star: (points: number) => `star friend +${points}`,
-  friendSafe: (points: number) => `bunny's still cosy +${points}`,
-  friendBumped: "oops, sorry bunny!",
+  /** Per friend cut-out (the rabbit's words when one is not listed). */
+  friend: {
+    rabbit: { safe: (points: number) => `bunny's still cosy +${points}`, bumped: "oops, sorry bunny!" },
+    "bench-cat": { safe: (points: number) => `kitty's still asleep +${points}`, bumped: "oops, kitty woke up!" },
+  } as Partial<Record<PropId, { safe: (points: number) => string; bumped: string }>>,
   count: (down: number, total: number) => `${down} / ${total} down`,
   reset: "Reset",
   nextSet: "Next set",
