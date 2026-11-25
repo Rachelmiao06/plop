@@ -36,8 +36,8 @@ NORMALS = ART / "normals"
 OUTLINES = ROOT / "src" / "features" / "scenery" / "outlines.json"
 
 SKIP = {"wind-swirl", "chimney-smoke"}   # decals are not standees
-# Crayon spares that stand in the frame (the near corners, until the near-edge framing sheet arrives).
-EXTRA = ["street-lamp", "fence"]
+# Crayon spares that stand in the frame (none now: the doodle street lamp replaced the crayon one).
+EXTRA: list[str] = []
 ALPHA_CUT = 128         # alpha above this is inside the silhouette
 SIMPLIFY = 1.3          # max distance (px) a simplified outline may stray from the traced one
 MIN_AREA = 40           # pieces smaller than this many px are left out of the thick shape

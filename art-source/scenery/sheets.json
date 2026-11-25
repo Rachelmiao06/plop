@@ -126,7 +126,7 @@
         "flag",
         "bench",
         "log-hollow",
-        "street-lamp",
+        "street-lamp-crayon",
         "fence"
       ],
       "holes": {
@@ -257,6 +257,63 @@
           620
         ]
       ]
+    },
+    {
+      "file": "doodle-8-tree-otter-mug-mouse.png",
+      "grid": "2x2",
+      "names": [
+        "tree-christmas",
+        "otter-cocoa",
+        "mug-cocoa",
+        "mouse-letter"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-9-cafe-post-cottage-mice.png",
+      "grid": "2x2",
+      "names": [
+        "cafe-stump",
+        "penguins-postbox",
+        "cottage-snow",
+        "mice-lantern"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-10-lamp-mailbox-bench-sled.png",
+      "grid": "2x2",
+      "names": [
+        "street-lamp",
+        "mailbox-red",
+        "bench-cat",
+        "sled-red"
+      ],
+      "min_piece": 15,
+      "holes": {
+        "sled-red": [
+          [
+            1230,
+            815
+          ],
+          [
+            1085,
+            835
+          ],
+          [
+            1040,
+            842
+          ],
+          [
+            1025,
+            790
+          ],
+          [
+            950,
+            934
+          ]
+        ]
+      }
     }
   ]
 }

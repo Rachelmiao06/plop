@@ -185,9 +185,8 @@ the snow used to run on, empty, behind the village. Now the scene is built in la
   (`ChimneySmoke` in `three/Life.tsx`, chimney spots in `village.chimneys`).
 - **Middle:** frozen pond by the sliding penguin, a snowy stump with the red bird on it (`lift`), the rabbit by the
   bush, a snowball pile near the line. The calm snow behind the pins is unchanged.
-- **Near corners:** the street lamp, a short pine and a bush at the left, the fence and a bush at the right (desktop
-  only; a phone held upright is too narrow to see them). The lamp and fence are the crayon set's until the near-edge
-  framing sheet arrives; `scripts/trace_standees.py` traces them via `EXTRA`.
+- **Near corners:** short pines and bushes low and wide of the thrower (desktop only; a phone held upright is too
+  narrow to see them). The street lamp is now Rachel's doodle lamp (see the village street below).
 - **Life:** penguin slide, skier sway, rabbit and bird hops, smoke, drifting clouds and bird. All hold still when the
   device asks for reduced motion (`three/motion.ts`).
 - **Tracks:** a few faint boot prints, rabbit hops and a sled track pressed at start with the snow's own `pressGroove`
@@ -195,3 +194,29 @@ the snow used to run on, empty, behind the village. Now the scene is built in la
 
 The panorama is cut by the slicer with two new per-sheet options: `seal` (lines that close the hills' open ends for the
 background fill only) and `max_side` (keeps its full 2126 px width). Screenshots: `review/scene-38-*.webp`.
+
+## A village street (doodle-8, -9, -10)
+
+Three new sheets, cut by the slicer like the others: `tree-christmas`, `otter-cocoa`, `mug-cocoa`, `mouse-letter`;
+`cafe-stump`, `penguins-postbox`, `cottage-snow`, `mice-lantern`; `street-lamp`, `mailbox-red`, `bench-cat`, `sled-red`
+(the steam lines stay with their mug; the sled's see-through gaps are `holes` in `sheets.json`).
+Rachel asked for a slightly bigger, richer village, not every drawing, so eight are placed and four are spares
+(`mug-cocoa`, `mouse-letter`, `mailbox-red`, `sled-red`, each repeating a moment already in the street).
+
+- **The street:** along the back left a row of the Christmas tree (the landmark, beside the pins, never behind them),
+  the tree-stump café and the cocoa stall (the cocoa corner, fairy lights strung in front) and the red cottage; the
+  blue cottage and the snow cottage with the cat stand a little forward of it, so their roofs stay below the back row.
+  The doodle street lamp lights the pond corner; the bench with the sleeping cat sits at the far left edge. On the
+  right the otter watches the lane next to the snowman family, the penguins post a letter near the thrower, and the
+  mice with their lantern sit past the igloo. Quiet pines on the outer edge make the side and high views a little wider.
+- **Retired crayon props:** the crayon street lamp (its slot is now `street-lamp-crayon`, a spare; the doodle lamp took
+  the name `street-lamp`, so the lamp glow needs no change) and the fence (spare). No crayon prop stands in the
+  village any more, and `scripts/trace_standees.py` has no `EXTRA` left.
+- **Effect tags** (optional fields on a prop in `props`, for the light, smoke and ice effects): `emitsLight` (points of
+  lamp glass, lanterns, lit windows, bulbs), `chimneyAt` (top of a chimney) and `icicleEdge` (eave lines
+  `[x0, y0, x1, y1]`). Points are shares of the drawing's width from the left and height from the foot, like
+  `village.chimneys`, and flip with the drawing. Tagged: the street lamp, the café lantern, the mice's lantern, the red
+  and snow cottages' windows and the fairy-light bulbs (`emitsLight`); the blue, red and snow cottages (`chimneyAt`);
+  the snow cottage's eave and the igloo's window and door tops (`icicleEdge`). Nothing reads them yet; the lamp glow
+  and chimney smoke still use `village.lampGlow` and `village.chimneys` (the snow cottage has its own drawn smoke
+  curl, so it is not in `village.chimneys`).
