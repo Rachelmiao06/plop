@@ -79,7 +79,7 @@ export function PinsPopup({ pins }: { pins: Pins }) {
   const doodles = big ? FULL_CLEAR_DOODLES : result.down === 0 ? [] : DOODLES;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[24%] flex justify-center" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-[40%] flex justify-center" aria-live="polite">
       <style>{STYLE}</style>
       <div
         key={shown.id}

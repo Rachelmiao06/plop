@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * The /dev/pins test: the snow, the bowling throw (as /dev/bowling has it) and the pins,
+ * The /dev/pins test: the snow in the throwing view, the village, the bowling throw and the pins,
  * with the pop-up and the test controls. The page itself only renders this.
  */
 import { useState } from "react";
 
-import { BowlingHint, BowlingStage } from "@/features/bowling";
-import { SnowScene } from "@/features/snow-scene";
+import { BowlingHint, BowlingStage, FEEL } from "@/features/bowling";
+import { throwingView, Village } from "@/features/scenery";
+import { SnowCameraView, SnowScene } from "@/features/snow-scene";
 
 import { createPins } from "./controller";
 import { PinsPanel } from "./PinsPanel";
@@ -19,6 +20,8 @@ export function PinsPlayground() {
   return (
     <main className="relative h-dvh w-full overflow-hidden">
       <SnowScene>
+        <SnowCameraView {...throwingView(FEEL.lane)} />
+        <Village lane={FEEL.lane} />
         <BowlingStage />
         <PinsStage pins={pins} />
       </SnowScene>

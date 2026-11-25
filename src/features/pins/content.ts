@@ -3,7 +3,7 @@
  * hard-codes one. Units: one scene unit = one character height, seconds, units per second.
  * `x` runs left to right, `z` from far down the lane toward the camera (the lane points to -z).
  */
-import type { PropId } from "@/features/scenery/content";
+import type { PropId } from "@/features/scenery";
 
 export type Weight = "light" | "medium" | "heavy";
 

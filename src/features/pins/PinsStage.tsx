@@ -26,7 +26,7 @@ import {
 import { Euler, Quaternion, SRGBColorSpace, Vector3, type Group, type Texture } from "three";
 
 import type { BowlEvent, Bowling } from "@/features/bowling";
-import { propSrc } from "@/features/scenery/content";
+import { propSrc } from "@/features/scenery";
 import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
 
 import { currentBowling, tapBowling } from "./ballTap";

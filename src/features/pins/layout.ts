@@ -3,7 +3,7 @@
  * collider and home spot from a formation. No drawing, no physics engine.
  */
 import { FEEL } from "@/features/bowling";
-import { propSettings, propWidth, type PropId } from "@/features/scenery/content";
+import { propSettings, propWidth, type PropId } from "@/features/scenery";
 
 import { FORMATIONS, PINS, type Formation, type Weight } from "./content";
 

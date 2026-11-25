@@ -68,7 +68,7 @@ Wiring the HUD later: on `knocked` pass `down`/`total` and a new `knock` id; on 
 - `PinCard.tsx` one card drawn in the thick-standee look.
 - `PinsPopup.tsx` the "N down!" / "All down!" overlay with the effect doodles and Gaegu lettering.
 - `PinsPanel.tsx` `NextSetButton`, and the test page's picker, reset and physics-lines switch.
-- `PinsPlayground.tsx` the `/dev/pins` page body. `fwump.ts` the flop sound. `review/` screenshots.
+- `PinsPlayground.tsx` the `/dev/pins` page body (throwing view, village, throw, pins). `fwump.ts` the flop sound. `review/` screenshots.
 - `ballTap.ts` **temporary**, see below.
 
 ## Asked of other features
