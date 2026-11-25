@@ -10,6 +10,7 @@ One line per decision: date, what, why.
 - 2026-11-24 · No scores, no online play in the first version. It is a toy; two people share one device.
 - 2026-11-24 · Realistic snow ground, AI-drawn half-3D layered characters. Art that an image model can make.
 - 2026-11-24 · Feel prototype with plain shapes comes before any art. The project succeeds or fails on feel.
+- 2026-11-24 · Snow rolling and landing sounds are real CC0 recordings from Freesound (`public/assets/audio/`, credits there), sliced and re-pitched by the engine; only the whoosh is synthesized. Pure synthesis sounded like scratching paper, not fluffy snow. This replaces issue #9's "no sound files".
 - 2026-11-24 · The look is "crayon sticker snow village": hand-drawn stickers with warm brown pencil outlines, coloured-pencil fills, round shapes and handwritten lettering. Picked by Rachel from a reference illustration.
 - 2026-11-24 · Outlines and text are warm brown (`--ink`), never black. Black looks harsh next to crayon colours.
 - 2026-11-24 · Shadows are pale blue (`--snow-shadow`), never grey. The 3D snow's shadow tint should match `--snow-shadow` so the drawn stickers and the real snow belong together.
