@@ -2,20 +2,18 @@
 
 /**
  * The bowling throw drawn on the real snow. Render inside `<SnowScene>`.
- * Placeholder thrower card, the growing ball, the aim line, the throwing line,
- * the roll with its groove and dust. Pins come later (issue #7): the pin spot is kept clear.
+ * Rachel's paper snowman as the thrower, the drawn snowball growing and rolling (with clumps falling
+ * off big ones), the aim line, the throwing line, the roll with its groove and dust.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
-  BoxGeometry,
   CircleGeometry,
   DoubleSide,
-  type Group,
+  IcosahedronGeometry,
   type InstancedMesh,
   type Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
   Quaternion,
@@ -29,16 +27,21 @@ import {
 import { claimSnowPointer, useSnow, useSnowPoint } from "@/features/snow-scene";
 import { unlockAudioOnFirstTouch } from "@/lib/audio";
 
-import { FEEL } from "../content";
+import { FEEL, LOOK, type ThrowerLook } from "../content";
 import { connectFeedback, type Feedback } from "../feedback";
 import { createKeyboardInput, type KeyboardInput } from "../keyboard";
 import { createPointerInput } from "../pointer";
 import { Bowling } from "../simulation";
 import { type Vec2, lerp } from "../vec";
-import { readPalette, snowballTexture, throwerCardTexture } from "./look";
+import { Clumps } from "./clumps";
+import { readPalette } from "./look";
+import { ballMaterial, ballOutlineMaterial } from "./snowballLook";
+import { ThrowerStandee, type ThrowerHandle } from "./ThrowerStandee";
+
+/** The fixed drawing light the ball's shade side comes from (see LOOK.ball.light). */
+const ballLight = new Vector3(...LOOK.ball.light).normalize();
 
 /** Drawing sizes (scene units). Not feel numbers: they only change how marks look. */
-const CARD = { width: 0.55, height: 1, thickness: 0.03, sink: 0.04 };
 const MAX_BALLS = 6;
 const AIM = { dots: 80, spacing: 0.22, dotRadius: 0.035 };
 const MARK = { lift: 0.012, dashLength: 0.16, dashWidth: 0.035, pinRingRadius: 0.9 };
@@ -74,7 +77,25 @@ function laneDashes(): Dash[] {
   return dashes;
 }
 
-export function BowlingStage() {
+export type BowlingStageProps = {
+  /**
+   * Who is throwing, as drawn: "one" (bucket snowman) or "two" (red-hat snowman). Applied between
+   * throws (it waits if a throw is under way). Leave it out to keep whatever `game.setThrower` set;
+   * test pages also take `?thrower=two`.
+   */
+  thrower?: ThrowerLook;
+  /** Called once with the running game, for features that read the balls or events (pins, score). */
+  onGame?: (game: Bowling) => void;
+};
+
+/** `?thrower=one|two` on the page, for test pages (no prop given). */
+function throwerFromPage(): ThrowerLook | undefined {
+  if (typeof window === "undefined") return undefined;
+  const v = new URLSearchParams(window.location.search).get("thrower");
+  return v === "one" || v === "two" ? v : undefined;
+}
+
+export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
   const snow = useSnow();
   const snowPoint = useSnowPoint();
   const gl = useThree((s) => s.gl);
@@ -83,17 +104,7 @@ export function BowlingStage() {
   const [game] = useState(() => new Bowling(FEEL, snow));
   const [palette] = useState(readPalette);
   const looks = useMemo(() => {
-    const card = new BoxGeometry(CARD.width, CARD.height, CARD.thickness);
-    card.translate(0, CARD.height / 2, 0); // stand on its bottom edge
-    const edge = new MeshStandardMaterial({ color: palette.skin, roughness: 1 });
-    // A little self-light keeps the paper reading as paper when the sun is behind it.
-    const front = new MeshStandardMaterial({
-      map: throwerCardTexture(palette, "player one"),
-      roughness: 1,
-      emissive: palette.paper,
-      emissiveIntensity: 0.25,
-    });
-    const back = new MeshStandardMaterial({ color: palette.paper, roughness: 1 });
+    const colors = { paper: palette.css.paper, shade: palette.css["snow-shadow"], ink: palette.css.ink };
     const flatCircle = new CircleGeometry(1, 14);
     flatCircle.rotateX(-Math.PI / 2);
     const flatRing = new RingGeometry(0.86, 1, 40);
@@ -103,10 +114,13 @@ export function BowlingStage() {
     const ink = (opacity: number) =>
       new MeshBasicMaterial({ color: palette.ink, transparent: true, opacity, depthWrite: false, side: DoubleSide });
     return {
-      card,
-      cardMaterials: [edge, edge, edge, edge, front, back],
-      ball: new SphereGeometry(1, 32, 20),
-      ballMaterial: new MeshStandardMaterial({ map: snowballTexture(palette), roughness: 1 }),
+      colors,
+      ball: new SphereGeometry(1, 40, 24),
+      ballMaterial: ballMaterial(colors, ballLight),
+      ballOutline: ballOutlineMaterial(colors),
+      clump: new IcosahedronGeometry(1, 1),
+      clumpMaterial: ballMaterial(colors, ballLight, { marks: false }),
+      clumpOutline: ballOutlineMaterial(colors, LOOK.ball.outline * 0.6),
       flatCircle,
       flatRing,
       flatDash,
@@ -116,9 +130,21 @@ export function BowlingStage() {
   }, [palette]);
   const dashes = useMemo(laneDashes, []);
 
-  const throwerRef = useRef<Group>(null);
-  const cardRef = useRef<Mesh>(null);
+  const throwerRef = useRef<ThrowerHandle>(null);
   const ballRefs = useRef<(Mesh | null)[]>([]);
+  const outlineRefs = useRef<(Mesh | null)[]>([]);
+  const clumpRef = useRef<InstancedMesh>(null);
+  const clumpOutlineRef = useRef<InstancedMesh>(null);
+  const [clumps] = useState(() => new Clumps(snow, FEEL.ball.radiusBig));
+  const wantThrower = useRef<ThrowerLook | undefined>(undefined);
+
+  // Who throws: the prop, else ?thrower= on test pages. Applied as soon as the thrower is ready.
+  useEffect(() => {
+    wantThrower.current = thrower ?? throwerFromPage();
+  }, [thrower]);
+  useEffect(() => {
+    onGame?.(game);
+  }, [game, onGame]);
   const dotsRef = useRef<InstancedMesh>(null);
   const endRef = useRef<Mesh>(null);
   const dashesRef = useRef<InstancedMesh>(null);
@@ -134,12 +160,12 @@ export function BowlingStage() {
     const pointer = createPointerInput(game, canvas, {
       toGround: snowPoint,
       hitsThrower: (clientX, clientY) => {
-        const card = cardRef.current;
-        if (!card) return false;
+        const standee = throwerRef.current;
+        if (!standee) return false;
         const r = canvas.getBoundingClientRect();
         ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
         raycaster.setFromCamera(ndc, camera);
-        return raycaster.intersectObject(card, false).length > 0;
+        return standee.hits(raycaster);
       },
       onClaim: claimSnowPointer,
     });
@@ -173,13 +199,14 @@ export function BowlingStage() {
 
     return () => {
       io.current = null;
+      clumps.clear();
       keyboard.dispose();
       pointer.dispose();
       feedback.dispose();
       stopUnlock();
       off();
     };
-  }, [game, gl, camera, snowPoint, snow]);
+  }, [game, gl, camera, snowPoint, snow, clumps]);
 
   // Scratch objects reused every frame.
   const scratch = useMemo(
@@ -216,6 +243,8 @@ export function BowlingStage() {
     const inputs = io.current;
     if (!inputs) return;
     const dt = Math.min(delta, 0.1);
+    const want = wantThrower.current;
+    if (want && game.thrower.id !== want) game.setThrower(want); // only takes between throws
     inputs.keyboard.update(dt);
     game.step(dt);
     inputs.feedback.update();
@@ -235,17 +264,12 @@ export function BowlingStage() {
       pressAlong(ball.id, ball.position, ball.plan.radius, ball.velocity, 0);
     }
 
-    // ---- Thrower card.
-    const thrower = throwerRef.current;
-    if (thrower) {
-      const ground = snow.heightAt(t.x, t.foot.z);
-      thrower.position.set(t.x, ground - CARD.sink + t.hopHeight, t.foot.z);
-      thrower.rotation.x = t.lean * feel.thrower.leanAtFull; // leans back toward the camera
-      thrower.rotation.z =
-        t.phase === "ready"
-          ? Math.sin(state.clock.elapsedTime * feel.thrower.wobbleSpeed * Math.PI * 2) * feel.thrower.wobble
-          : 0;
-    }
+    // ---- The snowman.
+    throwerRef.current?.update(game, snow.heightAt(t.x, t.foot.z), state.camera, state.clock.elapsedTime, dt);
+
+    // ---- Clumps falling off big rolling balls.
+    clumps.step(game.balls, feel.ball.sink, dt);
+    if (clumpRef.current && clumpOutlineRef.current) clumps.draw(clumpRef.current, clumpOutlineRef.current);
 
     // ---- Balls.
     const shown: { key: string | number; at: Vec2; radius: number; rolled: number; dir: Vec2; scale: number }[] = [];
@@ -271,9 +295,10 @@ export function BowlingStage() {
       });
     }
     ballRefs.current.forEach((mesh, i) => {
-      if (!mesh) return;
+      const outline = outlineRefs.current[i];
+      if (!mesh || !outline) return;
       const b = shown[i];
-      mesh.visible = !!b;
+      mesh.visible = outline.visible = !!b;
       if (!b) return;
       const mark = marks.current.get(b.key);
       if (mark) {
@@ -290,6 +315,9 @@ export function BowlingStage() {
       const r = b.radius * b.scale;
       mesh.scale.setScalar(Math.max(0.001, r));
       mesh.position.set(b.at.x, snow.heightAt(b.at.x, b.at.z) + r * (1 - feel.ball.sink), b.at.z);
+      outline.position.copy(mesh.position);
+      outline.quaternion.copy(mesh.quaternion);
+      outline.scale.copy(mesh.scale);
     });
 
     // ---- Aim line: dots on the snow from the ball to where it will stop, and a ring there.
@@ -335,21 +363,41 @@ export function BowlingStage() {
 
   return (
     <group>
-      <group ref={throwerRef}>
-        <mesh ref={cardRef} geometry={looks.card} material={looks.cardMaterials} castShadow />
-      </group>
+      <Suspense fallback={null}>
+        <ThrowerStandee ref={throwerRef} paper={looks.colors} />
+      </Suspense>
       {Array.from({ length: MAX_BALLS }, (_, i) => (
-        <mesh
-          key={i}
-          ref={(m) => {
-            ballRefs.current[i] = m;
-          }}
-          geometry={looks.ball}
-          material={looks.ballMaterial}
-          visible={false}
-          castShadow
-        />
+        <group key={i}>
+          <mesh
+            ref={(m) => {
+              ballRefs.current[i] = m;
+            }}
+            geometry={looks.ball}
+            material={looks.ballMaterial}
+            visible={false}
+            castShadow
+          />
+          <mesh
+            ref={(m) => {
+              outlineRefs.current[i] = m;
+            }}
+            geometry={looks.ball}
+            material={looks.ballOutline}
+            visible={false}
+          />
+        </group>
       ))}
+      <instancedMesh
+        ref={clumpRef}
+        args={[looks.clump, looks.clumpMaterial, LOOK.clumps.max]}
+        frustumCulled={false}
+        castShadow
+      />
+      <instancedMesh
+        ref={clumpOutlineRef}
+        args={[looks.clump, looks.clumpOutline, LOOK.clumps.max]}
+        frustumCulled={false}
+      />
       <instancedMesh
         ref={dotsRef}
         args={[looks.flatCircle, looks.aimInk, AIM.dots]}
