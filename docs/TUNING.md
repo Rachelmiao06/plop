@@ -148,6 +148,22 @@ Strike! start a chain, 44% at Hit the star, 41% at Let the bunny be, 64% at Litt
 Limits: flat snow, no old grooves, no hit-stop; a few shots thrown in the browser matched the replay within about
 one card.
 
+**After the stronger roll** (2026-11-25, the back-wall work: `FEEL.roll` faster and less slowed). The replay has no
+back wall, so it counts only the way out, not cards knocked on the way back:
+
+| Round set | Middle-full | Best shot | Best at full power | Best power |
+|---|---|---|---|---|
+| 1 Strike! (triangle) | 7.3 | 8.3 | 7.3 | 0.85 |
+| 2 Hit the star (crowd of friends) | 7.1 | 7.7 | 7.4 | 0.85 |
+| 3 Let the bunny be (ring) | 5.5 | 7.8 | 6.3 | 0.55 |
+| 4 Little mound (ten-pin triangle) | 7.5 (the faster ball punches through) | 7.9 | 7.9 | 0.85 = 1.0 |
+| 5 Sleepy cat (village) | 9.1 | 9.6 | 9.3 | 0.55 |
+
+Every shot scores more (a straight throw at the middle 7.3 on average, was 5.4). Straight at the middle at full power is
+still beaten in every round, but by less: 0.3 (Little mound) to 2.3 points (Let the bunny be). Full power ties for
+the best power in Little mound, where the mound no longer stops a fast heavy ball. If the rounds should ask for a
+gentler hand again, raise `FEEL.pull.sweet` heaviness or `FEEL.roll.soft.drag`.
+
 ## Also worth knowing
 
 - **Snow depth and how dark pressed snow gets:** `src/features/snow-scene/content.ts` (`ground.depth` 0.9, and the press colours).
