@@ -46,7 +46,7 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
         <Suspense fallback={null}>
           <Backdrop
             center={throwingView(lane).lookAt}
-            depth={Math.max(1, (lane.lineZ - lane.pinSpot.z) / backdrop.laneLength)}
+            reach={Math.max(0, (lane.lineZ - lane.pinSpot.z - backdrop.laneLength) * (1 - village.view.lookAtShare))}
           />
         </Suspense>
         <Tracks lane={lane} />

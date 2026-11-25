@@ -519,6 +519,13 @@ export const village = {
   sideMargin: 0,
 
   /**
+   * Behind the pins the layout keeps this depth scale (drawn units to game units) however long the lane is,
+   * so the far cluster, the calm snow and the paper sky sit as close behind the pins as on the first 5.6-unit
+   * lane (5.6 / 6.5). Only the stretch between the line and the pins grows with a longer lane.
+   */
+  backDepthScale: 0.862,
+
+  /**
    * The throwing view for the snow scene camera (useSnowCameraView): behind and above the line, looking
    * down the lane. The point looked at sits `lookAtShare` of the way from the line to the pin spot.
    * `pathAt` 0.15 is about 24 degrees above the snow on the camera path; `distance` pulls it back so the
@@ -599,7 +606,8 @@ export const village = {
 export const backdrop = {
   /**
    * Distance from the look-at point to the backdrop (scene units), and how much of the circle it covers. Set for a
-   * lane `laneLength` deep (line to pin spot); a deeper lane moves the wall back by the same share.
+   * lane `laneLength` deep (line to pin spot); on a deeper lane the wall moves back with the pins, so it stays as
+   * far behind them as it was.
    */
   radius: 9.6,
   laneLength: 5.6,

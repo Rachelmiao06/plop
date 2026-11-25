@@ -44,9 +44,11 @@ export const GAME = {
     /**
      * Launch: a push forward (units per second) and a field-of-view kick (degrees per second) on the camera's
      * springs, times the pull's power (never less than `minShare`), and for the first `time` seconds the
-     * camera follows the ball at the quicker `rate` before settling into the chase.
+     * camera follows the ball at the quicker `rate` before settling into the chase. The lens widens to the
+     * chase lens over `lensTime` seconds, while the camera dives in (widening it while still far away
+     * would look like a zoom out).
      */
-    launch: { push: 9, fovKick: 150, minShare: 0.35, time: 0.45, rate: 7 },
+    launch: { push: 9, fovKick: 45, minShare: 0.35, time: 0.45, rate: 7, lensTime: 0.55 },
     /**
      * Chase: `back` units behind the ball (plus `backPerRadius` of its radius) and `height` above the snow
      * (plus `heightPerRadius`), looking `ahead` units down the lane at `lookHeight`. A wider lens than the

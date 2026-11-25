@@ -66,8 +66,8 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, repeat = 1, 
 type Props = {
   /** The point the backdrop curves round (the throwing view's look-at point). */
   center: [number, number, number];
-  /** How much deeper the game's lane is than the lane `backdrop.radius` was set for (1 = the same); the wall moves back by it. */
-  depth?: number;
+  /** Extra distance to the wall (scene units), so it stays as far behind the pins on a longer lane. */
+  reach?: number;
 };
 
 /**
@@ -77,7 +77,7 @@ type Props = {
  */
 const look = new Vector3();
 
-export function Backdrop({ center, depth = 1 }: Props) {
+export function Backdrop({ center, reach = 0 }: Props) {
   // On a phone held upright the backdrop comes a little closer and the hills grow (see `backdrop.portrait`).
   const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
   const narrow = Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
@@ -87,13 +87,13 @@ export function Backdrop({ center, depth = 1 }: Props) {
     const lift = backdrop.hillsHeight * (grow - 1);
     return {
       ...backdrop,
-      radius: (backdrop.radius + (p.radius - backdrop.radius) * narrow) * depth,
+      radius: backdrop.radius + (p.radius - backdrop.radius) * narrow + reach,
       hillsHeight: backdrop.hillsHeight * grow,
       tintFrom: backdrop.tintFrom + lift,
       sky: backdrop.sky.map((s) => ({ ...s, y: s.y + lift })),
       bird: { ...backdrop.bird, y: backdrop.bird.y + lift },
     };
-  }, [narrow, depth]);
+  }, [narrow, reach]);
   const paper = usePaper();
   const snow = useSnow();
   const reduced = useReducedMotion();

@@ -7,6 +7,7 @@ export {
   kickSnowCamera,
   resumeSnowCamera,
   setSnowCameraShot,
+  snowCameraFov,
   snowCameraTaken,
   type SnowCameraKick,
   type SnowCameraShot,

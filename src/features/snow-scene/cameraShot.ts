@@ -14,6 +14,9 @@ import { content } from "./content";
 
 export type Vec3 = [number, number, number];
 
+/** The scene camera's own lens (vertical field of view, degrees): what a shot without `fov` uses. */
+export const snowCameraFov: number = content.camera.fieldOfView;
+
 export type SnowCameraShot = {
   /** Where the camera should be (scene units). Leave out to start from the player's own view. */
   position?: Vec3;

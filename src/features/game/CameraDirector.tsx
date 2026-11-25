@@ -21,7 +21,7 @@ import { useFrame } from "@react-three/fiber";
 
 import { FEEL, type Bowling, type RollingBall } from "@/features/bowling";
 import type { Pins } from "@/features/pins";
-import { kickSnowCamera, resumeSnowCamera, setSnowCameraShot, useSnow } from "@/features/snow-scene";
+import { kickSnowCamera, resumeSnowCamera, setSnowCameraShot, snowCameraFov, useSnow } from "@/features/snow-scene";
 
 import { GAME } from "./content";
 import type { GameLink } from "./GameBridge";
@@ -161,10 +161,12 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
         const lz = bz + d.z * ch.ahead;
         // Ease from the launch push into the steady chase.
         const u = smooth(clamp01(st.since / c.launch.time));
+        const lens = smooth(clamp01(st.since / c.launch.lensTime));
+        const lensFrom = snowCameraFov;
         setSnowCameraShot({
           position: [cx, ground + ch.height + r * ch.heightPerRadius, cz],
           lookAt: [lx, snow.heightAt(lx, lz) + ch.lookHeight, lz],
-          fov: ch.fov + ch.fovPerSpeed * Math.min(ball.speed, ch.fullSpeed),
+          fov: lensFrom + (ch.fov + ch.fovPerSpeed * Math.min(ball.speed, ch.fullSpeed) - lensFrom) * lens,
           rate: c.launch.rate + (ch.rate - c.launch.rate) * u,
           lookRate: ch.lookRate,
           interruptible: true,

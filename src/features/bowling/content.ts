@@ -329,7 +329,7 @@ export const LOOK = {
      * Rolling: a plume thrown up behind the ball. Per second: `amount` times the ball's speed share
      * (`LOOK.speed`) and its size share (radius small → big, never below `sizeFloor`).
      */
-    plume: { amount: 0.16, sizeFloor: 0.25, behind: 0.9, speed: 3.2 },
+    plume: { amount: 0.08, sizeFloor: 0.25, behind: 0.9, speed: 2.4 },
     /**
      * A big ball bulldozes: a bow wave of snow thrown ahead and out to the sides, from balls bigger than
      * `fromRadius`; per second `amount` times how big (share above `fromRadius`) and how fast it is.
