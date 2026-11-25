@@ -22,24 +22,28 @@ export const SOUND = {
 
   crunch: {
     /** Grains per second at the slowest and fastest roll. */
-    rateSlow: 7,
-    rateFast: 75,
+    rateSlow: 5,
+    rateFast: 34,
     /** Centre pitch of a grain (Hz) for the smallest and biggest ball. */
-    pitchSmall: 3200,
-    pitchBig: 520,
+    pitchSmall: 1000,
+    pitchBig: 300,
     /** Random pitch spread per grain, in octaves either way. */
-    pitchSpread: 0.45,
-    /** How ringy each grain is. Higher = more "squeak", lower = more "hiss". */
-    q: 2.2,
+    pitchSpread: 0.5,
+    /** How ringy each grain is. Higher = more "squeak", lower = softer and airier. */
+    q: 0.8,
+    /** Fade-in of each grain in seconds. Longer = softer and fluffier, shorter = papery. */
+    attack: 0.014,
+    /** Everything above this pitch (Hz) is muffled away. Lower = softer, like a thick blanket of snow. */
+    muffle: 1500,
     /** Grain length in seconds for the smallest and biggest ball. */
-    lengthSmall: 0.014,
-    lengthBig: 0.05,
+    lengthSmall: 0.07,
+    lengthBig: 0.16,
     /** Loudness of the grains. */
     gain: 1.1,
     /** Extra loudness for the biggest ball, so deep grains are not quieter than bright ones. */
     bigBoost: 2.4,
     /** Loudness of the soft rolling hiss underneath the grains. */
-    bedGain: 0.12,
+    bedGain: 0.3,
   },
 
   whoosh: {
@@ -47,10 +51,10 @@ export const SOUND = {
     lengthWeak: 0.22,
     lengthStrong: 0.5,
     /** Where the sweep starts, and how high it peaks (Hz) for weak / strong. */
-    pitchStart: 280,
-    pitchPeakWeak: 900,
-    pitchPeakStrong: 2800,
-    q: 1.1,
+    pitchStart: 180,
+    pitchPeakWeak: 450,
+    pitchPeakStrong: 1300,
+    q: 0.8,
     gainWeak: 0.35,
     gainStrong: 1.3,
   },
@@ -67,8 +71,8 @@ export const SOUND = {
     gainSmall: 0.55,
     gainBig: 1.0,
     /** The soft "puff" of snow on top of the boom: brightness (Hz) and loudness. */
-    puffPitchSmall: 2200,
-    puffPitchBig: 800,
+    puffPitchSmall: 1100,
+    puffPitchBig: 450,
     puffGain: 0.7,
     /** Snow bits scattering after the hit: how many, and over how long (seconds). */
     scatterSmall: 5,
@@ -80,6 +84,8 @@ export const SOUND = {
 type Engine = {
   ctx: AudioContext;
   out: GainNode;
+  /** Muffled path for snow: grains and rolling hiss go through here. */
+  soft: BiquadFilterNode;
   noise: AudioBuffer;
 };
 
@@ -114,7 +120,13 @@ function build(): Engine | null {
   const data = noise.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
 
-  return { ctx, out, noise };
+  const soft = ctx.createBiquadFilter();
+  soft.type = "lowpass";
+  soft.frequency.value = SOUND.crunch.muffle;
+  soft.Q.value = 0.5;
+  soft.connect(out);
+
+  return { ctx, out, soft, noise };
 }
 
 /** The engine if audio has been unlocked, otherwise null. */
@@ -177,10 +189,10 @@ function grain(e: Engine, at: number, size: number, level: number) {
 
   const env = e.ctx.createGain();
   env.gain.setValueAtTime(0, at);
-  env.gain.linearRampToValueAtTime(level * lerp(1, c.bigBoost, size), at + 0.002);
+  env.gain.linearRampToValueAtTime(level * lerp(1, c.bigBoost, size), at + Math.min(c.attack, length * 0.4));
   env.gain.exponentialRampToValueAtTime(0.0001, at + length);
 
-  src.connect(band).connect(env).connect(e.out);
+  src.connect(band).connect(env).connect(e.soft);
   src.start(at, Math.random() * (e.noise.duration - 0.2), length + 0.02);
 }
 
@@ -246,7 +258,7 @@ export function setCrunch(speed: number, size: number) {
   band.frequency.value = pitchLerp(SOUND.crunch.pitchSmall, SOUND.crunch.pitchBig, crunchSize) * 0.6;
   const gain = e.ctx.createGain();
   gain.gain.value = 0;
-  src.connect(band).connect(gain).connect(e.out);
+  src.connect(band).connect(gain).connect(e.soft);
   src.start();
   bed = { src, band, gain };
 
@@ -300,7 +312,7 @@ export function playWhoosh(power: number) {
   env.gain.exponentialRampToValueAtTime(level, peakAt);
   env.gain.exponentialRampToValueAtTime(0.0001, at + length);
 
-  src.connect(band).connect(env).connect(e.out);
+  src.connect(band).connect(env).connect(e.soft);
   src.start(at, Math.random() * e.noise.duration);
   src.stop(at + length + 0.05);
 }
