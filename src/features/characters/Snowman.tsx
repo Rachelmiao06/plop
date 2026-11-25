@@ -395,7 +395,7 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
               castShadow
             >
               <sphereGeometry args={[foot.radius, 24, 16]} />
-              <Ink colour={mats.outlineColour} />
+              <Ink material={mats.outline} />
             </mesh>
           ))}
           <mesh
@@ -405,7 +405,7 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
             castShadow
           >
             <sphereGeometry args={[shape.body.radius, 40, 28]} />
-            <Ink colour={mats.outlineColour} />
+            <Ink material={mats.outline} />
           </mesh>
         </group>
 
@@ -413,7 +413,7 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
         <group position={[0, shape.neckY, 0]} rotation={[0.04, 0, shape.scarf.tilt * look.lean]}>
           <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, shape.scarf.height]} material={scarfMat} castShadow>
             <torusGeometry args={[shape.scarf.ringRadius, shape.scarf.tube, 14, 44]} />
-            <Ink colour={mats.outlineColour} />
+            <Ink material={mats.outline} />
           </mesh>
           {look.knot && (
             <RoundedBox
@@ -423,7 +423,7 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
               position={[0, -0.01, shape.scarf.ringRadius + shape.scarf.tube * 0.85]}
               material={scarfMat}
             >
-              <Ink colour={mats.outlineColour} />
+              <Ink material={mats.outline} />
             </RoundedBox>
           )}
           {look.ends.map((end, i) => (
@@ -444,7 +444,7 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
         <group ref={neck} position={[0, shape.head.y, 0]}>
           <mesh material={mats.snow} castShadow>
             <sphereGeometry args={[r, 40, 28]} />
-            <Ink colour={mats.outlineColour} />
+            <Ink material={mats.outline} />
           </mesh>
           {/* The face: a thin patch of sphere just above the head's front surface. */}
           <mesh material={faceMaterial} renderOrder={2}>

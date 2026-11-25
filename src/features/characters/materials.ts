@@ -13,27 +13,14 @@ function readToken(name: string): THREE.Color {
   return new THREE.Color(value || "white");
 }
 
-const vertexShader = /* glsl */ `
-  varying vec3 vNormalWorld;
-  varying vec3 vLocal;
-  void main() {
-    vNormalWorld = normalize(mat3(modelMatrix) * normal);
-    vLocal = position;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
+function partColour(key: TokenKey, paper: THREE.Color): THREE.Color {
+  const entry: { token: string; lighten?: number } = tokens[key];
+  const colour = readToken(entry.token);
+  return entry.lighten ? colour.lerp(paper, entry.lighten) : colour;
+}
 
-// Two flat tones (lit and pale-blue shade) with a soft edge, plus a faint crayon-paper grain.
-const fragmentShader = /* glsl */ `
-  uniform vec3 uBase;
-  uniform vec3 uShade;
-  uniform vec3 uLight;
-  uniform float uEdge;
-  uniform float uSoft;
-  uniform float uGrain;
-  varying vec3 vNormalWorld;
-  varying vec3 vLocal;
-
+/** Value noise shared by the fill and the outline. */
+const NOISE = /* glsl */ `
   float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
     p *= 17.0;
@@ -48,19 +35,51 @@ const fragmentShader = /* glsl */ `
       mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
       f.z);
   }
+`;
 
+const fillVertex = /* glsl */ `
+  varying vec3 vNormalWorld;
+  varying vec3 vLocal;
+  void main() {
+    vNormalWorld = normalize(mat3(modelMatrix) * normal);
+    vLocal = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// A flat crayon fill: the part's colour, a barely-there pale-blue shade on the far side,
+// diagonal coloured-pencil strokes and soft pressure blotches. Stuck to the object so it never swims.
+const fillFragment = /* glsl */ `
+  uniform vec3 uBase;
+  uniform vec3 uShade;
+  uniform vec3 uLight;
+  uniform float uEdge;
+  uniform float uSoft;
+  uniform float uHatch;
+  uniform float uMottle;
+  varying vec3 vNormalWorld;
+  varying vec3 vLocal;
+  ${NOISE}
   void main() {
     float d = dot(normalize(vNormalWorld), uLight) * 0.5 + 0.5;
     float lit = smoothstep(uEdge - uSoft, uEdge + uSoft, d);
     vec3 colour = mix(uShade, uBase, lit);
-    float grain = noise(vLocal * 95.0) * 0.6 + noise(vLocal * 24.0) * 0.4;
-    colour *= 1.0 - uGrain * (grain - 0.5);
+
+    vec3 p = vLocal;
+    // Fine strokes running diagonally, broken up so they read as pencil, not stripes.
+    float along = (p.x + p.y) * 22.0;
+    float across = (p.y - p.x) * 260.0 + noise(p * 18.0) * 6.0;
+    float stroke = noise(vec3(along, across, p.z * 22.0));
+    float tooth = noise(p * 420.0);
+    float blotch = noise(p * 7.0) * 0.6 + noise(p * 19.0) * 0.4;
+    colour *= 1.0 - uHatch * (stroke - 0.5) - uHatch * 0.5 * (tooth - 0.5) - uMottle * (blotch - 0.5);
+
     gl_FragColor = vec4(colour, 1.0);
     #include <colorspace_fragment>
   }
 `;
 
-function toonMaterial(base: THREE.Color, shade: THREE.Color) {
+function fillMaterial(base: THREE.Color, shade: THREE.Color, hatch: number) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uBase: { value: base },
@@ -68,33 +87,92 @@ function toonMaterial(base: THREE.Color, shade: THREE.Color) {
       uLight: { value: new THREE.Vector3(...look.lightDirection).normalize() },
       uEdge: { value: look.shadeEdge },
       uSoft: { value: look.shadeSoftness },
-      uGrain: { value: look.grain },
+      uHatch: { value: hatch },
+      uMottle: { value: look.mottle },
     },
-    vertexShader,
-    fragmentShader,
+    vertexShader: fillVertex,
+    fragmentShader: fillFragment,
+  });
+}
+
+// The outline is an inverted hull: the back faces of each part, pushed outward on screen.
+// Its width is set in scene units (so it zooms like a drawn line), clamped in pixels,
+// and wobbles a little along its length like a hand-drawn stroke.
+const outlineVertex = /* glsl */ `
+  uniform float uWidth;
+  uniform vec2 uSize;
+  uniform float uMinPx;
+  uniform float uMaxPx;
+  uniform float uWobble;
+  ${NOISE}
+  void main() {
+    vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec4 clipNormal = projectionMatrix * modelViewMatrix * vec4(normal, 0.0);
+    float pxPerUnit = projectionMatrix[1][1] * uSize.y * 0.5 / clip.w;
+    float px = clamp(uWidth * pxPerUnit, uMinPx, uMaxPx);
+    float wobble = noise(position * 9.0) * 0.7 + noise(position * 23.0) * 0.3;
+    px *= 1.0 + uWobble * (wobble - 0.5) * 2.0;
+    vec2 dir = clipNormal.xy;
+    if (dot(dir, dir) > 1e-8) clip.xy += normalize(dir) * px / uSize * clip.w * 2.0;
+    gl_Position = clip;
+  }
+`;
+
+const outlineFragment = /* glsl */ `
+  uniform vec3 uColour;
+  uniform vec3 uPaper;
+  uniform float uSpecks;
+  ${NOISE}
+  void main() {
+    // Crayon skipping over paper: a few lighter specks inside the stroke.
+    float speck = noise(vec3(gl_FragCoord.xy * 0.22, 0.0));
+    vec3 colour = mix(uColour, uPaper, smoothstep(0.68, 0.9, speck) * uSpecks);
+    gl_FragColor = vec4(colour, 1.0);
+    #include <colorspace_fragment>
+  }
+`;
+
+export function makeOutlineMaterial(colour: THREE.Color, paper: THREE.Color) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uColour: { value: colour },
+      uPaper: { value: paper },
+      uSpecks: { value: look.outlineSpecks },
+      uWidth: { value: look.outlineWidth },
+      uSize: { value: new THREE.Vector2(1, 1) },
+      uMinPx: { value: look.outlineMinPx },
+      uMaxPx: { value: look.outlineMaxPx },
+      uWobble: { value: look.outlineWobble },
+    },
+    vertexShader: outlineVertex,
+    fragmentShader: outlineFragment,
+    side: THREE.BackSide,
   });
 }
 
 export type SnowmanMaterials = Record<TokenKey, THREE.ShaderMaterial> & {
-  outlineColour: THREE.Color;
+  outline: THREE.ShaderMaterial;
   faceColour: THREE.Color;
 };
 
+const WHITE_PARTS: TokenKey[] = ["snow", "pompom", "handle"];
+
 function buildMaterials(): SnowmanMaterials {
-  const shadeTint = readToken(tokens.snowShade);
+  const paper = readToken("--paper");
+  const shadeTint = readToken(tokens.snowShade.token);
   const made = {} as Record<TokenKey, THREE.ShaderMaterial>;
   for (const key of Object.keys(tokens) as TokenKey[]) {
-    const base = readToken(tokens[key]);
-    const isWhite = key === "snow" || key === "pompom" || key === "handle";
+    const base = partColour(key, paper);
+    const isWhite = WHITE_PARTS.includes(key);
     const shade = isWhite
       ? base.clone().lerp(shadeTint, look.snowShadeMix)
       : base.clone().lerp(base.clone().multiply(shadeTint), look.colourShadeMix);
-    made[key] = toonMaterial(base, shade);
+    made[key] = fillMaterial(base, shade, isWhite ? look.hatchSnow : look.hatchColour);
   }
   return {
     ...made,
-    outlineColour: readToken(tokens.outline),
-    faceColour: readToken(tokens.face),
+    outline: makeOutlineMaterial(partColour("outline", paper), paper),
+    faceColour: partColour("face", paper),
   };
 }
 

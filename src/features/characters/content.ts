@@ -9,32 +9,48 @@ export type FaceName = (typeof FACES)[number];
 
 export const faceTexture = (face: FaceName) => `/assets/characters/face-${face}.png`;
 
-/** Theme tokens (CSS variables in globals.css) used for each part. Never hex here. */
+/**
+ * Theme tokens (CSS variables in globals.css) used for each part. Never hex here.
+ * `lighten` mixes the token toward --paper, the way a light crayon layer lets paper show through.
+ */
 export const tokens = {
-  snow: "--paper",
-  snowShade: "--snow-shadow",
-  outline: "--ink-deep",
-  face: "--ink-deep",
-  bucket: "--sky-blue",
-  mintScarf: "--mint",
-  red: "--berry",
-  pompom: "--paper",
-  handle: "--paper",
-  ribs: "--ink-deep",
-} as const;
+  snow: { token: "--paper" },
+  snowShade: { token: "--snow-shadow" },
+  outline: { token: "--ink-deep" },
+  face: { token: "--ink-deep" },
+  bucket: { token: "--sky-blue", lighten: 0.22 },
+  mintScarf: { token: "--pine", lighten: 0.3 },
+  red: { token: "--berry", lighten: 0.08 },
+  pompom: { token: "--paper" },
+  handle: { token: "--paper" },
+  ribs: { token: "--ink-deep" },
+} satisfies Record<string, { token: string; lighten?: number }>;
 
+/** The look of Rachel's sheets: flat crayon fills, almost no shading, a thick rough brown line. */
 export const look = {
-  /** Outline width in CSS pixels; stays the same thickness however close the camera is. */
-  outlinePx: 2.4,
+  /**
+   * Outline thickness in scene units (a snowman is 1 unit tall), so it scales with zoom like a
+   * drawn line, but never thinner or thicker than these pixel limits.
+   */
+  outlineWidth: 0.016,
+  outlineMinPx: 1.6,
+  outlineMaxPx: 9,
+  /** How much the line width wobbles along its length (0 = perfectly even). */
+  outlineWobble: 0.35,
+  /** Light specks inside the line, like crayon skipping over paper tooth. */
+  outlineSpecks: 0.18,
   /** Where light turns to shade (0..1 across the ball) and how soft that edge is. */
-  shadeEdge: 0.38,
-  shadeSoftness: 0.14,
-  /** How far white snow leans to the pale-blue shade colour on its shaded side. */
-  snowShadeMix: 0.75,
-  /** How far coloured parts lean to the blue shade on their shaded side. */
-  colourShadeMix: 0.35,
-  /** Crayon-paper grain strength. 0 = perfectly flat. */
-  grain: 0.07,
+  shadeEdge: 0.2,
+  shadeSoftness: 0.18,
+  /** How far white snow leans to the pale-blue shade colour on its shaded side. Kept tiny: the drawings have no shading. */
+  snowShadeMix: 0.16,
+  /** Same for coloured parts. */
+  colourShadeMix: 0.1,
+  /** Coloured-pencil strokes on coloured parts, and on snow (snow is nearly plain paper). */
+  hatchColour: 0.22,
+  hatchSnow: 0.045,
+  /** Soft blotches, like uneven crayon pressure. */
+  mottle: 0.1,
   /** Light comes from the upper front-left of the world. */
   lightDirection: [-0.45, 0.8, 0.55] as [number, number, number],
 };
@@ -105,6 +121,8 @@ export const beanie = {
   /** The cap is part of a sphere a bit bigger than the head, cut off at `cut` radians from the top. */
   grow: 1.07,
   cut: 1.2,
+  /** Stretch the dome upward so the hat sits tall above the cuff, like the sheet. */
+  domeHeight: 1.3,
   cuffTube: 0.06,
   cuffHeight: 1.35,
   ribs: 18,
