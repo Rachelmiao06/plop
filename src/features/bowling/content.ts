@@ -25,7 +25,7 @@ export const FEEL = {
     hopTime: 0.45,
     hopHeight: 0.35,
     /** How far back it leans at full pull (radians). */
-    leanAtFull: 0.3,
+    leanAtFull: 0.42,
     /** Idle wobble: how far (radians) and how fast (wobbles per second). */
     wobble: 0.03,
     wobbleSpeed: 0.6,
@@ -54,6 +54,12 @@ export const FEEL = {
     packedBoost: 1.5,
     /** How quickly the follow rate itself changes when the snow changes, so it never jerks. */
     smoothing: 8,
+    /**
+     * Tension: the pull loads up like a band. Near full pull the ball follows only this share as fast,
+     * so the last stretch resists a little more. `curve` above 1 keeps the start light.
+     */
+    tensionAtFull: 0.55,
+    tensionCurve: 1.6,
   },
 
   ball: {
@@ -91,20 +97,27 @@ export const FEEL = {
     pushPastFull: 0.5,
   },
 
-  /** The roll down the lane after letting go. */
+  /**
+   * The roll down the lane after letting go. Tuned so a light ball reaches the pins in about 0.65 s and
+   * a full one in about 1.2 s (`docs/TUNING.md`).
+   */
   roll: {
-    /** Starting speed of the smallest and the biggest ball (at full pull). */
-    speedSmall: 6.4,
-    speedBig: 3.5,
+    /** Top speed of the smallest and the biggest ball (at full pull), reached right after the snap. */
+    speedSmall: 10.5,
+    speedBig: 5.6,
     /** A weak pull starts this share as fast as a full one. */
-    weakPull: 0.85,
+    weakPull: 0.8,
+    /** Letting go is a snap: the ball leaves at `from` of its top speed and reaches it within `time` seconds. */
+    snap: { from: 0.35, time: 0.09 },
+    /** Early in the roll the snow slows it only `dragShare` as much, easing to full drag over `time` seconds. */
+    early: { dragShare: 0.2, time: 0.6 },
     /** Steady slowing in deep fresh snow, and the extra slowing that grows with speed. */
-    dragFresh: 1.9,
-    dragPerSpeed: 0.04,
-    /** On a fully packed track the slowing is only this share, so old grooves become fast lanes. */
-    dragOnPacked: 0.6,
+    dragFresh: 4,
+    dragPerSpeed: 0.15,
+    /** On a fully packed track the slowing is only this share, so old grooves become (gently) faster lanes. */
+    dragOnPacked: 0.8,
     /** Big balls plough on: their slowing is this share of a small ball's. */
-    dragBigShare: 0.36,
+    dragBigShare: 0.45,
     /** Below this speed the ball stops. */
     stopSpeed: 0.12,
     /** A stopped ball stays in the snow this long before it goes away. */
@@ -146,6 +159,8 @@ export const FEEL = {
    * everywhere). The vibration patterns themselves are in `src/lib/haptics.ts`.
    */
   beats: {
+    /** The whoosh on letting go follows the ball's top speed: this speed and faster is the loudest. */
+    whooshFullSpeed: 10,
     /** Crunch ticks while pulling: ticks per second for the smallest and the biggest ball... */
     ticksSmall: 5,
     ticksBig: 13,
@@ -199,14 +214,27 @@ export const LOOK = {
     hop: { stretch: 0.14, landSquash: 0.2 },
     /** The happy bounce after landing: little bounces, how high, how long. */
     bounce: { count: 2, height: 0.08, time: 0.55 },
-    /** Sliding along the line looks like shuffling: steps per unit, side rock, lift per step, lean into the slide. */
-    shuffle: { stepsPerUnit: 3.4, rock: 0.11, lift: 0.035, leanInto: 0.08, fullSpeed: 2.2 },
+    /** A small shuffle left under the roll while sliding: steps per unit, side rock, lift per step, lean into the slide. */
+    shuffle: { stepsPerUnit: 3.4, rock: 0.03, lift: 0.012, leanInto: 0.04, fullSpeed: 2.2 },
     /** A little pop when the player changes. */
     swapSquash: 0.18,
     /** Pressing the thrower: a tiny squash, like a finger pressing a soft toy (share of height, as a kick). */
     pressSquash: 0.12,
     /** Reaching full charge: a quick puff-up (negative squash = stretch) on top of the strain shiver. */
-    chargePop: 0.1,
+    chargePop: 0.14,
+    /**
+     * The snowman is round, so it rolls on its round bottom like a roly-poly toy. `radius` is that bottom's
+     * size (share of the card's height); sliding rolls it by `perSpeed` radians per unit per second, at most
+     * `max`; it wobbles back upright on its own spring. It also turns a little toward where it slides.
+     */
+    roll: { radius: 0.3, perSpeed: 0.22, max: 0.55, stiffness: 55, damping: 6.5, turnDegrees: 14 },
+    /** Idle: now and then it rolls a little by itself (radians, rolls per second). */
+    idleRoll: { angle: 0.07, speed: 0.23 },
+    /**
+     * Letting go: it lunges forward after the ball (scene units, as a spring kick), leans into it with a
+     * little roll of follow-through, then wobbles back to its spot.
+     */
+    lunge: { distance: 0.35, lean: 0.35, roll: 0.25, stiffness: 60, damping: 8 },
   },
 
   /** Springy squash of the snowball itself (kept upright: the squash never turns with the roll). */
@@ -215,6 +243,8 @@ export const LOOK = {
     tick: 0.06,
     /** Full charge: a bigger squash. */
     charge: 0.16,
+    /** While pulled, the ball presses into the snow: flattened this much at full pull (it loads up). */
+    pullLoad: 0.08,
     /** Letting go: a stretch along the way it is thrown. */
     launch: 0.18,
     /** The spring it settles on (wobbly but quick). */
@@ -251,10 +281,31 @@ export const LOOK = {
     markInk: 0.62,
   },
 
+  /**
+   * Speed you can see: hand-drawn wind curls (`public/assets/effects/wind-curl.webp`) trail a fast ball,
+   * and fast balls throw more snow. `from` / `full` are ball speeds (units per second).
+   */
+  speed: {
+    from: 4,
+    full: 9,
+    /**
+     * Wind-curl size (scene units), how far behind the ball's edge and how far out to its sides they sit
+     * (out is a share of the radius), and how see-through at most. Kept clear of the ball so it never looks faded.
+     */
+    curlSize: 0.55,
+    curlBehind: 0.45,
+    curlOut: 1.25,
+    curlOpacity: 0.85,
+    /** Fast balls kick up this many times more spray from the snow (the plough speed passed to the snow). */
+    sprayBoost: 1.8,
+  },
+
   /** Clumps of snow that fall off a big rolling ball. */
   clumps: {
-    /** Balls smaller than this radius shed nothing. */
+    /** Balls smaller than this radius shed nothing (unless fast, see `fastBoost`). */
     fromRadius: 0.3,
+    /** A fast ball (`LOOK.speed`) sheds up to this many times more, small ones included. */
+    fastBoost: 2.2,
     /** Clumps per unit rolled by the biggest ball (fewer for smaller ones). */
     perUnit: 1.6,
     /** At most this many in the air or melting at once. */

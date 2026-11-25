@@ -119,6 +119,8 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
 
   const root = useRef<Group>(null); // position on the line, hop
   const turn = useRef<Group>(null); // half-turn toward the camera
+  const rollPivot = useRef<Group>(null); // rolling on its round bottom (pivot at that bottom's centre)
+  const rollInner = useRef<Group>(null); // puts the feet back under the pivot
   const body = useRef<Group>(null); // lean, rock, squash (pivot at the feet)
   const cards = useRef<Record<ThrowerLook, Group | null>>({ one: null, two: null });
 
@@ -127,6 +129,9 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
     tiltX: new Spring(),
     tiltZ: new Spring(),
     squash: new Spring(),
+    roll: new Spring(),
+    lunge: new Spring(),
+    pullX: 0,
     lastX: 0,
     step: 0,
     moving: 0,
@@ -144,7 +149,9 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
         const g = root.current;
         const y = turn.current;
         const b = body.current;
-        if (!g || !y || !b) return;
+        const rp = rollPivot.current;
+        const ri = rollInner.current;
+        if (!g || !y || !b || !rp || !ri) return;
         const s = state.current;
         const L = LOOK.thrower;
         const t = game.thrower;
@@ -180,7 +187,13 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
         if (t.phase === "thrown" && s.phase !== "thrown") {
           s.squash.speed -= L.hop.stretch * 14;
           s.tiltX.speed -= 3;
+          // Lunge after the ball, lean into it, a little roll of follow-through toward where it went.
+          s.lunge.speed -= L.lunge.distance * 14; // peaks at about `distance` on its spring
+          s.tiltX.speed -= L.lunge.lean * 14;
+          const side = Math.abs(s.pullX) > 0.05 ? Math.sign(s.pullX) : Math.sin(time * 7.1) >= 0 ? 1 : -1;
+          s.roll.speed += side * L.lunge.roll * 14;
         }
+        if (t.phase === "pulling") s.pullX = t.pull.x;
         s.phase = t.phase;
         const airborne = t.hopHeight > 0.002;
         if (s.wasAirborne && !airborne) {
@@ -213,6 +226,14 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
         s.tiltZ.step(tiltZGoal, dt, stiffness, damping);
         s.squash.step(squashGoal, dt, stiffness * 1.4, damping);
 
+        // Rolling on its round bottom: sliding rolls it like a ball (into the slide), a little idle roll
+        // by itself, and it wobbles back upright on its own spring.
+        const R = L.roll;
+        let rollGoal = Math.max(-R.max, Math.min(R.max, -speed * R.perSpeed));
+        rollGoal += Math.sin(time * L.idleRoll.speed * Math.PI * 2) * L.idleRoll.angle * idle;
+        s.roll.step(rollGoal, dt, R.stiffness, R.damping);
+        s.lunge.step(0, dt, L.lunge.stiffness, L.lunge.damping);
+
         // Strain at full charge: a quick shiver on top, not on the spring.
         const w = time * L.strain.speed * Math.PI * 2;
         const shiverZ = Math.sin(w) * L.strain.angle * tremble;
@@ -223,12 +244,21 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
           -L.turn.capDegrees * DEG,
           Math.min(L.turn.capDegrees * DEG, Math.atan2(camera.position.x - t.x, camera.position.z - t.foot.z) * L.turn.fraction),
         );
-        s.yaw.step(yawGoal, dt, L.turn.stiffness, L.turn.damping);
+        // ...and turns a little toward where it slides.
+        const slideTurn = Math.max(-1, Math.min(1, speed / L.shuffle.fullSpeed)) * L.roll.turnDegrees * DEG;
+        s.yaw.step(yawGoal + slideTurn, dt, L.turn.stiffness, L.turn.damping);
 
         // "Reduce motion": hops, bounces and squash keep only a share; leaning still shows the pull.
         const m = motionShare();
         const sink = propSettings(LOOK.thrower.art[look])!.sink;
-        g.position.set(t.x + shiverX, ground - sink + (t.hopHeight + bounce + shuffleLift) * m, t.foot.z);
+        g.position.set(t.x + shiverX, ground - sink + (t.hopHeight + bounce + shuffleLift) * m, t.foot.z + s.lunge.value * m);
+        // Roll about the centre of the round bottom; rolling (not sliding) also shifts it along the ground.
+        const height = propSettings(LOOK.thrower.art[look])!.height;
+        const pivot = R.radius * height;
+        const roll = Math.max(-R.max * 1.6, Math.min(R.max * 1.6, s.roll.value)) * m;
+        rp.position.set(-roll * pivot * 0.5, pivot, 0);
+        rp.rotation.z = roll;
+        ri.position.y = -pivot;
         y.rotation.y = s.yaw.value;
         b.rotation.set(s.tiltX.value, 0, s.tiltZ.value + shiverZ);
         const q = Math.max(-0.3, Math.min(0.3, s.squash.value)) * m;
@@ -245,18 +275,22 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
   return (
     <group ref={root} position={[0, 0, FEEL.lane.lineZ]}>
       <group ref={turn}>
-        <group ref={body}>
-          {LOOKS.map((l) => (
-            <group
-              key={l}
-              ref={(g) => {
-                cards.current[l] = g;
-              }}
-              visible={l === "one"}
-            >
-              <Card id={ids[l] as PropId} art={textures[l]} paper={paper} />
+        <group ref={rollPivot}>
+          <group ref={rollInner}>
+            <group ref={body}>
+              {LOOKS.map((l) => (
+                <group
+                  key={l}
+                  ref={(g) => {
+                    cards.current[l] = g;
+                  }}
+                  visible={l === "one"}
+                >
+                  <Card id={ids[l] as PropId} art={textures[l]} paper={paper} />
+                </group>
+              ))}
             </group>
-          ))}
+          </group>
         </group>
       </group>
     </group>

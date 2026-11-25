@@ -38,6 +38,7 @@ import { Clumps } from "./clumps";
 import { readPalette } from "./look";
 import { motionShare } from "./motion";
 import { ballMaterial, ballOutlineMaterial } from "./snowballLook";
+import { SpeedLines } from "./SpeedLines";
 import { ThrowerStandee, type ThrowerHandle } from "./ThrowerStandee";
 
 /** The fixed drawing light the ball's shade side comes from (see LOOK.ball.light). */
@@ -289,7 +290,10 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     for (const ball of game.balls) {
       // No dig while rolling: the groove depth comes from the ball's size. Called for stopped
       // balls too, so the last stretch before stopping is pressed even after a slow frame.
-      pressAlong(ball.id, ball.position, ball.plan.radius, ball.velocity, 0);
+      // A fast ball ploughs up more spray: the snow is told it moves faster than it does.
+      const fast = Math.max(0, Math.min(1, (ball.speed - LOOK.speed.from) / (LOOK.speed.full - LOOK.speed.from)));
+      const boost = 1 + (LOOK.speed.sprayBoost - 1) * fast;
+      pressAlong(ball.id, ball.position, ball.plan.radius, { x: ball.velocity.x * boost, z: ball.velocity.z * boost }, 0);
     }
 
     // ---- The snowman.
@@ -300,9 +304,10 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     if (clumpRef.current && clumpOutlineRef.current) clumps.draw(clumpRef.current, clumpOutlineRef.current);
 
     // ---- Balls.
-    const shown: { key: string | number; at: Vec2; radius: number; rolled: number; dir: Vec2; scale: number }[] = [];
     const motion = motionShare();
     const sq = LOOK.ballSquash;
+    const shown: { key: string | number; at: Vec2; radius: number; rolled: number; dir: Vec2; scale: number; load: number }[] = [];
+
     if (pulled) {
       shown.push({
         key: "pull",
@@ -311,6 +316,8 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
         rolled: pulled.rolled,
         dir: pulled.rollDirection,
         scale: 1,
+        // Loading up: pressed into the snow more the farther it is pulled.
+        load: Math.min(1, Math.hypot(t.pull.x, t.pull.z) / feel.pull.max) * sq.pullLoad,
       });
     }
     for (const ball of game.balls) {
@@ -322,6 +329,7 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
         rolled: ball.rolled,
         dir: ball.plan.direction,
         scale: Math.min(1, fadeLeft / 0.4),
+        load: 0,
       });
     }
     ballRefs.current.forEach((mesh, i) => {
@@ -336,7 +344,7 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
       let q = 0;
       if (mark) {
         const s = mark.squash;
-        s.v += (-s.q * sq.stiffness - s.v * sq.damping) * dt;
+        s.v += (-(s.q - b.load) * sq.stiffness - s.v * sq.damping) * dt;
         s.q += s.v * dt;
         q = Math.max(-sq.max, Math.min(sq.max, s.q)) * motion;
       }
@@ -411,6 +419,7 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     <group>
       <Suspense fallback={null}>
         <ThrowerStandee ref={throwerRef} paper={looks.colors} />
+        <SpeedLines game={game} snow={snow} />
       </Suspense>
       {Array.from({ length: MAX_BALLS }, (_, i) => (
         <group

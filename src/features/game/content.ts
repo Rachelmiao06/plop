@@ -29,6 +29,12 @@ export const GAME = {
     fullClearBonus: 3,
   },
 
+  /**
+   * The short camera follow while the ball rolls: the view slides this share of the ball's way down the
+   * lane, at most `max` units, easing in at `easeIn` and back at `easeBack` (share per second) after the hit.
+   */
+  cameraFollow: { share: 0.22, max: 1.1, easeIn: 3, easeBack: 1.8 },
+
   timing: {
     /**
      * After the pins stand again (their bounce has landed), the turn passes after this long.

@@ -8,14 +8,29 @@ seconds, units per second.
 |---|---|---|---|
 | 1 | **How big the ball gets.** Smallest and biggest snowball (radius). Bigger = slower, heavier, wider path. | `0.125` → `0.6` | `src/features/bowling/content.ts` · `FEEL.ball.radiusSmall`, `radiusBig` |
 | 2 | **How far you pull for a full ball.** Longer = more drag on a phone, more time to aim. Keyboard: Space fills at `pullSpeed` (about 1.5 s to full). | `1.6` units · `1.1` /s | `FEEL.pull.max` · `FEEL.keyboard.pullSpeed` |
-| 3 | **How fast the ball rolls.** Start speed of a small and of a full ball. | `6.4` and `3.5` | `FEEL.roll.speedSmall`, `speedBig` |
-| 4 | **How far it rolls.** Slowing in fresh snow, and how much less on an old groove (old grooves become fast lanes). | `1.9` · `0.6` share | `FEEL.roll.dragFresh` · `dragOnPacked` |
+| 3 | **How fast the ball rolls.** Top speed of a small and of a full ball. A light ball reaches the pins in about 0.65–0.8 s, a full one in about 1.2–1.3 s. | `10.5` and `5.6` | `FEEL.roll.speedSmall`, `speedBig` |
+| 4 | **How far it rolls.** Slowing in fresh snow (a full ball slows only `dragBigShare` as much), and how much less on an old groove. | `4` · `0.45` · `0.8` share | `FEEL.roll.dragFresh` · `dragBigShare` · `dragOnPacked` |
 | 5 | **How heavy the ball feels in the hand.** How quickly it follows the finger, small vs big. Lower = heavier, laggier. | `22` and `9` | `FEEL.follow.rateLight`, `rateHeavy` |
 | 6 | **How easily cut-outs fall.** Tilt past which a card counts as down, and each weight class's mass and foot depth (deeper foot = harder to tip). | `50`° · light `0.3` / `0.07` … heavy `0.9` / `0.16` | `src/features/pins/content.ts` · `PINS.down.tiltDegrees`, `PINS.weight` |
 | 7 | **How lively a topple is.** Gravity (stronger = paper flops, weaker = floats) and the speed cap that stops cards flying off. | `-13` · `4.5` | `PINS.world.gravity` · `PINS.caps.linear` |
 | 8 | **How long "N down!" stays before the cards pop back.** The main pause between turns (a full clear waits a little longer). | `1.9` s · `2.4` s | `PINS.reset.delayAfterResult` · `PINS.nextSet.delayAfterFullClear` |
 | 9 | **The springy reset.** How long each card takes to hop back up, and how high. | `0.6` s · `0.28` | `PINS.reset.time`, `hop` |
 | 10 | **Points and the hand-over.** Points per card, the full-clear bonus, and how soon after the pins stand the next player may throw. | `1` · `3` · `0.25` s | `src/features/game/content.ts` · `GAME.score.perCard`, `fullClearBonus`, `GAME.timing.passTurnAfterReady` |
+
+## The five numbers that make the throw satisfying
+
+Rachel (2026-11-25): the throw felt slow with no punch. These five change that the most:
+
+1. **Top speed**, `FEEL.roll.speedSmall` / `speedBig` (`10.5` / `5.6`). Light ball to the pins in about 0.7 s, full ball about 1.25 s (was about 1.3 s and 2 s).
+2. **The snap**, `FEEL.roll.snap` (`from 0.35`, `time 0.09` s). The ball leaves at 35% of its speed and reaches full speed in 0.09 s, like a band let go. Lower `from` = more visible kick.
+3. **Early carry**, `FEEL.roll.early` (`dragShare 0.2` over `0.6` s). The snow barely slows it at first, then the full drag eases in (`dragFresh 4`), so it carries its speed to the pins and still stops behind them.
+4. **Tension while pulling**, `FEEL.follow.tensionAtFull` (`0.55`). Near full pull the ball follows only 55% as fast, so the last stretch resists like a loading band. With `FEEL.thrower.leanAtFull` (`0.42`) and `LOOK.ballSquash.pullLoad` (`0.08`) it looks loaded too.
+5. **Impact energy**, `PINS.impact` (`push 0.11`, `lift 0.18`, `tumble 0.05`) and `PINS.hitStop` (`0.14` s at `12%` speed). The extra shove and tumble when the ball touches a card, and the short catch at the first hit.
+
+Also part of the throw's feel: the snowman rolls on its round bottom when it slides and lunges after the ball
+(`LOOK.thrower.roll`, `idleRoll`, `lunge`), wind curls and extra spray behind a fast ball (`LOOK.speed`), the
+whoosh follows the ball's speed (`FEEL.beats.whooshFullSpeed`), and the view eases a little after the ball and
+settles back after the hit (`GAME.cameraFollow` in `src/features/game/content.ts`).
 
 ## Also worth knowing
 

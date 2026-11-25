@@ -47,9 +47,12 @@ export class Clumps {
       const r = ball.plan.radius;
       const before = this.lastRolled.get(ball.id) ?? ball.rolled;
       this.lastRolled.set(ball.id, ball.rolled);
-      if (!ball.rolling || r < c.fromRadius) continue;
-      const share = Math.min(1, (r - c.fromRadius) / Math.max(0.01, this.radiusBig - c.fromRadius));
-      let owed = (this.owed.get(ball.id) ?? this.rnd() * 0.5) + (ball.rolled - before) * c.perUnit * (0.35 + 0.65 * share);
+      const fast = Math.max(0, Math.min(1, (ball.speed - LOOK.speed.from) / (LOOK.speed.full - LOOK.speed.from)));
+      if (!ball.rolling || (r < c.fromRadius && fast <= 0)) continue;
+      const share = Math.max(0, Math.min(1, (r - c.fromRadius) / Math.max(0.01, this.radiusBig - c.fromRadius)));
+      let owed =
+        (this.owed.get(ball.id) ?? this.rnd() * 0.5) +
+        (ball.rolled - before) * c.perUnit * (0.35 + 0.65 * share) * (1 + c.fastBoost * fast);
       while (owed >= 1 && this.list.length < c.max) {
         owed -= 1;
         this.spawn(ball, sink);

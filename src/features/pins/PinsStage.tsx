@@ -53,6 +53,8 @@ type PinRuntime = {
   anim: Anim | null;
   boingAt: number;
   hidden: boolean;
+  /** The ball has touched this card in this throw (the extra impact shove is given once). */
+  struck?: boolean;
   /** The flop squash spring (drawing only): amount and its speed. */
   squash: { q: number; v: number };
 };
@@ -124,6 +126,7 @@ function clearCounts(list: PinRuntime[]) {
   for (const rt of list) {
     rt.down = false;
     rt.landed = false;
+    rt.struck = false;
   }
 }
 
@@ -347,15 +350,32 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     () =>
       specs.map((s, i) => (e: CollisionEnterPayload) => {
         const f = flow.current;
-        // The ball meets the first card of the throw: a hit-stop, a thump and a bump you feel.
-        if (e.other.rigidBodyObject?.name === "ball" && f.phase === "throw" && !f.hitThisThrow) {
+        if (e.other.rigidBodyObject?.name === "ball") {
           const ball = f.game?.balls.find((b) => b.rolling);
-          if (!ball || !f.game) return;
-          f.hitThisThrow = true;
-          const h = PINS.hitStop;
-          f.game.hitStop(h.seconds, h.slowest);
-          playThump(ball.plan.size * h.thump);
-          haptic("hit", ball.plan.size);
+          const rt = runtime.current[i];
+          const body = e.target.rigidBody;
+          if (!ball || !f.game || f.phase !== "throw" || !rt || !body || rt.anim) return;
+          // A bit more energy than the plain push: a shove, a lift and a tumble, once per card.
+          if (!rt.struck) {
+            rt.struck = true;
+            const im = PINS.impact;
+            const d = ball.plan.direction;
+            const m = body.mass();
+            const v = ball.speed;
+            body.applyImpulse({ x: d.x * im.push * m * v, y: im.lift * m, z: d.z * im.push * m * v }, true);
+            body.applyTorqueImpulse(
+              { x: d.z * im.tumble * m * v, y: (Math.random() * 2 - 1) * im.twist * m * v, z: -d.x * im.tumble * m * v },
+              true,
+            );
+          }
+          // The ball meets the first card of the throw: a hit-stop, a thump and a bump you feel.
+          if (!f.hitThisThrow) {
+            f.hitThisThrow = true;
+            const h = PINS.hitStop;
+            f.game.hitStop(h.seconds, h.slowest);
+            playThump(ball.plan.size * h.thump);
+            haptic("hit", ball.plan.size);
+          }
           return;
         }
         if (e.other.rigidBodyObject?.name !== "snow") return;

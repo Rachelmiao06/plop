@@ -40,7 +40,8 @@ export function connectFeedback(game: Bowling): Feedback {
         break;
       case "launched":
         // A soft push of air as the ball sets off; the crunch carries the roll.
-        playWhoosh(e.plan.power * 0.5);
+        // The whoosh scales with how fast the ball leaves.
+        playWhoosh(clamp01(e.plan.startSpeed / b.whooshFullSpeed) * (0.45 + 0.55 * e.plan.power));
         haptic("launch", e.plan.power);
         break;
     }

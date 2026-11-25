@@ -67,6 +67,9 @@ export function hapticsSupported(): boolean {
  */
 export function haptic(name: HapticName, strength = 1): void {
   if (!hapticsSupported() || !getAudioSettings().effects) return;
+  // Before the first real tap or key press Chrome refuses and logs an error, so do not even ask.
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  if (activation && !activation.hasBeenActive) return;
   const p: Pattern = HAPTICS.patterns[name];
   const now = performance.now();
 
