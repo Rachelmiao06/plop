@@ -16,8 +16,8 @@ export const content = {
   ground: {
     // Size of the snow slab (the play area is centred on 0, 0) and how round
     // its corners are.
-    sizeX: 7.6,
-    sizeZ: 6.4,
+    sizeX: 6.6,
+    sizeZ: 5.6,
     centerZ: 0,
     cornerRadius: 0.9,
     // Close to the edge the snow cannot be pressed, so the side of the slab
@@ -124,8 +124,8 @@ export const content = {
     // the bottom of it, the base under it, and the soft shadow it sits in.
     slabSideTop: "#dfe7f2",
     slabSideBottom: "#b9c9e6",
-    slabBase: "#566a92",
-    slabShadow: "#8fa3c9",
+    slabBase: "#7a8db3",
+    slabShadow: "#6f84b0",
     snowflake: "#ffffff",
     snowDust: "#ffffff",
     // TEMPORARY: stand-in blocks shown with ?guides in the address.
@@ -170,9 +170,9 @@ export const content = {
     characterScreenShare: 0.2,
     // Height of the point the camera looks at.
     targetHeight: 0.35,
-    // The camera looks a little in front of the middle, so the front cut
-    // side of the slab is in view.
-    targetZ: 1.3,
+    // The camera looks this far in front of the middle (toward the viewer),
+    // so the cut side of the slab is in view.
+    targetZ: 1.1,
     // A tiny slow drift of the view, so sparkles glint.
     swayAmount: 0.12,
     swaySpeed: 0.22,
@@ -187,9 +187,9 @@ export const content = {
     // How quickly the view glides to where it was asked to go (higher = snappier).
     ease: 9,
     // How far from the middle the view may wander when fully zoomed in.
-    panX: 2.8,
-    panZFar: 3.6,
-    panZNear: 1.2,
+    panX: 2.4,
+    panZFar: 2.4,
+    panZNear: 2.4,
   },
 
   // Turning the view by dragging on empty snow.
@@ -208,7 +208,7 @@ export const content = {
     // Room kept around the characters when the view pulls back to keep both in frame.
     fitMargin: 0.65,
     // Opacity and reach of the soft shadow under the slab.
-    shadowOpacity: 0.55,
+    shadowOpacity: 0.75,
     shadowReach: 1.6,
   },
 

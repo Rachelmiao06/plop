@@ -23,9 +23,9 @@ class CameraView {
   private atFull = true;
   // The point on the ground the camera looks at.
   private x = 0;
-  private z: number = content.camera.targetZ;
+  private z = 0;
   private goalX = 0;
-  private goalZ: number = content.camera.targetZ;
+  private goalZ = 0;
   // Turn left/right and tilt up/down, in degrees.
   private yaw = 0;
   private goalYaw = 0;
@@ -50,12 +50,24 @@ class CameraView {
     const layout = getLayout(this.aspect);
     const cos = Math.cos(this.goalYaw * RAD);
     const sin = Math.sin(this.goalYaw * RAD);
+    // How much width the two spots need now, and how much they needed
+    // before any turning (the starting view is never changed by this).
     let need = 0;
+    let needAtStart = 0;
     for (const spot of layout.spots) {
       need = Math.max(need, Math.abs(spot.x * cos - spot.z * sin));
+      needAtStart = Math.max(needAtStart, Math.abs(spot.x));
     }
-    need += content.orbit.fitMargin;
-    return Math.max(1, need / (layout.visibleWidth / 2));
+    const margin = content.orbit.fitMargin;
+    const wide =
+      (need + margin) / Math.max(needAtStart + margin, layout.visibleWidth / 2);
+    // From high above, the whole depth of the slab must fit up the screen too.
+    const g = content.ground;
+    const tall =
+      ((g.sizeX / 2) * Math.abs(sin) + (g.sizeZ / 2) * Math.abs(cos)) *
+        Math.sin(this.goalPitch * RAD) +
+      content.orbit.fitMargin * 0.5;
+    return Math.max(1, wide, tall / (layout.visibleHeight / 2));
   }
 
   private refit(): void {
@@ -102,7 +114,7 @@ class CameraView {
     this.spinYaw = 0;
     this.spinPitch = 0;
     this.goalX = 0;
-    this.goalZ = content.camera.targetZ;
+    this.goalZ = 0;
     this.atFull = true;
     this.goalLevel = this.fullLevel();
   }
@@ -112,9 +124,8 @@ class CameraView {
     const z = content.zoom;
     const full = this.fullLevel();
     const room = clamp((full - this.goalLevel) / (full - z.closest), 0, 1);
-    const homeZ = content.camera.targetZ;
     this.goalX = clamp(this.goalX, -z.panX * room, z.panX * room);
-    this.goalZ = clamp(this.goalZ, homeZ - z.panZFar * room, homeZ + z.panZNear * room);
+    this.goalZ = clamp(this.goalZ, -z.panZFar * room, z.panZNear * room);
   }
 
   update(seconds: number): void {
@@ -144,16 +155,25 @@ class CameraView {
     const pitch = this.pitch * RAD;
     const yaw = this.yaw * RAD;
     const flat = d * Math.cos(pitch);
+    // Look a little in front of the middle (toward the viewer), so the cut
+    // side of the slab is in frame. Less so from above, where no side shows.
+    const o = content.orbit;
+    const lean =
+      c.targetZ *
+      this.level *
+      clamp((o.pitchMax - this.pitch) / (o.pitchMax - c.elevation), 0, 1.2);
+    const lookX = this.x + Math.sin(yaw) * lean;
+    const lookZ = this.z + Math.cos(yaw) * lean;
     // A tiny slow sway so sparkles glint; smaller when close so it never swims.
     const t = time * c.swaySpeed;
     const sway = c.swayAmount * this.level;
     const side = Math.sin(t) * sway;
     camera.position.set(
-      this.x + flat * Math.sin(yaw) + side * Math.cos(yaw),
+      lookX + flat * Math.sin(yaw) + side * Math.cos(yaw),
       c.targetHeight + d * Math.sin(pitch) + Math.cos(t * 1.3) * sway * 0.5,
-      this.z + flat * Math.cos(yaw) - side * Math.sin(yaw),
+      lookZ + flat * Math.cos(yaw) - side * Math.sin(yaw),
     );
-    camera.lookAt(this.x, c.targetHeight, this.z);
+    camera.lookAt(lookX, c.targetHeight, lookZ);
   }
 }
 

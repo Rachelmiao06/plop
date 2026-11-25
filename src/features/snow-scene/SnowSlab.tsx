@@ -104,7 +104,7 @@ function buildWall(field: SnowField): BufferGeometry {
     const a = i * 4;
     const b = ((i + 1) % count) * 4;
     for (const row of [0, 2]) {
-      indices.push(a + row, a + row + 1, b + row, b + row, a + row + 1, b + row + 1);
+      indices.push(a + row, b + row, a + row + 1, b + row, b + row + 1, a + row + 1);
     }
   }
 

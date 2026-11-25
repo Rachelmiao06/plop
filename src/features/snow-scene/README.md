@@ -1,6 +1,6 @@
 # snow-scene
 
-The snowy ground, camera, light, fog and snowfall that everything else stands on.
+The snow slab, camera, light, backdrop and snowfall that everything else stands on.
 Scene only: no characters, no snowball, no game rules. Owner: Rachel.
 
 ## Using it from another feature
@@ -24,31 +24,38 @@ Inside `<SnowScene>`, these are available:
   - `packedAt(x, z)` returns how packed the snow is there, 0 (untouched) to 1 (pressed hard). Use it for resistance: fresh snow should feel heavier than a packed track.
 - `useSnowLayout()` gives `spots`: where the left and right characters stand for the current screen shape.
 - `useSnowPoint()` gives a function that turns a pointer event's `clientX, clientY` into the point on the snow under it. (Pointer rays skip the snow mesh on purpose; it is a big grid.)
-- `claimSnowPointer(pointerId)`: call it when a finger starts dragging one of your things. Two fingers nobody claimed are a pinch-to-zoom; a claimed finger never is.
+- `claimSnowPointer(pointerId)`: call it in your pointer-down handler when a finger starts dragging one of your things (a character, for the slingshot). A claimed finger never turns or zooms the view. It is released by itself when the finger lifts. Fingers nobody claimed are "on empty snow": one turns the view, two pinch to zoom.
 
 The deeper the snow is pressed, the darker and bluer it gets and the taller its rim. Dents stay. Dust and small clumps fly by themselves whenever snow is pressed or hit; nothing to call.
 
-Zoom (pinch on empty snow, mouse wheel, trackpad pinch) is part of the scene and keeps the viewing angle.
+The view is part of the scene: one finger or a mouse drag on empty snow turns it (25 degrees up to nearly top-down, 60 degrees left and right, never behind), pinch / wheel / trackpad pinch zooms, and the "Reset view" button brings back the start. The view pulls back by itself when needed so both character spots stay in frame, so `useSnowLayout()` spots are valid at every angle and zoom. Things you place must be real 3D (the view turns).
+
+The snow is a slab with a visible cut side. Near the edge it cannot be pressed (it eases in over `ground.edgeLock`), so the side wall never breaks.
 
 ## Files
 
 - `content.ts` every colour and tunable number (grid, snow depth, sun, fog, sparkles, camera, snowfall). Tune here.
 - `snowField.ts` the height grid and the press / crater maths. No drawing.
 - `SnowGround.tsx` draws the grid; re-sends only the changed rows each frame. Grain, sparkles and the fade into fog are in its shader.
+- `SnowSlab.tsx` the cut side of the slab, its base, and the soft shadow under it.
+- `ViewControls.tsx` the buttons on top of the scene (reset view; temporary look / press switch).
 - `SnowSpray.tsx` dust puffs and clumps thrown up when snow is pressed or hit.
-- `CameraRig.tsx` the camera and its zoom. `pointers.ts` which finger belongs to whom, and screen-to-snow aiming.
-- `SceneLook.tsx` sun and sky light, foggy backdrop, snowfall.
+- `CameraRig.tsx` the camera: turning, zooming, limits, reset. `pointers.ts` which finger belongs to whom, and screen-to-snow aiming.
+- `SceneLook.tsx` sun and sky light, soft backdrop, snowfall.
 - `layout.ts` camera position and character spots from the screen shape.
 - `SnowCanvas.tsx` the 3D canvas. `SnowScene.tsx` loads it in the browser only.
 - `TempDragPress.tsx` **temporary** test hook, see below.
 
 ## Temporary test hook (remove in a later issue)
 
-Everything temporary is in `TempDragPress.tsx` and is marked `TEMPORARY` where it is used:
+Everything temporary is in `TempDragPress.tsx` and is marked `TEMPORARY` where it is used. Dragging now turns the view, so pressing has its own mode: the "Look / Press" switch at the top right. In "Press" mode:
 
 - press and hold on the snow: digs deeper the longer it is held
 - drag: a groove that follows the finger with a little lag, heavier in fresh snow
 - double click / double tap: punches a crater
+
+Always:
+
 - `?guides` in the address: two stand-in blocks at the character spots
 - `?fps` in the address: frame rate replaces the hint text
 
