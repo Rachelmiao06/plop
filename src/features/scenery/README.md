@@ -148,9 +148,8 @@ Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.
   The stand-in paper mound of the test page is off here (`ThickStandee mound={false}`).
 - **Look:** the thick standee renderer from `three/` unchanged: art exactly as drawn, paper edge with an uneven ink
   line, the half-turn toward the camera around the throwing view's look-at point, gentle sway on the trees.
-  Shadows are the snow scene's real sun shadows; while the village is shown they are lightened to
-  `village.shadowStrength` (0.55) so they read pale blue next to paper instead of deep violet. This touches the scene's
-  sun at run time only and is put back when the village goes.
+  Shadows are the snow scene's real sun shadows, painted by the snow itself as a pale-blue `--snow-shadow` wash
+  (strength set once in the snow scene's `content.shade`, exported as `snowShadow`); the village no longer changes them.
 - **Clear lane and sight line:** `villageProblems(lane, cameraPosition?)` lists any prop in the roll lane (the slide
   width plus the drawn margin, from in front of the line to past the pins) or standing taller than the line of sight
   from the camera to the pins. In development the page logs the result once the camera has settled.

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useThree } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
-import { DirectionalLight, SRGBColorSpace, Vector3, type Texture } from "three";
+import { SRGBColorSpace, Vector3, type Texture } from "three";
 
 import { useSnow } from "@/features/snow-scene";
 
@@ -36,7 +36,6 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
 
   return (
     <PaperContext value={paper}>
-      <PaleShadows />
       <Flecks>
         <Suspense fallback={null}>
           <Standees lane={lane} pivot={pivot} />
@@ -95,26 +94,6 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
   );
-}
-
-/**
- * The snow scene's sun throws deep blue-violet shadows; next to paper cut-outs they read heavy, and the
- * design rule is pale blue (--snow-shadow). While the village is shown, the sun's shadows are lightened
- * (`village.shadowStrength`; the sky's blue fill then shows through). Put back when the village goes.
- */
-function PaleShadows() {
-  const scene = useThree((s) => s.scene);
-  useEffect(() => {
-    const changed: { light: DirectionalLight; was: number }[] = [];
-    scene.traverse((o) => {
-      if (o instanceof DirectionalLight && o.castShadow) {
-        changed.push({ light: o, was: o.shadow.intensity });
-        o.shadow.intensity = village.shadowStrength;
-      }
-    });
-    return () => changed.forEach(({ light, was }) => (light.shadow.intensity = was));
-  }, [scene]);
-  return null;
 }
 
 /** Development only: once the camera has settled in its default view, list anything in the lane or the sight line. */

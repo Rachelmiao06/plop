@@ -6,3 +6,4 @@ export { SnowCameraView, useSnowCameraView } from "./cameraView";
 export { freshSnowfall, freshSnowfallAt, snowTileCount } from "./freshSnow";
 export type { FreshSnowfallOptions, PressOptions, SnowApi } from "./snowField";
 export type { SnowLayout, Spot } from "./layout";
+export { snowShadow } from "./content";
