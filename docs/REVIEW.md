@@ -6,6 +6,9 @@ Played in headless Chrome with the GPU on: desktop 1440×900 at 2× and phone 39
 a side view (drag across the snow), a high view and a low view, three full turns per size.
 Screenshots are in `docs/review/`.
 
+Camera choreography, lane length and throw power are left out on purpose: Rachel has raised them and the
+throw-camera session is handling them.
+
 **What already works and must not be lost:** the cut-outs are genuinely Rachel's drawings (crayon fill, warm
 brown wobbly line, dot eyes), the paper-theatre backdrop is lovely, the token colours hold everywhere in the UI,
 the hint and turn note are handwritten on a soft paper wash, and the throw feels snappy. Nothing looks like
@@ -15,8 +18,9 @@ plastic or "default 3D" except the places listed below.
 
 | # | Where | What is wrong (one sentence) | Proposed fix | Follow-up |
 |---|---|---|---|---|
-| 1 | Snow, every view | Long, saturated blue-grey sun shadows are the darkest and largest shapes on screen, while Rachel's art has only short pale-blue strokes under things. | Raise the sun so shadows are about half as long and soften `shade.strength` so they read as pale `--snow-shadow` washes; snow stays real and lit. Eased here by the paper edge at the bottom and corners. | #45 |
-| 2 | Phone portrait | No village in the frame, the lower 40% is plain grey snow, and the top stacks icons, pills and the score panel. | A few small cut-outs inside the narrow frame, the throwing view framed lower, the two pills moved into the icon column. Eased here by the paper edge. | #46 |
+| 0 | Far hills (backdrop), throwing view behind the pins | The panorama breaks with a hard vertical gap and a white band where one copy of the hills ends and the next begins. | Cause and fix below the table. Being fixed by the throw-camera session while it moves the backdrop for the longer lane; not edited here. | throw-camera session |
+| 1 | Snow, every view | Long, saturated blue-grey sun shadows are the darkest and largest shapes on screen, while Rachel's art has only short pale-blue strokes under things. | Raise the sun so shadows are about half as long and soften `shade.strength` so they read as pale `--snow-shadow` washes; snow stays real and lit. The paper edge (Part 3) eases it once wired in. | #45 |
+| 2 | Phone portrait | No village in the frame, the lower 40% is plain grey snow, and the top stacks icons, pills and the score panel. | A few small cut-outs inside the narrow frame, the throwing view framed lower, the two pills moved into the icon column. The paper edge (Part 3) eases it once wired in. | #46 |
 | 3 | The hit, the loop's best moment | A big ball stops in the middle of the formation and covers the fallen cards for 2 to 3 seconds before "N down!" appears. | Let the ball roll through and out (or burst on a card when big), and pop "N down!" as soon as the count is certain. | #47 |
 | 4 | Pins | A card that falls flat becomes a thin sliver from the throwing view, so you barely see what you knocked down. | Land face-up more often, rest slightly tilted on a little heap, optional "x x" face decal. | #48 |
 | 5 | UI chrome, top right | "Fresh snow" and "Reset view" are stock shadcn pills with Lucide icons, the only default-web-UI left. | Reuse the HUD's hand-drawn round icon style and put them in the left column. | #49 |
@@ -24,7 +28,32 @@ plastic or "default 3D" except the places listed below.
 | 7 | High view | The fine snow ends in a visible circle with a grainy, lighter ring around it. | Blend the fine tiles into the far snow over a wider band. | #51 |
 | 8 | Pulling | The full ball rolls toward the camera and hides the snowman's face at the most tense moment. | Keep the ball beside the thrower's feet from the camera's side, or fade it a touch over the face. | #52 |
 | 9 | Low view | The paper hills meet the snow in a hard light line. | Sink the backdrop's lower edge into real snow like the village bases. | #51 |
-| 10 | Whole picture | The lit snow is smooth and photographic next to the crayon-paper tooth of the cut-outs, so the two read as two different media. | **Done here:** a faint `--ink` paper grain over the picture (Part 3). | – |
+| 10 | Whole picture | The lit snow is smooth and photographic next to the crayon-paper tooth of the cut-outs, so the two read as two different media. | **Built here:** a faint `--ink` paper grain (Part 3; on `/dev/look`, home page after the throw-camera PR). | – |
+
+### Item 0 · the backdrop seam, and why
+
+![seam: left the phone throwing view, right the two ends of far-hills.webp put side by side on red](review/00-backdrop-seam.webp)
+
+Cause (`src/features/scenery/three/Backdrop.tsx`, "Far hills band"): the hills are one curved band whose texture
+is the panorama `public/assets/scenery/far-hills.webp` (2126×150 px) repeated with `RepeatWrapping`, about 2.7
+copies along the 220° arc (`repeats = hillsRadius · arc / copyWidth`). The file is not drawn to tile:
+
+- both ends are transparent margins, columns 0–8 on the left and 2119–2125 on the right, so every joint has a
+  gap of about 16 px of the file (about 0.1 unit on the wall) where the pale paper sky wall shows through as a
+  white band;
+- the hill outline does not meet: it ends at row 95 on the right edge and starts at row 113 on the left, an
+  18 px step out of 150, and both ends are cut straight down through the white fill with no outline, so the
+  joint reads as a hard vertical edge.
+
+With 2.72 copies the joints fall about 29° and 52° either side of straight back, so the 29° one sits just behind
+the pins in the throwing view (clearest on a phone, where the backdrop comes closer). The repeat count is also
+fractional, so the arc ends partway into a copy.
+
+Fix (any one works; the first two are best): (a) a version of the panorama drawn to tile, with its ends meeting
+at the same height and no transparent margin (art from Rachel or the image model); (b) mirror every other copy
+(`MirroredRepeatWrapping` after trimming the transparent columns), so each joint meets its own mirror image at
+the same height; (c) place whole copies only, with a short cross-fade or a tree / house cut-out standing over
+each joint. Also round `repeats` to a whole number so the band never ends mid-copy.
 
 ### Screenshots
 
@@ -74,10 +103,20 @@ tone-mapping pass greys the paper. That breaks the "cut-outs stay exactly as now
 
 **Result: no new library.** The two picks are plain CSS, inside a new `src/features/look/`.
 
-## Part 3 · Built and on the home page
+## Part 3 · Built, on `/dev/look` (home page wiring waits)
 
-Both layers sit above the canvas and under every piece of UI (`<PaperFinish />` right after `<SnowScene>` in
-`src/features/game/Game.tsx`). They never touch the 3D render, so the cut-outs are exactly as before and the snow
+Both layers live in `src/features/look/` and are on `/dev/look` over the real game. They are **not on the home
+page yet**: the throw-camera session owns `src/features/game/` right now, so the wiring waits for its PR to merge.
+It is one import and one line in `src/features/game/Game.tsx`, right after `</SnowScene>` (under every piece of UI):
+
+```tsx
+import { PaperFinish } from "@/features/look";
+// …
+      </SnowScene>
+      <PaperFinish />
+```
+
+They never touch the 3D render, so the cut-outs are exactly as before and the snow
 is the same lit snow underneath. Switch them on `/dev/look` (or `?grain=0` / `?edge=0`). Numbers in
 `src/features/look/content.ts`. Neither moves, so "reduce motion" needs nothing.
 
@@ -123,4 +162,6 @@ static and composited once, which is why they are free on a real phone too. Not 
   45%. It reads as "the drawing fades out", but it is a change to how those cut-outs look; `LOOK.edge.corner` is the
   knob, and 0 keeps only the bottom fade.
 - The "Fresh snow" / "Reset view" pills sit inside the snow scene, so they get the grain too (barely visible).
+- On `/dev/look` the finish sits over the whole game, so the hint and "N down!" get it too; on the home page it goes under them.
+- The before / after screenshots were taken with the layers wired into the game (under all UI), as they will be once wired.
 - The biggest wins in this review (items 1 to 4) belong to other features and are in follow-up issues #45 to #52.
