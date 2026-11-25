@@ -17,7 +17,7 @@ import { hudCss, styles } from "./hudStyles";
 const t = content.text;
 
 /** A paper note in the middle of the screen (also the game's round rule card). */
-export function Card({ label, children, seed }: { label: string; children: ReactNode; seed: number }) {
+export function Card({ label, children, seed, wide }: { label: string; children: ReactNode; seed: number; wide?: boolean }) {
   const evening = useEvening();
   const tint = Math.min(100, content.glass.tint + 18 + content.glass.evening * evening);
   return (
@@ -28,7 +28,7 @@ export function Card({ label, children, seed }: { label: string; children: React
       <section
         aria-label={label}
         role="dialog"
-        className={`pointer-events-auto relative w-full max-w-sm rounded-[calc(var(--radius)*1.4)] px-6 pt-5 pb-6 text-center text-ink ${styles.glass} ${styles.card}`}
+        className={`pointer-events-auto relative w-full ${wide ? "max-w-md" : "max-w-sm"} rounded-[calc(var(--radius)*1.4)] px-6 pt-5 pb-6 text-center text-ink ${styles.glass} ${styles.card}`}
         style={{ "--hud-blur": content.glass.blur, "--hud-tint": tint } as CSSProperties}
       >
         <PaperFill seed={seed} />

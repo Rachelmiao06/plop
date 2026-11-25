@@ -48,12 +48,20 @@ function Thrower({ look, height, className = "" }: { look: SnowmanLook; height: 
   return <img src={thrower[look]} alt="" draggable={false} className={`w-auto select-none ${className}`} style={{ height }} />;
 }
 
-/** Chinese big, English small beneath: the way every card here speaks. */
+/**
+ * English first in the light brown pencil hand (Gaegu, `--ink`), the Chinese small and faint beneath: the way every
+ * card here speaks. Gaegu has no Chinese letters, so the Chinese falls back to a system font; kept small, thin and
+ * pale so it never reads heavier than the English (Rachel, 2026-11-25).
+ */
+function Zh({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <span className={`block font-sans font-light text-ink/70 ${className}`}>{children}</span>;
+}
+
 function Title({ words }: { words: Words }) {
   return (
-    <h2 className="font-heading text-3xl leading-none font-bold text-ink-deep">
-      {words.zh}
-      <span className="mt-1 block text-lg font-normal text-ink">{words.en}</span>
+    <h2 className="font-heading text-2xl leading-tight text-ink">
+      {words.en}
+      <Zh className="text-xs">{words.zh}</Zh>
     </h2>
   );
 }
@@ -89,10 +97,10 @@ function Choice({
       <PencilFrame seed={seed} radius={22} overshoot={picked ? 7 : 3} />
       <span className="relative flex w-[5.5rem] shrink-0 items-end justify-center">{picture}</span>
       <span className="relative min-w-0 flex-1">
-        <span className="block font-heading text-2xl leading-none font-bold text-ink-deep">{name.zh}</span>
-        <span className="block font-heading text-lg leading-tight text-ink">{name.en}</span>
-        <span className="mt-1 block font-heading text-base leading-tight text-ink">{line.zh}</span>
-        <span className="block font-sans text-xs leading-tight text-ink/80">{line.en}</span>
+        <span className={`block font-heading text-xl leading-none text-ink ${picked ? "font-bold" : ""}`}>{name.en}</span>
+        <Zh className="text-[11px] leading-tight">{name.zh}</Zh>
+        <span className="mt-1 block font-heading text-base leading-tight text-ink">{line.en}</span>
+        <Zh className="text-[10px] leading-tight">{line.zh}</Zh>
         {children}
       </span>
     </button>
@@ -194,9 +202,9 @@ function HowToLines({ touch }: { touch: boolean }) {
           <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-butter/70 font-heading text-base font-bold text-ink-deep">
             {i + 1}
           </span>
-          <span className="font-heading text-lg leading-tight text-ink-deep">
-            {zh}
-            <span className="block font-sans text-xs text-ink">{en}</span>
+          <span className="font-heading text-lg leading-tight text-ink">
+            {en}
+            <Zh className="text-[10px] leading-tight">{zh}</Zh>
           </span>
         </li>
       ))}
@@ -211,10 +219,10 @@ function BigButton({ words, onClick, ...rest }: { words: Words; onClick: () => v
       size="lg"
       onClick={onClick}
       {...rest}
-      className="mt-4 h-12 w-full rounded-full bg-sky-blue font-heading text-2xl font-bold text-ink-deep hover:bg-sky-blue/80"
+      className="mt-4 h-12 w-full flex-col gap-0 rounded-full bg-sky-blue font-heading text-2xl leading-none font-bold text-ink-deep hover:bg-sky-blue/80"
     >
-      {words.zh}
-      <span className="text-lg font-normal">· {words.en}</span>
+      {words.en}
+      <span className="font-sans text-[10px] leading-none font-light text-ink-deep/70">{words.zh}</span>
     </Button>
   );
 }
@@ -230,7 +238,7 @@ export function HowToCard({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="absolute inset-0 z-20" onPointerDown={onClose} aria-hidden />
-      <Card label={t.howTo.en} seed={61}>
+      <Card label={t.howTo.en} seed={61} wide>
         <Title words={t.howTo} />
         <HowToPicture touch={touch} />
         <HowToLines touch={touch} />
@@ -327,20 +335,20 @@ export function StartFlow({
           <div className="mt-3 flex items-end justify-center gap-3">
             <span className="flex flex-col items-center">
               <Thrower look="bucket" height={72} />
-              <span className="font-heading text-lg leading-tight text-ink-deep">{shown(0)}</span>
+              <span className="font-heading text-lg leading-tight text-ink">{shown(0)}</span>
             </span>
             {c.players === 2 && (
               <span className="flex flex-col items-center">
                 <Thrower look="redHat" height={72} />
-                <span className="font-heading text-lg leading-tight text-ink-deep">{shown(1)}</span>
+                <span className="font-heading text-lg leading-tight text-ink">{shown(1)}</span>
               </span>
             )}
           </div>
-          <p className="mt-2 font-heading text-xl leading-tight text-ink-deep">
-            {how.zh} · {len.zh} · {t.minutes(minutes(c)).zh}
-            <span className="block font-sans text-xs text-ink">
-              {how.en} · {len.en} · {t.minutes(minutes(c)).en}
-            </span>
+          <p className="mt-2 font-heading text-lg leading-tight text-ink">
+            {how.en} · {len.en} · {t.minutes(minutes(c)).en}
+            <Zh className="text-[10px]">
+              {how.zh} · {len.zh} · {t.minutes(minutes(c)).zh}
+            </Zh>
           </p>
           <BigButton words={t.same} onClick={() => start(c)} />
           <button
@@ -348,7 +356,7 @@ export function StartFlow({
             onClick={() => go("who")}
             className="mt-2 font-heading text-lg text-ink underline decoration-wavy underline-offset-4"
           >
-            {t.change.zh} · {t.change.en}
+            {t.change.en} <span className="font-sans text-[10px] font-light text-ink/70">{t.change.zh}</span>
           </button>
         </>
       );
@@ -358,9 +366,9 @@ export function StartFlow({
       body = (
         <>
           {greeting && (
-            <p className={`mb-2 font-heading text-3xl leading-tight font-bold text-berry-deep ${styles.greet}`}>
-              {greeting.zh}
-              <span className="block font-sans text-sm font-normal text-ink">{greeting.en}</span>
+            <p className={`mb-2 font-heading text-2xl leading-tight font-bold text-berry-deep ${styles.greet}`}>
+              {greeting.en}
+              <Zh className="text-xs">{greeting.zh}</Zh>
             </p>
           )}
           <Title words={t.who} />
@@ -463,8 +471,8 @@ export function StartFlow({
             )}
           </div>
           <p className="mt-2 font-heading text-base leading-tight text-ink">
-            {hint.zh}
-            <span className="block font-sans text-xs">{hint.en}</span>
+            {hint.en}
+            <Zh className="text-[10px]">{hint.zh}</Zh>
           </p>
           <BigButton words={t.next} onClick={forward} />
         </>
@@ -509,7 +517,7 @@ export function StartFlow({
     "--hud-slide-for": `${content.flow.slideFor}ms`,
   } as CSSProperties;
   return (
-    <Card label={t.label} seed={41}>
+    <Card label={t.label} seed={41} wide>
       <div className="relative flex h-7 items-center justify-between">
         {canBack ? (
           <button
@@ -517,7 +525,7 @@ export function StartFlow({
             onClick={back}
             className="-ml-1 rounded-full px-2 py-0.5 font-heading text-base text-ink hover:bg-butter/30"
           >
-            ← {t.back.zh} · {t.back.en}
+            ← {t.back.en} <span className="font-sans text-[10px] font-light text-ink/70">{t.back.zh}</span>
           </button>
         ) : (
           <span />
