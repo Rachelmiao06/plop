@@ -7,7 +7,9 @@ Sharing the game, especially as a link in WeChat. Mounted in `src/app/page.tsx`;
   Official Account it builds a chat card from `<title>`, the `description` meta and the first body image of at least
   300 × 300. Keep it first: anything that adds an image above it on the home page breaks the WeChat card.
 - `ShareButton.tsx` the round hand-drawn button bottom-left (the game's "Put it down" is bottom-right). A tap opens
-  `InviteSheet.tsx`, "invite a friend": your name (optional, at most 12 characters, remembered on this device) and,
+  `InviteSheet.tsx`, "邀请朋友，署名：小美": the name from the game's start card (`readNames` from `@/features/game`, or the
+  snowman's default, so an invite is never unsigned) with "改名字 · change" to change it (saved back to the game's
+  names), and,
   once you have a best score from a match alone, a tick to include it. "发送邀请 / send invite" builds
   `/invite?g=<group>&from=<name>&score=<n>` (with `@/features/invite`'s `invitePath`) and shares it: inside WeChat it copies the
   link and opens the card page, where the "tap ···" note shows so WeChat's menu sends it as a real chat card;

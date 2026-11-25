@@ -218,7 +218,6 @@ export const TEXT = {
   mode: { label: "How do you play?", turns: "take turns", together: "together" },
   /** Someone arrived from an invite: the start card greets them, and alone the panel shows the score to beat. */
   waiting: { zh: (name: string) => `${name} 在等你`, en: (name: string) => `${name} is waiting` },
-  rival: (name: string) => `${name}`,
   /**
    * Each round's rule (by round set id, the pins' `ROUND_SETS`): `big` a few big words on the rule card, `line` the
    * one plain line under the picture (`points` is the bonus from the pins' `SPECIALS`, or the full-clear bonus),

@@ -70,6 +70,10 @@ export const gameCss = `
   font-size: clamp(1.75rem, 5vw, 2.6rem);
   line-height: 1.05;
   margin-top: 0.15em;
+  /* The same paper-white sticker edge as the count, so the words read over the fallen cards. */
+  text-shadow: 0.06em 0 0 var(--paper), -0.06em 0 0 var(--paper), 0 0.06em 0 var(--paper), 0 -0.06em 0 var(--paper),
+    0.045em 0.045em 0 var(--paper), -0.045em 0.045em 0 var(--paper), 0.045em -0.045em 0 var(--paper),
+    -0.045em -0.045em 0 var(--paper), 0.07em 0.11em 0 var(--snow-shadow) !important;
 }
 
 /* The scene marker over the special card: a gentle bounce, a twinkle for the star. */

@@ -87,8 +87,7 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - **Special cut-outs:** a *star friend* carries a little star doodle above its head and is worth 2 extra points
   when it falls (one card inside the crowd). The white rabbit (and in round 5 the sleeping cat on its bench) is a *friend* watching: it should be
   left alone. Knocked over it simply scores nothing; still standing after the throw, it gives 2 points ("bunny's
-  still cosy"). Never taking points away. Each is explained once, with a tiny hand-drawn note, the first time it
-  appears.
+  still standing!"). Never taking points away. Each round's rule card explains it (section 7c).
 
 ## 7. Two players, one device
 
@@ -116,10 +115,28 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 
 ## 7c. The match (2026-11-25; Rachel changed her mind: draft 2 had endless turns and no winner screen)
 
-- **Before the first throw** a small hand-drawn card asks: 3 rounds or 5 (3 is the default), and "two friends"
-  or "just me". "Let's roll!" starts.
+- **Before the first throw** a small hand-drawn card asks: **your name** ("你叫什么？ · Your name", one field per
+  snowman when two play, remembered on the device and filled in next time), 3 rounds or 5 (3 is the default), and
+  "two friends" or "just me". "Let's roll!" starts. A skipped name is the snowman's cute default ("Bucket" /
+  "Red Hat"). That one name is used everywhere: the score panel (over each total), "Red Hat's turn!", "N down!" in
+  together mode, the end card, the group board and invites (2026-11-25, Rachel: nobody noticed the name question
+  hidden in the share sheet).
+- **Arriving from a friend's invite** (`/?g=&from=小美&score=23`) the start card says "小美 在等你 · 小美 is waiting"
+  above the title and picks "just me"; playing alone, the panel's right side shows 小美's score "to beat" instead of
+  your best, and the end card says how it went ("you beat 小美's 23!" or "小美 has 23 · so close!").
 - **Each round** every player throws once at the same set (it pops back up between them), then the next round's
-  set hops in. "Round 2 / 3" and a few words about the set ("Let the bunny be") show as it arrives.
+  set hops in. As it arrives a **rule card** fills the middle (2026-11-25, Rachel did not understand "let the bunny
+  be" and the old note left too fast): "Round 2 / 3", the rule in a few big words in Chinese and English
+  ("别打倒小兔子 / Leave the bunny"), the special card's picture (her cut-out, the star doodle over a star friend), one
+  plain line ("别打倒小兔子：它站着就 +2 / Leave the bunny standing: +2") and "知道啦 · got it". It stays until the player
+  pulls, taps anywhere or presses a key; never on a timer. With two players taking turns it also says who is first.
+- **In the scene**, while aiming, the special card is marked: a berry pencil "don't" sign with a little arrow
+  bouncing over the bunny or the sleepy cat, butter twinkles around a star friend's star, an arrow over the soft
+  mound. It is gone while the ball rolls.
+- **All round long** a small chip beside "round 2 / 3" under the panel keeps the rule: the special card's picture and
+  two words ("别碰小兔 · spare bunny").
+- **"N down!"** says the rule's outcome in big words under the count: "Bunny still standing! +2", "oops, the bunny
+  fell", "Kitty still asleep! +2", "Star friend down! +2".
 - **The sets** (data: `ROUND_SETS` in `src/features/pins/content.ts`, round order `GAME.match.rounds` in
   `src/features/game/content.ts`). Rachel (2026-11-25): every round is the **classic bowling-pin crowd** standing
   in the middle of the lane, a group of her little characters arranged like bowling pins, and it only changes a
@@ -145,6 +162,9 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
   word for the other ("lovely rolling, Bucket"), or "A snowy tie! two crowns today". Alone: your total, and
   "a new best!" (with the crown) or your best so far. A line names the best single roll of the match. "Play again"
   restarts the same match; "3 or 5 rounds?" goes back to the start card. Never "you lose".
+- **The group board on the end card:** when the page has an invite group (`?g=`, or this device made an invite and
+  so owns a group), the end card shows "pop it on!" with the player's name already filled in (one per player when
+  two play) and the group's top five. The invite card shows the same board under its message.
 
 ## 8. Controls
 

@@ -57,7 +57,12 @@ reduced motion · `review/` screenshots.
 - **hud:** export `PaperFill`, `PencilFrame`, `SnowmanFace`, `StarDoodle`, `CrownDoodle` and `pencilCircle` from its
   index. Now imported from `@/features/hud/Doodles` and `@/features/hud/pencil` directly (read only).
 
-## Wiring it in (a follow-up, those files belong to other sessions)
+## Wired in (2026-11-25)
+
+The game's end card shows `<SubmitScore>` per player (the start card's name filled in) and `<GroupBoard>` when the
+page has a group; the invite card shows `<GroupBoard>` in its slot. The sketch below is how it was first planned.
+
+### The first sketch
 
 End card (`src/features/hud/Match.tsx`, inside `MatchEnd`, under the totals; `group` comes from the page's `?g=`,
 passed down from the game):

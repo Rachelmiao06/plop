@@ -12,9 +12,9 @@ any link). Mounted by `src/app/invite/page.tsx`; nothing in the game, snow scene
    seal pops, a soft bell `playTie` then a sparkle `playStarHit` from `src/lib/audio.ts`, only after the tap); with no
    tap it opens by itself after `timing.autoOpen`, silently. The card says "**{name}** 邀请你来打一局雪仗 ❄️" (or
    "有人邀请你来打一局雪仗 ❄️"), "TA 打了 {score} 分，你能赢吗？" when a score came along, and one big
-   "接受挑战 / Play" button to `/?g=<group>&from=<name>` (the game ignores both for now; one day it can say
-   "vs {name}" and show the group's board). Under the message is an empty, marked **leaderboard slot**
-   (`data-leaderboard-slot`) where `<GroupBoard group={group} />` from the leaderboard feature can be mounted.
+   "接受挑战 / Play" button to `/?g=<group>&from=<name>` (the game greets "{name} 在等你" and keeps the group for its
+   board). Under the message, when the link has a group, that group's board (`<GroupBoard>` from the leaderboard
+   feature, `INVITE.board.limit` rows, in `data-leaderboard-slot`).
    Chinese first, English beneath in small text.
 4. The sender, arriving here from the share sheet inside WeChat, also sees the "tap ··· to send" note once
    (`SHARE.invite.sentKey` in sessionStorage).
