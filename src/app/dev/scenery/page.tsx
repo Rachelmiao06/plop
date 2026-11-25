@@ -42,7 +42,8 @@ export default function SceneryPage() {
           <b>Home</b> at the back: the big tree, the cottage and the igloo overlap a little, with the boy just in
           front and the flag alone behind. <b>Music corner</b> on the left: the log with the radio and the walking
           pine listening. <b>Watching bench</b> on the right: the bench snowmen with the girl, the sign and the bag
-          penguin. The skier and the sliding penguin have open snow ahead for a little loop later.
+          penguin. Quiet snowy pines frame the back and sides, and a bush and a mound soften the clusters&apos; edges.
+          The skier and the sliding penguin have open snow ahead for a little loop later.
         </p>
       </section>
 

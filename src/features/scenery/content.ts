@@ -10,6 +10,7 @@
   sizes.json, which `python3 scripts/slice_scenery.py` rewrites. Replacing art needs no code change.
 */
 
+import effectSizes from "./effect-sizes.json";
 import sizes from "./sizes.json";
 
 export type PropGroup = "big" | "tree" | "mid" | "small" | "person" | "friend";
@@ -61,6 +62,12 @@ export const props = {
   "pine-walking": { label: "Walking pine with a backpack", height: 0.9, group: "friend", sink: 0.03, set: "doodle" },
   "penguin-slide": { label: "Sliding penguin", height: 0.35, group: "friend", sink: 0.02, set: "doodle", motion: "loop" },
   "snowman-newspaper": { label: "Snowman reading a newspaper", height: 0.85, group: "friend", sink: 0.03, set: "doodle", spare: true },
+
+  // Quiet fillers: frame the sides and back, soften the foot of each cluster. Reused at different scales.
+  "pine-snow-tall": { label: "Tall snowy pine", height: 1.6, group: "tree", sink: 0.05, set: "doodle" },
+  "pine-snow-short": { label: "Short snowy pine", height: 1.1, group: "tree", sink: 0.05, set: "doodle" },
+  "mound-snow": { label: "Snow mound", height: 0.38, group: "small", sink: 0.06, set: "doodle" },
+  "bush-snow": { label: "Round snowy bush", height: 0.5, group: "small", sink: 0.04, set: "doodle" },
 
   // Not scenery
   "snowman-bucket-hat": { label: "Main character A (model for the 3D snowman)", height: 1, group: "person", sink: 0, set: "doodle", kind: "character" },
@@ -120,6 +127,36 @@ export function propWidth(id: PropId): number {
 export const filesWithoutSettings = Object.keys(pixelSizes).filter((name) => !(name in props));
 
 /* ------------------------------------------------------------------ */
+/* Effects                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Effect marks: flat doodles that pop or drift for a moment (on a hit, a launch, near music).
+ * Not standees and never in the layout. Files: public/assets/effects/<name>.webp.
+ * `size` is a suggested height in scene units when shown in the scene.
+ */
+export type Effect = { label: string; size: number; note: string };
+
+export const effects = {
+  "surprise-lines": { label: "Surprise lines", size: 0.45, note: "Pop above a character's head when hit." },
+  star: { label: "Star", size: 0.3, note: "A twinkle on a good hit or a full charge." },
+  "snow-puff": { label: "Snow puff with droplets", size: 0.6, note: "Where a snowball bursts." },
+  "music-notes": { label: "Music notes", size: 0.4, note: "Float above the radio on the log (log-music), drifting up and fading." },
+  "snow-ring": { label: "Ring of snow dots", size: 0.5, note: "A small burst ring on landing." },
+  "wind-curl": { label: "Wind curl", size: 0.6, note: "Drifts past now and then, or trails a fast snowball." },
+} satisfies Record<string, Effect>;
+
+export type EffectId = keyof typeof effects;
+
+const effectPixelSizes: Record<string, { w: number; h: number } | undefined> = effectSizes;
+
+/** Where an effect's file lives (under /public). */
+export const effectSrc = (id: string) => `/assets/effects/${id}.webp`;
+
+/** Pixel size of an effect's file, or undefined if no sheet has produced it yet. */
+export const effectPx = (id: string) => effectPixelSizes[id];
+
+/* ------------------------------------------------------------------ */
 /* Camera (for the preview only)                                        */
 /* ------------------------------------------------------------------ */
 
@@ -171,7 +208,7 @@ export type Placement = {
   /** Multiply the prop's height, for gentle variety in depth. Default 1. */
   scale?: number;
   /** Which cluster it belongs to (only for reading the layout). */
-  cluster: "home" | "music" | "bench" | "edge";
+  cluster: "home" | "music" | "bench" | "edge" | "frame";
 };
 
 /*
@@ -187,6 +224,8 @@ export type Placement = {
            the girl beside it and the bag penguin by the sign.
   edge   — the two that read as moving have open snow ahead: the skier at the back left,
            the sliding penguin crossing the empty front left.
+  frame  — quiet fillers: a snowy pine behind the cottage and one at each side, a bush and a
+           mound softening the foot of the clusters. Mirrored and scaled so no two look copy-pasted.
 */
 export const layout: Placement[] = [
   // home
@@ -209,6 +248,13 @@ export const layout: Placement[] = [
   // moving ones, with open snow ahead
   { prop: "skier", x: -3.7, z: -3.9, cluster: "edge" },
   { prop: "penguin-slide", x: -2.9, z: 2.1, cluster: "edge" },
+
+  // quiet fillers framing the village
+  { prop: "pine-snow-tall", x: -2.75, z: -3.35, scale: 0.92, cluster: "frame" },
+  { prop: "pine-snow-tall", x: -5.1, z: -3.0, scale: 0.82, flip: true, cluster: "frame" },
+  { prop: "pine-snow-short", x: 5.2, z: -2.75, scale: 1.05, cluster: "frame" },
+  { prop: "bush-snow", x: 1.55, z: -2.35, flip: true, cluster: "frame" },
+  { prop: "mound-snow", x: -4.5, z: -1.6, scale: 0.85, cluster: "frame" },
 ];
 
 /** Plain-language problems with the layout; empty when every rule holds. */

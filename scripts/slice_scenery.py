@@ -14,7 +14,9 @@ their grid shape and the prop names live in art-source/scenery/sheets.json.
 Writes
   public/assets/scenery/<name>.webp   transparent, trimmed, base on the bottom edge, long side <= 512 px
   src/features/scenery/sizes.json     pixel size of every file, read by content.ts (no code change needed)
-  WebPs in public/assets/scenery/ that no sheet produces any more are deleted (listed in the output).
+  Sheets with "target": "effects" (sources in art-source/effects/) go to public/assets/effects/ and
+  src/features/scenery/effect-sizes.json instead.
+  WebPs in those folders that no sheet produces any more are deleted (listed in the output).
 
 How the background is removed
   A colour key would eat the white snow, so only paper connected to the sheet's
@@ -42,10 +44,21 @@ from PIL import Image
 from scipy import ndimage as ndi
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "art-source" / "scenery"
-CONFIG = SRC / "sheets.json"
-OUT = ROOT / "public" / "assets" / "scenery"
-SIZES = ROOT / "src" / "features" / "scenery" / "sizes.json"
+CONFIG = ROOT / "art-source" / "scenery" / "sheets.json"
+
+# Where each kind of sheet comes from and goes to. A sheet's "target" picks one (default "scenery").
+TARGETS = {
+    "scenery": {  # standees, plus the character model and decals
+        "src": ROOT / "art-source" / "scenery",
+        "out": ROOT / "public" / "assets" / "scenery",
+        "sizes": ROOT / "src" / "features" / "scenery" / "sizes.json",
+    },
+    "effects": {  # effect marks: surprise lines, stars, puffs, notes...
+        "src": ROOT / "art-source" / "effects",
+        "out": ROOT / "public" / "assets" / "effects",
+        "sizes": ROOT / "src" / "features" / "scenery" / "effect-sizes.json",
+    },
+}
 
 TOLERANCE = 12      # largest channel difference from paper that still counts as paper
 INK = 40            # difference from paper that counts as a drawn line when closing gaps
@@ -132,7 +145,7 @@ def remove_background(rgb: np.ndarray, sheet: dict) -> tuple[np.ndarray, np.ndar
 
 
 def cut_sheet(sheet: dict) -> dict[str, Image.Image]:
-    path = SRC / sheet["file"]
+    path = TARGETS[sheet.get("target", "scenery")]["src"] / sheet["file"]
     if not path.exists():
         raise SystemExit(f"missing sheet: {path.relative_to(ROOT)}")
     cols, rows = parse_grid(sheet["grid"])
@@ -200,6 +213,7 @@ def main() -> None:
     ap.add_argument("--sheet", help="one sheet image to add or replace (recorded in sheets.json)")
     ap.add_argument("--grid", help="columns x rows, e.g. 2x2 (with --sheet)")
     ap.add_argument("--names", help="comma-separated prop names in reading order (with --sheet)")
+    ap.add_argument("--target", choices=sorted(TARGETS), default="scenery", help="scenery (default) or effects (with --sheet)")
     ap.add_argument("--close-gap", type=int, help="outline gap closing in px for this sheet (with --sheet)")
     ap.add_argument("--check", metavar="FOLDER", help="write check images here")
     args = ap.parse_args()
@@ -209,38 +223,47 @@ def main() -> None:
         if not (args.grid and args.names):
             raise SystemExit("--sheet needs --grid and --names")
         src = Path(args.sheet).resolve()
-        if src.parent != SRC:
-            raise SystemExit(f"put the sheet in {SRC.relative_to(ROOT)}/ first")
+        folder = TARGETS[args.target]["src"]
+        if src.parent != folder:
+            raise SystemExit(f"put the sheet in {folder.relative_to(ROOT)}/ first")
         entry = {"file": src.name, "grid": args.grid, "names": [n.strip() for n in args.names.split(",") if n.strip()]}
+        if args.target != "scenery":
+            entry["target"] = args.target
         if args.close_gap is not None:
             entry["close_gap"] = args.close_gap
         config["sheets"] = [s for s in config["sheets"] if s["file"] != src.name] + [entry]
         CONFIG.write_text(json.dumps(config, indent=2) + "\n")
         print(f"recorded {src.name} in {CONFIG.relative_to(ROOT)}")
 
-    props: dict[str, Image.Image] = {}
-    for sheet in config["sheets"]:
-        for name, im in cut_sheet(sheet).items():
-            if name in props:
-                raise SystemExit(f"prop name {name!r} is used twice")
-            props[name] = im
+    every: dict[str, Image.Image] = {}
+    for target, where in TARGETS.items():
+        props: dict[str, Image.Image] = {}
+        for sheet in config["sheets"]:
+            if sheet.get("target", "scenery") != target:
+                continue
+            for name, im in cut_sheet(sheet).items():
+                if name in every:
+                    raise SystemExit(f"name {name!r} is used twice")
+                props[name] = every[name] = im
 
-    OUT.mkdir(parents=True, exist_ok=True)
-    total = 0
-    for name, im in props.items():
-        target = OUT / f"{name}.webp"
-        im.save(target, "WEBP", quality=WEBP_QUALITY, alpha_quality=100, method=6, exact=False)
-        total += target.stat().st_size
-        print(f"{name:18s} {im.width:4d} x {im.height:4d}  {target.stat().st_size / 1024:6.1f} KB")
-    for old in sorted(OUT.glob("*.webp")):
-        if old.stem not in props:
-            old.unlink()
-            print(f"deleted {old.name} (no sheet makes it any more)")
-    print(f"{len(props)} props, {total / 1024:.0f} KB in {OUT.relative_to(ROOT)}")
+        out = where["out"]
+        out.mkdir(parents=True, exist_ok=True)
+        total = 0
+        for name, im in props.items():
+            path = out / f"{name}.webp"
+            im.save(path, "WEBP", quality=WEBP_QUALITY, alpha_quality=100, method=6, exact=False)
+            total += path.stat().st_size
+            print(f"{name:18s} {im.width:4d} x {im.height:4d}  {path.stat().st_size / 1024:6.1f} KB")
+        for old in sorted(out.glob("*.webp")):
+            if old.stem not in props:
+                old.unlink()
+                print(f"deleted {old.relative_to(ROOT)} (no sheet makes it any more)")
+        print(f"{len(props)} files, {total / 1024:.0f} KB in {out.relative_to(ROOT)}")
 
-    sizes = {name: {"w": im.width, "h": im.height} for name, im in sorted(props.items())}
-    SIZES.write_text(json.dumps(sizes, indent=2) + "\n")
-    print(f"pixel sizes written to {SIZES.relative_to(ROOT)}")
+        sizes = {name: {"w": im.width, "h": im.height} for name, im in sorted(props.items())}
+        where["sizes"].write_text(json.dumps(sizes, indent=2) + "\n")
+        print(f"pixel sizes written to {where['sizes'].relative_to(ROOT)}\n")
+    props = every
 
     if args.check:
         folder = Path(args.check)

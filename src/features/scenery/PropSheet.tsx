@@ -1,6 +1,9 @@
 import Image from "next/image";
 
 import {
+  effectPx,
+  effects,
+  effectSrc,
   filesWithoutSettings,
   layout,
   propSettings,
@@ -61,6 +64,12 @@ export function PropSheet() {
         </CardGroup>
       )}
 
+      <CardGroup title="Effects (not standees, never in the layout)">
+        {(Object.keys(effects) as (keyof typeof effects)[]).map((id) => (
+          <EffectCard key={id} id={id} />
+        ))}
+      </CardGroup>
+
       {filesWithoutSettings.length > 0 && (
         <CardGroup title="New files with no settings yet">
           {filesWithoutSettings.map((name) => (
@@ -118,6 +127,37 @@ function PropCard({ name }: { name: string }) {
           {settings?.motion && " · moving: loop later"}
           {!settings && " · add it to props in content.ts"}
         </span>
+      </div>
+    </li>
+  );
+}
+
+function EffectCard({ id }: { id: keyof typeof effects }) {
+  const e = effects[id];
+  const px = effectPx(id);
+  return (
+    <li className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex h-32 items-center justify-center bg-muted/70 p-4">
+        {px ? (
+          <Image
+            src={effectSrc(id)}
+            alt={e.label}
+            width={px.w}
+            height={px.h}
+            unoptimized
+            className="max-h-full w-auto object-contain"
+          />
+        ) : (
+          <span className="text-sm font-bold text-destructive">no file yet</span>
+        )}
+      </div>
+      <div className="flex flex-col gap-0.5 px-3 py-2 text-sm">
+        <span className="font-bold">{e.label}</span>
+        <code className="text-xs">effects/{id}.webp</code>
+        <span className="text-xs">
+          {px ? `${px.w} × ${px.h} px` : "missing"} · about {e.size} tall
+        </span>
+        <span className="text-xs">{e.note}</span>
       </div>
     </li>
   );

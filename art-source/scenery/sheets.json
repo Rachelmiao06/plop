@@ -1,5 +1,5 @@
 {
-  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
+  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60), target (\"effects\" = source in art-source/effects/, output public/assets/effects/). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
   "sheets": [
     {
       "file": "doodle-1-friends-tree.png",
@@ -44,6 +44,31 @@
         "snowman-newspaper"
       ],
       "min_piece": 15
+    },
+    {
+      "file": "doodle-5-forest-fillers.png",
+      "grid": "2x2",
+      "names": [
+        "pine-snow-tall",
+        "pine-snow-short",
+        "mound-snow",
+        "bush-snow"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "effects-1-marks.png",
+      "grid": "3x2",
+      "names": [
+        "surprise-lines",
+        "star",
+        "snow-puff",
+        "music-notes",
+        "snow-ring",
+        "wind-curl"
+      ],
+      "min_piece": 15,
+      "target": "effects"
     },
     {
       "file": "sheet-1-buildings-trees.png",

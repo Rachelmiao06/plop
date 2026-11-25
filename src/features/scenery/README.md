@@ -9,7 +9,10 @@ The main characters are 3D and are not part of this feature.
   `kind` (`standee` by default; `character` = model for a 3D main character, never placed;
   `decal` = flat flourish such as the wind swirl), `spare`, and `motion: "loop"` for the skier and the
   sliding penguin (candidates for a small looping motion later).
-- `sizes.json`: pixel size of every file. Written by the slicing script, never by hand.
+- `sizes.json`, `effect-sizes.json`: pixel size of every file. Written by the slicing script, never by hand.
+- `effects` in `content.ts`: effect marks (surprise lines, star, snow puff, music notes, ring of dots, wind curl)
+  in `public/assets/effects/`, sources in `art-source/effects/`. Not standees, never in the layout; each has a
+  suggested size and a note on where it fits (the music notes float above the radio on `log-music`).
 - `CameraPreview.tsx`, `LayoutPreview.tsx`, `PropSheet.tsx`, `view.ts`: the `/dev/scenery` check page.
   `CameraPreview` paints the layout back to front as the default camera sees it (and pulled back 1.6×);
   `view.ts` is the small pinhole-camera maths behind it. Flat HTML only, no Three.js.
@@ -17,7 +20,8 @@ The main characters are 3D and are not part of this feature.
 
 ## The art files
 
-The current set is Rachel's doodle stickers (`art-source/scenery/doodle-*.png`, four per sheet, 2 by 2).
+The current set is Rachel's doodle stickers (`art-source/scenery/doodle-*.png`, four per sheet, 2 by 2),
+including the quiet fillers (`pine-snow-tall`, `pine-snow-short`, `mound-snow`, `bush-snow`) that frame the village.
 The first crayon sheets (`sheet-*.png`, six per sheet) stay in the pipeline as spares.
 Props are referred to only by name (`<name>.webp`), so new files with the same names drop in with no code change.
 Detached bits that belong to a drawing (snow dots, music notes, speed lines) are kept: every piece in a
@@ -31,7 +35,8 @@ with no empty margin below (8 px of clear margin on the other three sides).
 1. Put the new sheet (white background, objects in a grid) in `art-source/scenery/`.
 2. Run, from the repo root:
    `python3 scripts/slice_scenery.py --sheet art-source/scenery/<file>.png --grid 2x2 --names a,b,c,d --check <some folder>`
-   (`--grid` is columns x rows; names go left to right, top row first.) The sheet is recorded in
+   (`--grid` is columns x rows; names go left to right, top row first. Add `--target effects` for an
+   effects sheet placed in `art-source/effects/`.) The sheet is recorded in
    `art-source/scenery/sheets.json`, so a plain `python3 scripts/slice_scenery.py` later repeats every sheet.
    Remove an old sheet's entry from `sheets.json` when it is replaced; its WebPs are then deleted on the next run.
 3. The script writes the WebPs and `src/features/scenery/sizes.json` (pixel sizes; `content.ts` reads it).
