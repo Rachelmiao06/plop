@@ -15,10 +15,11 @@ import { useFrame } from "@react-three/fiber";
 
 import type { Bowling } from "@/features/bowling";
 import { PINS, type Pins } from "@/features/pins";
+import { easeTimeOfDay } from "@/features/snow-scene";
 
 import { findBowling, lockThrows, meltRestingBalls, switchThrower } from "./bowlingLink";
 import { GAME } from "./content";
-import type { Game } from "./rules";
+import { dayFor, type Game } from "./rules";
 
 /** Shared with the page around the canvas (the cancel button needs the running bowling game). */
 export type GameLink = ReturnType<typeof createLink>;
@@ -45,7 +46,14 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
         if (e.type === "result") {
           // The last throw of a round: once "N down!" has been seen, the next round's set comes instead of a reset.
           const st = game.getState();
-          if (st.phase === "playing" && game.lastOfRound() && !game.lastRound()) pins.changeAfterResult(game.setFor(st.round + 1));
+          if (st.phase === "playing" && game.lastOfRound()) {
+            // The light moves on now, during "N down!" and the set change, never while a ball rolls.
+            const ev = GAME.evening;
+            if (!game.lastRound()) {
+              pins.changeAfterResult(game.setFor(st.round + 1));
+              easeTimeOfDay(dayFor(st.round + 1, st.rounds), ev.between);
+            } else easeTimeOfDay(ev.endCard, ev.toEnd);
+          }
           game.result(e.result);
           d.melt = d.now + GAME.timing.meltBallAfterResult;
         }

@@ -65,6 +65,12 @@ export function pointsFor(count: ThrowCount, feel = GAME): number {
   return count.down * feel.score.perCard + (count.fullClear ? feel.score.fullClearBonus : 0) + count.bonus;
 }
 
+/** The time of day (0 afternoon .. 1 evening) for a round of a match of this length (`GAME.evening`). */
+export function dayFor(round: number, rounds: number, feel = GAME): number {
+  if (rounds <= 1) return 0;
+  return (Math.min(round, rounds - 1) / (rounds - 1)) * feel.evening.lastRound;
+}
+
 export function createGame(feel = GAME) {
   let state: GameState = {
     phase: "choosing",

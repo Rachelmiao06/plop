@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 
 import { PINS, SPECIALS, TEXT } from "./content";
 import type { Pins, PinsResult } from "./controller";
+import { playFullClear } from "@/lib/audio";
+
 import { playPop } from "./fwump";
 
 /** Doodles around the words: file, size (rem), where (percent of the pop-up box), turn (degrees), delay (s). */
@@ -84,7 +86,9 @@ export function PinsPopup({ pins }: { pins: Pins }) {
       clearTimeout(leaveTimer);
       clearTimeout(hideTimer);
       const mine = ++id;
-      playPop(e.result.fullClear);
+      // A full clear gets the warm bell flourish; every other count the small pop.
+      if (e.result.fullClear) playFullClear();
+      else playPop(false);
       setShown({ id: mine, result: e.result, leaving: false });
       const stay = (e.result.fullClear ? PINS.popup.showForFullClear : PINS.popup.showFor) * 1000;
       leaveTimer = setTimeout(() => setShown((s) => (s && s.id === mine ? { ...s, leaving: true } : s)), stay);

@@ -59,6 +59,21 @@ export const GAME = {
   },
 
   /**
+   * The light over a match (`setTimeOfDay` in snow-scene: 0 = afternoon, 0.5 = sunset, 1 = cosy evening). Round 1 is
+   * afternoon; each round's light is spread evenly up to `lastRound` at the last round, so 3 and 5 rounds both end
+   * there, and the end card sits in `endCard`. The light only moves after a round's last throw, during "N down!"
+   * and the set change (`between` seconds, shorter than that pause, so never during a throw), to the end card over
+   * `toEnd`, and back to afternoon over `back` on "play again".
+   */
+  evening: { lastRound: 0.85, endCard: 1, between: 2.6, toEnd: 3.2, back: 1.8 },
+
+  /**
+   * The quiet village ambience (`startAmbience` in src/lib/audio.ts, after the first tap; it follows the sound
+   * switch): its volume alone, and a little lower while the music plays.
+   */
+  sound: { ambienceAlone: 0.65, ambienceUnderMusic: 0.45 },
+
+  /**
    * The camera choreography of a throw (`CameraDirector.tsx`, through the snow scene's camera shots).
    * `rate`s are spring rates per second: about 2 = a calm glide, 6 = follows with a little physical lag,
    * 12 = tight. Distances in scene units (one unit = one character height), angles and fov in degrees.
