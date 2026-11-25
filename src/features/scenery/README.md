@@ -232,3 +232,25 @@ the right (open hill only) so both lines meet exactly, writing `far-2-panorama-t
 (seal lines at both edges keep the white inside the hills). The band lays whole copies side by side (no mirroring),
 a copy's middle straight back; `backdrop.hillsCrop` drops the cut's clear margins, and the shader samples with the
 gradient of the unbroken coordinate so the joint draws no line.
+
+## Afternoon to evening (`/dev/sky`)
+
+Over a match the light moves from afternoon (t = 0) through sunset (0.5) to a cosy evening (1). The sky follows one
+shared value, `getTimeOfDay()` (`timeOfDay.ts`; `setTimeOfDay(t)`, `subscribeTimeOfDay(fn)`, also exported from
+`@/features/scenery`). The snow and light side is built by the scene-polish session; until a shared store lands
+(proposed in `@/features/snow-scene` with the same names), the sky keeps its own value here, and whichever PR merges
+second points this one at the shared store.
+
+- **Sky (`three/Backdrop.tsx`, `backdrop.evening` in `content.ts`):** painted in flat bands of colour with gently
+  waving, grainy edges (crayon on paper), never a smooth gradient. Each key (t = 0, 0.5, 1) gives three colours (just
+  above the hills, halfway, top) as a mix of two design tokens: paper and snow shadow in the afternoon, butter and
+  blush at sunset, sky blue with a little slate and deep ink at evening over a pale blush horizon.
+- **Sun, moon, stars:** Rachel's sun sinks toward the open middle of the hills and slips behind them (it is drawn
+  before the hills); her crescent moon (`sky-moon`) rises on the right from t = 0.5; seven tiny stars (the `star`
+  effect doodle) appear one by one after t = 0.66 and twinkle a little (still for reduced motion). The clouds take on
+  the sky's colour and the bird flies home.
+- **Far hills:** take on the light like the fog on the far snow in front of them (the same hues as the snow scene's
+  `content.timeOfDay` fog: a blush wash at sunset, a dusk blue at evening), while the yellow windows of their little houses stay lit (a colour
+  mask on the drawn panes; doors and chimneys are more orange and are left alone).
+- **`/dev/sky`:** the real game with a time-of-day slider, jumps to afternoon / sunset / evening, and the frame rate;
+  `?t=0.5` starts at sunset. Screenshots: `review/sky-time-of-day.webp`.

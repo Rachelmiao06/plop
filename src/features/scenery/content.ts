@@ -139,7 +139,7 @@ export const props = {
   "sky-cloud-curl": { label: "Cloud with a curl", height: 0.4, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
   "sky-cloud-smile": { label: "Smiling cloud", height: 0.36, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
   "sky-bird": { label: "Flying bird", height: 0.22, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
-  "sky-moon": { label: "Crescent moon (for a night sky later)", height: 0.5, group: "small", sink: 0, set: "doodle", kind: "sky", spare: true },
+  "sky-moon": { label: "Crescent moon (rises in the evening)", height: 0.45, group: "small", sink: 0, set: "doodle", kind: "sky" },
   "far-hills": { label: "Far hills, pines and tiny houses (panorama)", height: 0.95, group: "big", sink: 0, set: "doodle", kind: "backdrop" },
 
   // Not a standee
@@ -727,4 +727,63 @@ export const backdrop = {
     { prop: "sky-cloud-curl", angle: 38, y: 1.6, drift: 3, period: 80 },
   ] as { prop: PropId; angle: number; y: number; drift: number; period: number }[],
   bird: { prop: "sky-bird" as PropId, y: 1.25, bob: 0.06, crossSeconds: 48, restSeconds: 10, fromAngle: -55, toAngle: 55 },
+
+  /**
+   * Afternoon to evening over a match (t from 0 to 1, `getTimeOfDay`). The sky is painted in `bands` flat bands of
+   * colour from `from` to `to` (heights above the snow) with slightly wavy, grainy edges like crayon on paper, never
+   * a smooth gradient. Each key gives the colour just above the hills (`low`), halfway (`mid`) and at the top
+   * (`high`) as a mix of two tokens [token, token, share of the second]; between keys the colours blend.
+   */
+  evening: {
+    keys: [
+      { t: 0, low: ["--paper", "--paper", 0], mid: ["--paper", "--snow-shadow", 0.25], high: ["--paper", "--snow-shadow", 0.55] },
+      { t: 0.5, low: ["--paper", "--butter", 0.8], mid: ["--paper", "--blush", 0.85], high: ["--snow-shadow", "--blush", 0.4] },
+      { t: 1, low: ["--snow-shadow", "--blush", 0.4], mid: ["--sky-blue", "--slate", 0.3], high: ["--sky-blue", "--ink-deep", 0.3] },
+    ] as { t: number; low: TokenMix; mid: TokenMix; high: TokenMix }[],
+    bands: 8,
+    from: 0.7,
+    to: 2.8,
+    /** How far band edges wave along the sky (share of the band range) and how grainy they are (share of one band). */
+    wobble: 0.035,
+    grain: 0.45,
+    /**
+     * The far hills take on the light like the far snow in front of them (the same hues as the snow scene's fog
+     * at each time: `content.timeOfDay` in snow-scene), so no pale band shows between the fog and the sky:
+     * `tint` mixed in by `share`...
+     */
+    hills: [
+      { t: 0, tint: ["--paper", "--snow-shadow", 0.2], share: 0 },
+      { t: 0.5, tint: ["--snow-shadow", "--blush", 0.45], share: 0.22 },
+      { t: 1, tint: ["--sky-blue", "--slate", 0.45], share: 0.42 },
+    ] as { t: number; tint: TokenMix; share: number }[],
+    /** ...while the yellow windows of their houses stay lit (`--butter`, a little toward `--paper`). */
+    windowGlow: 0.9,
+    /** Clouds take on the sky's colour this much at full evening; the bird flies home between these times. */
+    cloudTint: 0.45,
+    birdHome: [0.65, 0.85] as [number, number],
+    /** The sun sinks to `toY` behind the hills between these times, drifting to `toAngle` (the open middle, clear of the big tree). */
+    sun: { from: 0.1, to: 0.8, toY: 0.05, toAngle: -4 },
+    /** Rachel's crescent moon rises from behind the hills on the right. */
+    moon: { prop: "sky-moon" as PropId, angle: 24, from: 0.5, to: 0.95, fromY: 0.05, toY: 1.5 },
+    /**
+     * A few tiny stars (the star doodle from the effects sheet), each appearing at its own time `at`, twinkling
+     * gently (`twinkle` share of its size, held still for reduced motion).
+     */
+    stars: {
+      size: 0.13,
+      twinkle: 0.12,
+      list: [
+        { angle: -34, y: 1.7, at: 0.66, scale: 0.8 },
+        { angle: -12, y: 1.95, at: 0.72, scale: 1 },
+        { angle: 6, y: 1.62, at: 0.8, scale: 0.7 },
+        { angle: 38, y: 1.85, at: 0.76, scale: 0.9 },
+        { angle: 52, y: 1.45, at: 0.86, scale: 0.65 },
+        { angle: -50, y: 1.4, at: 0.9, scale: 0.7 },
+        { angle: 16, y: 2.05, at: 0.93, scale: 0.75 },
+      ],
+    },
+  },
 };
+
+/** A colour mixed from two design tokens: [token, token, share of the second (0 = all the first)]. */
+export type TokenMix = [string, string, number];

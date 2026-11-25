@@ -20,7 +20,8 @@ import {
 
 import { useSnow } from "@/features/snow-scene";
 
-import { backdrop, propPx, propSettings, propSrc } from "../content";
+import { backdrop, effectPx, effectSrc, propPx, propSettings, propSrc, type TokenMix } from "../content";
+import { getTimeOfDay } from "../timeOfDay";
 import { useReducedMotion } from "./motion";
 import { usePaper } from "./treatment";
 
@@ -48,7 +49,11 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile |
       uRepeat: { value: tile?.repeat ?? 1 },
       uCrop: { value: tile?.crop ?? [0, 1] },
       uPhase: { value: tile?.phase ?? 0 },
-      uPaper: { value: paper }, uHaze: { value: haze }, ...fade },
+      uPaper: { value: paper }, uHaze: { value: haze }, ...fade,
+      // Evening: a dusk tint over the drawing, lit windows kept bright (hills only), and its own fade (sun, moon, stars).
+      uDusk: { value: new Color() }, uDuskAmt: { value: 0 },
+      uGlow: { value: new Color() }, uGlowAmt: { value: 0 },
+      uAlpha: { value: 1 } },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
       void main() {
@@ -64,6 +69,11 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile |
       uniform vec3 uPaper;
       uniform float uHaze;
       uniform float uOpacity;
+      uniform vec3 uDusk;
+      uniform float uDuskAmt;
+      uniform vec3 uGlow;
+      uniform float uGlowAmt;
+      uniform float uAlpha;
       varying vec2 vUv;
       void main() {
         // Seen from inside the curve, the drawing runs the other way round (so it is not mirrored).
@@ -73,8 +83,13 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile |
         // Pick the texture detail from the unbroken coordinate, so the jump back at each joint draws no line.
         vec2 steady = vec2(t * (uCrop.y - uCrop.x), vUv.y);
         vec4 art = textureGrad(uMap, vec2(u, vUv.y), dFdx(steady), dFdy(steady));` : `vec4 art = texture2D(uMap, vec2(u, vUv.y));`}
-        if (art.a < 0.02) discard;
-        gl_FragColor = vec4(mix(art.rgb, uPaper, uHaze), art.a * uOpacity);
+        if (art.a * uAlpha < 0.02) discard;
+        vec3 col = mix(mix(art.rgb, uPaper, uHaze), uDusk, uDuskAmt);
+        // Lit windows: the strong yellow of the drawn panes (doors and chimneys are more orange), linear colour.
+        float r = max(art.r, 0.001);
+        float pane = step(0.55, art.r) * step(0.47, art.g / r) * (1.0 - smoothstep(0.06, 0.1, art.b / r));
+        col = mix(col, uGlow, pane * uGlowAmt);
+        gl_FragColor = vec4(col, art.a * uOpacity * uAlpha);
         #include <colorspace_fragment>
       }
     `,
@@ -95,6 +110,67 @@ type Props = {
  */
 const look = new Vector3();
 
+/** 0 before `from`, 1 after `to`, eased in between. */
+function ramp(from: number, to: number, x: number) {
+  const k = Math.min(Math.max((x - from) / (to - from), 0), 1);
+  return k * k * (3 - 2 * k);
+}
+
+/* ---- Time of day (see `backdrop.evening`) ---- */
+
+const tokenCache = new Map<string, Color>();
+/** A design token's colour (read from globals.css once). */
+function token(name: string) {
+  let c = tokenCache.get(name);
+  if (!c) {
+    c = new Color(getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#ffffff");
+    tokenCache.set(name, c);
+  }
+  return c;
+}
+const mixed = (m: TokenMix, out: Color) => out.copy(token(m[0])).lerp(token(m[1]), m[2]);
+const tmpA = new Color();
+const tmpB = new Color();
+
+type SkyMats = { wall: ShaderMaterial; hills: ShaderMaterial; sky: Record<string, ShaderMaterial>; stars: ShaderMaterial[] };
+
+/** Colour the sky, hills and doodles for this time of day (run only when it changes). */
+function paintSky(m: SkyMats, day: number, skyProps: string[], birdProp: string) {
+  const ev = backdrop.evening;
+  const keys = ev.keys;
+  let i = 0;
+  while (i < keys.length - 2 && day > keys[i + 1].t) i++;
+  const k0 = keys[i];
+  const k1 = keys[i + 1];
+  const f = Math.min(Math.max((day - k0.t) / (k1.t - k0.t), 0), 1);
+  const u = m.wall.uniforms;
+  for (const [band, uni] of [["low", u.uLow], ["mid", u.uMid], ["high", u.uHigh]] as const) {
+    (uni.value as Color).copy(mixed(k0[band], tmpA)).lerp(mixed(k1[band], tmpB), f);
+  }
+  // The far hills take on the light like the fog on the far snow, their windows lit; the clouds take the sky's colour.
+  const h = m.hills.uniforms;
+  const hk = ev.hills;
+  let j = 0;
+  while (j < hk.length - 2 && day > hk[j + 1].t) j++;
+  const g = Math.min(Math.max((day - hk[j].t) / (hk[j + 1].t - hk[j].t), 0), 1);
+  (h.uDusk.value as Color).copy(mixed(hk[j].tint, tmpA)).lerp(mixed(hk[j + 1].tint, tmpB), g);
+  h.uDuskAmt.value = hk[j].share + (hk[j + 1].share - hk[j].share) * g;
+  (h.uGlow.value as Color).copy(token("--butter")).lerp(token("--paper"), 0.25);
+  h.uGlowAmt.value = ev.windowGlow * ramp(0.55, 0.9, day);
+  for (const id of skyProps) {
+    const mat = m.sky[id];
+    if (!mat || id === birdProp) continue;
+    if (id === "sky-sun") {
+      mat.uniforms.uAlpha.value = 1 - ramp(ev.sun.to - 0.12, ev.sun.to, day);
+    } else {
+      (mat.uniforms.uDusk.value as Color).copy(u.uMid.value as Color);
+      mat.uniforms.uDuskAmt.value = ev.cloudTint * Math.min(day * 1.4, 1);
+    }
+  }
+  m.sky[birdProp].uniforms.uAlpha.value = 1 - ramp(ev.birdHome[0], ev.birdHome[1], day);
+  m.sky[ev.moon.prop].uniforms.uAlpha.value = ramp(ev.moon.from, ev.moon.from + 0.15, day);
+}
+
 export function Backdrop({ center, reach = 0 }: Props) {
   // On a phone held upright the backdrop comes a little closer and the hills grow (see `backdrop.portrait`).
   const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
@@ -110,6 +186,7 @@ export function Backdrop({ center, reach = 0 }: Props) {
       tintFrom: backdrop.tintFrom + lift,
       sky: backdrop.sky.map((s) => ({ ...s, y: s.y + lift })),
       bird: { ...backdrop.bird, y: backdrop.bird.y + lift },
+      lift,
     };
   }, [narrow, reach]);
   const paper = usePaper();
@@ -118,9 +195,10 @@ export function Backdrop({ center, reach = 0 }: Props) {
   const root = useRef<Group>(null);
   const [cx, , cz] = center;
 
-  const skyIds = useMemo(() => [...b.sky.map((s) => s.prop), b.bird.prop], [b]);
+  const ev = backdrop.evening;
+  const skyIds = useMemo(() => [...b.sky.map((s) => s.prop), b.bird.prop, ev.moon.prop], [b, ev.moon.prop]);
   const urls = useMemo(
-    () => Object.fromEntries(["far-hills", ...skyIds].map((id) => [id, propSrc(id)])),
+    () => ({ ...Object.fromEntries(["far-hills", ...skyIds].map((id) => [id, propSrc(id)])), "fx-star": effectSrc("star") }),
     [skyIds],
   );
   const textures = useTexture(urls, (loaded) => {
@@ -159,37 +237,50 @@ export function Backdrop({ center, reach = 0 }: Props) {
         depthWrite: true,
         toneMapped: false,
         uniforms: {
-          uPaper: { value: new Color(paper.paper) },
-          uTint: { value: new Color(paper.shade) },
-          uBand: { value: [b.tintFrom, b.tintTo, b.tintShare] },
+          uLow: { value: new Color(paper.paper) },
+          uMid: { value: new Color(paper.paper) },
+          uHigh: { value: new Color(paper.shade) },
+          // bands, from, to (heights above the foot), edge wobble
+          uBands: { value: [ev.bands, ev.from + b.lift, ev.to + b.lift, ev.wobble] },
+          uGrain: { value: ev.grain },
           uFoot: { value: foot },
           ...fade,
         },
         vertexShader: /* glsl */ `
           varying float vHeight;
+          varying float vAngle;
           void main() {
             vec4 world = modelMatrix * vec4(position, 1.0);
             vHeight = world.y;
+            vAngle = atan(position.x, position.z);
             gl_Position = projectionMatrix * viewMatrix * world;
           }
         `,
         fragmentShader: /* glsl */ `
-          uniform vec3 uPaper;
-          uniform vec3 uTint;
-          uniform vec3 uBand;
+          uniform vec3 uLow;
+          uniform vec3 uMid;
+          uniform vec3 uHigh;
+          uniform vec4 uBands;
+          uniform float uGrain;
           uniform float uFoot;
           uniform float uOpacity;
           varying float vHeight;
+          varying float vAngle;
           void main() {
+            float grain = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
             // While the view rises the wall thins out in a fine paper-grain pattern instead of turning see-through.
-            if (uOpacity < 1.0 && fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) > uOpacity) discard;
-            float t = smoothstep(uBand.x, uBand.y, vHeight - uFoot) * uBand.z;
-            gl_FragColor = vec4(mix(uPaper, uTint, t), 1.0);
+            if (uOpacity < 1.0 && grain > uOpacity) discard;
+            // Flat bands of colour with gently waving, crayon-grainy edges (never a smooth gradient).
+            float s = (vHeight - uFoot - uBands.y) / (uBands.z - uBands.y);
+            s += uBands.w * (0.6 * sin(vAngle * 9.0 + 1.3) + 0.4 * sin(vAngle * 23.0 + 0.4));
+            float k = clamp(floor(clamp(s, 0.0, 1.0) * uBands.x + (grain - 0.5) * uGrain) / uBands.x, 0.0, 1.0);
+            vec3 col = k < 0.5 ? mix(uLow, uMid, k * 2.0) : mix(uMid, uHigh, k * 2.0 - 1.0);
+            gl_FragColor = vec4(col, 1.0);
             #include <colorspace_fragment>
           }
         `,
       }),
-    [paper, b, foot],
+    [paper, b, foot, ev],
   );
 
   // Far hills band: the panorama repeated along the arc, just inside the wall.
@@ -224,6 +315,23 @@ export function Backdrop({ center, reach = 0 }: Props) {
   );
   const skyRefs = useRef<(Mesh | null)[]>([]);
   const birdRef = useRef<Mesh>(null);
+  const moonRef = useRef<Mesh>(null);
+  // One material per star, so each can appear at its own time.
+  const starMaterials = useMemo(
+    () => ev.stars.list.map(() => artPlaneMaterial(textures["fx-star"], new Color(paper.paper), 0)),
+    [ev.stars.list, textures, paper],
+  );
+  const starRefs = useRef<(Mesh | null)[]>([]);
+  const starPx = effectPx("star");
+  const starAspect = starPx ? starPx.w / starPx.h : 1;
+
+  // The live materials, for colouring the sky when the time of day changes (outside render).
+  const mats = useRef<SkyMats | null>(null);
+  const lastDay = useRef(-1);
+  useEffect(() => {
+    mats.current = { wall: wallMaterial, hills: hillsMaterial, sky: skyMaterials, stars: starMaterials };
+    lastDay.current = -1;
+  }, [wallMaterial, hillsMaterial, skyMaterials, starMaterials]);
 
   useEffect(
     () => () => {
@@ -233,8 +341,9 @@ export function Backdrop({ center, reach = 0 }: Props) {
       hillsMaterial.dispose();
       plane.dispose();
       for (const m of Object.values(skyMaterials)) m.dispose();
+      for (const m of starMaterials) m.dispose();
     },
-    [wall, wallMaterial, hills, hillsMaterial, plane, skyMaterials],
+    [wall, wallMaterial, hills, hillsMaterial, plane, skyMaterials, starMaterials],
   );
 
   const skyRadius = b.radius - 0.12;
@@ -263,11 +372,37 @@ export function Backdrop({ center, reach = 0 }: Props) {
     if (!g.visible) return;
 
     const t = reduced ? 0 : clock.elapsedTime;
+    const day = getTimeOfDay();
+    const live = mats.current;
+    if (live && day !== lastDay.current) {
+      lastDay.current = day;
+      paintSky(live, day, b.sky.map((s) => s.prop), b.bird.prop);
+    }
+    const sunSet = ramp(ev.sun.from, ev.sun.to, day);
     b.sky.forEach((s, i) => {
       const mesh = skyRefs.current[i];
       if (!mesh) return;
       const drift = s.drift * Math.sin((t / s.period) * Math.PI * 2 + i * 1.7);
-      placeOnWall(mesh, s.angle + drift, s.y);
+      const isSun = s.prop === "sky-sun";
+      if (isSun) placeOnWall(mesh, s.angle + (ev.sun.toAngle - s.angle) * sunSet, s.y + (ev.sun.toY + b.lift - s.y) * sunSet);
+      else placeOnWall(mesh, s.angle + drift, s.y);
+    });
+    const moon = moonRef.current;
+    if (moon) {
+      const rise = ramp(ev.moon.from, ev.moon.to, day);
+      moon.visible = rise > 0;
+      placeOnWall(moon, ev.moon.angle, ev.moon.fromY + (ev.moon.toY - ev.moon.fromY) * rise + b.lift);
+    }
+    ev.stars.list.forEach((s, i) => {
+      const mesh = starRefs.current[i];
+      if (!mesh) return;
+      const shown = ramp(s.at, s.at + 0.08, day);
+      mesh.visible = shown > 0;
+      if (!mesh.visible) return;
+      if (live) live.stars[i].uniforms.uAlpha.value = shown;
+      const size = ev.stars.size * s.scale * (1 + (reduced ? 0 : ev.stars.twinkle * Math.sin(t * 1.7 + i * 2.3)));
+      mesh.scale.set(size * starAspect, size, 1);
+      placeOnWall(mesh, s.angle, s.y + b.lift);
     });
     const bird = birdRef.current;
     if (bird) {
@@ -275,7 +410,7 @@ export function Backdrop({ center, reach = 0 }: Props) {
       const loop = k.crossSeconds + k.restSeconds;
       // Crosses slowly from left to right, rests out of sight, then comes again. Still: perched mid-sky.
       const u = reduced ? 0.62 : ((t + 6) % loop) / k.crossSeconds;
-      bird.visible = u <= 1;
+      bird.visible = u <= 1 && day < ev.birdHome[1];
       if (u <= 1) {
         const angle = k.fromAngle + (k.toAngle - k.fromAngle) * u;
         placeOnWall(bird, angle, k.y + k.bob * Math.sin(t * 2.4));
@@ -310,11 +445,34 @@ export function Backdrop({ center, reach = 0 }: Props) {
             geometry={plane}
             material={skyMaterials[s.prop]}
             scale={[w, h, 1]}
-            renderOrder={-8}
+            // The sun is drawn before the hills, so it sinks behind them at sunset.
+            renderOrder={s.prop === "sky-sun" ? -9.5 : -8}
             raycast={() => null}
           />
         );
       })}
+      <mesh
+        ref={moonRef}
+        geometry={plane}
+        material={skyMaterials[ev.moon.prop]}
+        scale={[sizeOf(ev.moon.prop)[0], sizeOf(ev.moon.prop)[1], 1]}
+        renderOrder={-9.5}
+        visible={false}
+        raycast={() => null}
+      />
+      {ev.stars.list.map((s, i) => (
+        <mesh
+          key={`star-${i}`}
+          ref={(m) => {
+            starRefs.current[i] = m;
+          }}
+          geometry={plane}
+          material={starMaterials[i]}
+          renderOrder={-9.5}
+          visible={false}
+          raycast={() => null}
+        />
+      ))}
       <mesh
         ref={birdRef}
         geometry={plane}

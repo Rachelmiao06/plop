@@ -23,7 +23,7 @@ import {
   Vector3,
 } from "three";
 
-import { useSnow } from "@/features/snow-scene";
+import { getTimeOfDay, useSnow } from "@/features/snow-scene";
 
 import { backdrop, standee3d, village, type PropId } from "../../content";
 import { throwingView, villageLayout, type GameLane, type VillageProp } from "../../village";
@@ -38,13 +38,13 @@ import { effects, effectTags } from "./effects";
 */
 
 /** The token colours these effects use, read once from globals.css (browser only). */
-type Tokens = { paper: string; shade: string; ink: string; butter: string; sky: string };
+type Tokens = { paper: string; shade: string; ink: string; butter: string; sky: string; blush: string };
 let tokenCache: Tokens | null = null;
 function tokens(): Tokens {
   if (tokenCache) return tokenCache;
   const css = getComputedStyle(document.documentElement);
   const t = (name: string) => css.getPropertyValue(name).trim();
-  tokenCache = { paper: t("--paper"), shade: t("--snow-shadow"), ink: t("--ink"), butter: t("--butter"), sky: t("--sky-blue") };
+  tokenCache = { paper: t("--paper"), shade: t("--snow-shadow"), ink: t("--ink"), butter: t("--butter"), sky: t("--sky-blue"), blush: t("--blush") };
   return tokenCache;
 }
 
@@ -66,6 +66,13 @@ const onDrawing = (at: readonly [number, number], width: number, height: number,
   at[1] * height,
   (height * standee3d.thicknessShare) / 2 + 0.004 + forward,
 ];
+
+/** How far into the evening it is for the lights: 0 until `evening.from` of the time of day, 1 from `evening.to`. */
+function eveningShare(): number {
+  const e = effects.lights.evening;
+  const u = Math.min(Math.max((getTimeOfDay() - e.from) / (e.to - e.from), 0), 1);
+  return u * u * (3 - 2 * u);
+}
 
 /* ------------------------------------------------------------------ */
 /* Warm glow                                                            */
@@ -160,6 +167,7 @@ export function WarmLights({ id, width, height }: { id: PropId; width: number; h
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
+    const evening = eveningShare();
     halos.forEach((halo) => {
       const { h, i } = halo;
       // Two slow waves and a faster small one: a candle-like breath, never a strobe.
@@ -168,10 +176,13 @@ export function WarmLights({ id, width, height }: { id: PropId; width: number; h
         : Math.sin(t * h.speed * 6.28 + seed + i * 1.9) * 0.5 +
           Math.sin(t * h.speed * 2.7 + seed * 2 + i) * 0.35 +
           Math.sin(t * h.speed * 13.1 + i * 4.1) * 0.15;
-      halo.material.opacity = h.strength * (1 + h.flicker * f);
+      const boost = 1 + l.evening.haloBoost * evening;
+      const strength = halo.place === "front" ? Math.min(1, h.strength * boost) : h.strength * boost;
+      halo.material.opacity = strength * (1 + h.flicker * f);
     });
-    if (light.current && lightSpec && !reduced) {
-      light.current.intensity = lightSpec.intensity * (1 + style.front.flicker * 0.5 * Math.sin(t * style.front.speed * 6.28 + seed));
+    if (light.current && lightSpec) {
+      const breath = reduced ? 0 : style.front.flicker * 0.5 * Math.sin(t * style.front.speed * 6.28 + seed);
+      light.current.intensity = lightSpec.intensity * (1 + l.evening.lightBoost * evening) * (1 + breath);
     }
   });
 
@@ -305,10 +316,19 @@ export function ChimneySmoke({ placed }: { placed: (VillageProp & { baseY: numbe
   useEffect(() => () => puffs.forEach((p) => p.material.dispose()), [puffs]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const refs = useRef<(Sprite | null)[]>([]);
+  // The light on the smoke: warm at sunset, moonlit blue in the evening (multiplies the puff's own colour).
+  const tints = useMemo(() => {
+    const tk = tokens();
+    return { warm: new Color(tk.butter).lerp(new Color(tk.blush), 0.5), cool: new Color(tk.sky), now: new Color() };
+  }, []);
 
   useFrame(({ clock }) => {
     const life = s.life * (reduced ? s.reducedSlowdown : 1);
     const t = clock.elapsedTime;
+    const day = getTimeOfDay();
+    const sunset = Math.max(0, 1 - Math.abs(day - 0.5) * 2.5);
+    const night = Math.min(Math.max((day - 0.55) / 0.4, 0), 1);
+    tints.now.setRGB(1, 1, 1).lerp(tints.warm, s.sunsetWarm * sunset).lerp(tints.cool, s.eveningCool * night);
     puffs.forEach((p, i) => {
       const sprite = refs.current[i];
       if (!sprite) return;
@@ -320,6 +340,7 @@ export function ChimneySmoke({ placed }: { placed: (VillageProp & { baseY: numbe
       const size = (s.sizeFrom + (s.sizeTo - s.sizeFrom) * Math.sqrt(u)) * p.scale;
       sprite.scale.set(size, size, 1);
       p.material.rotation = p.spin + u * 0.6;
+      p.material.color.copy(tints.now);
       // In softly, then a long fade.
       p.material.opacity = s.opacity * Math.min(u / 0.12, 1) * (1 - u) ** 1.6;
     });
@@ -437,18 +458,18 @@ function iceMaterial(): ShaderMaterial {
   return iceMat;
 }
 
-/** Copies the scene's sun direction into the ice once (the snow scene owns the sun; it is not exported). */
+/** Keeps the ice's sun direction on the scene's sun (the snow scene owns the sun; it is not exported). */
 function useIceSun() {
   const scene = useThree((s) => s.scene);
-  const done = useRef(false);
+  const sun = useRef<DirectionalLight | null>(null);
   useFrame(() => {
-    if (done.current) return;
-    scene.traverse((o) => {
-      if (!done.current && o instanceof DirectionalLight) {
-        iceSun.uSun.value.copy(o.position).normalize();
-        done.current = true;
-      }
-    });
+    if (!sun.current) {
+      scene.traverse((o) => {
+        if (!sun.current && o instanceof DirectionalLight) sun.current = o;
+      });
+    }
+    // The sun moves with the time of day (and becomes the moon), so the glint follows it.
+    if (sun.current) iceSun.uSun.value.copy(sun.current.position).normalize();
   });
 }
 
