@@ -308,6 +308,8 @@ export const layout: Placement[] = [
   { prop: "stump-snow", x: -4.75, z: -4.4, side: "left" },
   { prop: "bird-red", x: -4.72, z: -4.36, lift: 0.36, side: "left" },
   { prop: "pine-snow-short", x: -3.9, z: -2.2, scale: 0.85, side: "left" },
+  // The street lamp stands by the lane part way down, lighting the snow (its glow: `village.lampGlow`).
+  { prop: "street-lamp", x: -2.75, z: -2.45, side: "left" },
   { prop: "mound-snow", x: -3.3, z: -1.3, scale: 0.8, side: "left" },
 
   // right side
@@ -318,12 +320,16 @@ export const layout: Placement[] = [
   { prop: "skier", x: 2.55, z: -2.9, side: "right" },
   { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
   { prop: "snowballs", x: 3.05, z: -0.9, side: "right" },
+  // Filling the right side between the skier and the igloo, which the longer lane opened up.
+  { prop: "pine-snow-tall", x: 4.45, z: -4.0, scale: 0.9, flip: true, side: "right" },
+  { prop: "bush-snow", x: 3.2, z: -3.55, scale: 0.75, side: "right" },
+  { prop: "stump-snow", x: 3.9, z: -1.55, side: "right" },
 
   // near corners, framing the bottom of the throwing view
-  { prop: "street-lamp", x: -3.55, z: 0.3, side: "left" },
+  { prop: "bush-snow", x: -3.45, z: 0.35, scale: 0.7, side: "left" },
   { prop: "pine-snow-short", x: -3.75, z: 1.75, scale: 0.95, flip: true, side: "left" },
   { prop: "bush-snow", x: -3.3, z: 2.15, scale: 0.7, side: "left" },
-  { prop: "fence", x: 3.55, z: 1.9, side: "right" },
+  { prop: "pine-snow-short", x: 3.85, z: 1.85, scale: 0.9, side: "right" },
   { prop: "bush-snow", x: 3.7, z: 0.7, scale: 0.85, flip: true, side: "right" },
 ];
 
@@ -551,6 +557,26 @@ export const village = {
 
   /** For the sight-line check: how tall the pins are that must stay visible from the throwing view. */
   pinSightHeight: 0.5,
+
+  /**
+   * The street lamp's warm light (`--butter`): where the glass is on the drawing (share of width from the left,
+   * share of height from the foot), a halo `haloSize` across at `haloOpacity`, and a warm patch on the snow
+   * (`poolSize` x by z, shifted `poolOffset`) at `poolOpacity`. The falloff is laid in `bands` crayon-like steps;
+   * it breathes `breathe` of its strength `breatheSpeed` times a second.
+   */
+  lampGlow: {
+    head: [0.51, 0.6] as [number, number],
+    haloSize: 1.9,
+    haloOpacity: 0.95,
+    /** The halo stands this far behind the lamp (scene units), so the drawn lamp stays crisp in front of it. */
+    haloBehind: 0.12,
+    poolSize: [1.9, 1.4] as [number, number],
+    poolOffset: [0.15, 0.25] as [number, number],
+    poolOpacity: 0.6,
+    bands: 4,
+    breathe: 0.06,
+    breatheSpeed: 0.35,
+  },
 
   /** Chimney smoke rising from the cottages: where the chimney is on the drawing (share of width, from the left). */
   chimneys: { "cottage-blue": 0.76, "cottage-red": 0.7 } as Partial<Record<PropId, number>>,
