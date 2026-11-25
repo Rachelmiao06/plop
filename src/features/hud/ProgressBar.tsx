@@ -108,11 +108,12 @@ export function ProgressBar({ down, total, color, knock }: Props) {
       {flights.map((f) => (
         <span
           key={f.key}
-          className={`pointer-events-none absolute bottom-1/2 font-heading text-2xl leading-none font-bold text-ink-deep ${styles.plusOne}`}
+          className={`pointer-events-none absolute top-1/2 font-heading text-2xl leading-none font-bold text-ink-deep ${styles.plusOne}`}
           style={
             {
+              // Centred on the fill end, so it lands in the bar, never on the label above it (#50).
               left: f.left,
-              translate: "-50% 0",
+              translate: "-50% -50%",
               animationDelay: `${f.delay}ms`,
               "--hud-fly": `${content.plusOne.duration}ms`,
               "--hud-rise": `${content.plusOne.rise}px`,

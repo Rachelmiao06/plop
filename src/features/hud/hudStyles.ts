@@ -93,7 +93,8 @@ export const hudCss = `
   }
 }
 
-/* "+1" rising from the lane into the bar. */
+/* "+1" rising from the lane into the bar. It is centred on the bar's fill end (ProgressBar), lands there
+   with a squash and sinks into the fill, so it never rises over the "N / 6 down" label (#50). */
 .plop-hud-plusOne {
   animation: plop-hud-fly var(--hud-fly) cubic-bezier(0.22, 0.9, 0.3, 1) both;
   text-shadow:
@@ -110,7 +111,7 @@ export const hudCss = `
     opacity: 1;
   }
   62% {
-    transform: translate(0, -6px) scale(0.92, 1.18) rotate(4deg);
+    transform: translate(0, -3px) scale(0.92, 1.18) rotate(4deg);
   }
   72% {
     opacity: 1;
@@ -118,11 +119,11 @@ export const hudCss = `
   }
   82% {
     opacity: 1;
-    transform: translate(0, -3px) scale(0.95, 1.08) rotate(-1deg);
+    transform: translate(0, 0) scale(0.95, 1.08) rotate(-1deg);
   }
   100% {
     opacity: 0;
-    transform: translate(0, -4px) scale(0.75);
+    transform: translate(0, 2px) scale(0.6);
   }
 }
 
