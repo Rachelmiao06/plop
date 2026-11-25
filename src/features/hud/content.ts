@@ -22,20 +22,70 @@ export const content = {
     /** Arrived from an invite, playing alone: the right side shows the inviter's score to beat. */
     toBeat: "to beat",
     gain: (points: number) => `+${points}`,
+    /**
+     * The guided start (StartFlow.tsx): one question per card, Chinese first and English beneath. A first-timer reads
+     * who is playing, then (two only) how, the names, how long, and once per device how to throw.
+     */
     start: {
       title: "Plop!",
-      rounds: "How many rounds?",
-      roundsOption: (n: number) => `${n} rounds`,
-      players: "Who's playing?",
-      two: "two friends",
-      one: "just me",
-      go: "Let's roll!",
-      /** The name field(s): asked once here, used everywhere (score panel, end card, board, invites). */
-      name: { zh: "你叫什么？", en: "Your name" },
+      label: "Start a game",
+      back: { zh: "返回", en: "back" },
+      step: (n: number, of: number) => `step ${n} of ${of}`,
+      who: { zh: "谁来玩？", en: "Who's playing?" },
+      solo: {
+        zh: "就我自己",
+        en: "Just me",
+        line: { zh: "一个雪人，挑战自己的最高分", en: "one snowman, beat your own best" },
+      },
+      friend: {
+        zh: "和朋友一起",
+        en: "With a friend",
+        line: { zh: "两个雪人，同一台设备", en: "two snowmen on one device" },
+      },
+      how: { zh: "你们怎么玩？", en: "How do you two play?" },
+      turns: {
+        zh: "轮流打",
+        en: "Take turns",
+        line: { zh: "一人滚一球，再换另一个，像打保龄球", en: "one rolls, then the other, like bowling" },
+      },
+      together: {
+        zh: "一起打",
+        en: "At the same time",
+        line: { zh: "两个雪人同时站上线，各用各的键", en: "both snowmen on the line, each with their own keys" },
+        lineTouch: { zh: "两个雪人同时站上线，各拖各的雪人", en: "both on the line, each drags their own snowman" },
+      },
+      /** The key pictures under "at the same time" (GAMEPLAY 7d): pull key on top, slide keys below. */
+      keys: { left: { pull: "W", slide: ["A", "D"] }, right: { pull: "↑", slide: ["←", "→"] } },
+      name: { zh: "你叫什么？", en: "What's your name?" },
       names: { zh: "你们叫什么？", en: "Your names" },
+      nameHint: (fallback: string) => ({ zh: `不填就叫 ${fallback}`, en: `leave it empty to be ${fallback}` }),
+      namesHint: (a: string, b: string) => ({ zh: `不填就叫 ${a} 和 ${b}`, en: `leave them empty to be ${a} and ${b}` }),
       /** Shown inside an empty field: the snowman's cute default, used if it stays empty. */
       namePlaceholder: (fallback: string) => fallback,
       nameLabel: (fallback: string) => `${fallback}'s name`,
+      next: { zh: "下一步", en: "Next" },
+      length: { zh: "玩多久？", en: "How long?" },
+      rounds: (n: number) => ({ zh: `${n} 局`, en: `${n} rounds` }),
+      minutes: (m: number) => ({ zh: `大约 ${m} 分钟`, en: `about ${m} min` }),
+      howTo: { zh: "怎么滚雪球", en: "How to throw" },
+      /** The how-to card's lines: [zh, en]; the first differs on a touch screen. */
+      howLines: (touch: boolean) =>
+        [
+          touch
+            ? ["把雪人往后拉", "drag the snowman back"]
+            : ["按住空格，或把雪人往后拉", "hold Space or drag the snowman back"],
+          ["松手，雪球就滚出去", "let go to roll"],
+          ["能撞倒几个算几个", "knock down as many as you can"],
+          ["每局有一个小规则", "each round has one small rule"],
+        ] as const,
+      space: "Space",
+      go: { zh: "开滚！", en: "Let's roll!" },
+      gotIt: { zh: "知道啦", en: "got it" },
+      /** A returning player: last time's choices, one tap to play. */
+      welcome: { zh: "又见面啦！", en: "Welcome back" },
+      same: { zh: "和上次一样", en: "Same as last time" },
+      change: { zh: "换个玩法", en: "something else" },
+      help: "How to throw",
     },
     end: {
       label: "Match over",
@@ -53,7 +103,7 @@ export const content = {
       tiedRival: (name: string) => `just like ${name}!`,
       underRival: (name: string, score: number) => `${name} has ${score} · so close!`,
       again: "Play again",
-      choose: "3 or 5 rounds?",
+      choose: "换个玩法 · change how we play",
       points: (n: number) => `${n} points`,
     },
   },
@@ -149,6 +199,11 @@ export const content = {
    * long it flies (ms), from how far below (px), and when the total takes the new number (share of the flight).
    */
   gain: { duration: 1100, rise: 150, landAt: 0.7 },
+
+  /**
+   * The guided start: how far a step slides in (px) and for how long (ms), and the how-to card's little loop (ms).
+   */
+  flow: { slide: 36, slideFor: 380, howToLoop: 3600 },
 
   /** The end card's big snowman faces and crown (px). */
   end: { face: 76, crown: 44 },

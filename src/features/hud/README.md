@@ -22,11 +22,16 @@ import { ScoreHud } from "@/features/hud";
 - A match adds `round={{ now, of }}` (a small "round 2 / 3" tag under the panel), `gain={{ id, player, points }}`
   (the throw's points fly up into that total, which counts up when they land) and, playing alone,
   `soloBest={n | null}` (the right side shows your best with a little crown).
-- `MatchStart` (the name field or fields, "3 or 5 rounds / two friends or just me", and a greeting when someone
-  arrives from an invite: props `names`, `fallbacks`, `nameMax`, `onNames`, `together`, `greeting`) and `MatchEnd`
-  (totals, crown, cheer, tie card, a line against an inviter's score `rival`, anything passed as `children` such as
-  the group board, "play again") in `Match.tsx`. `PaperCard` is the same paper note for other cards (the game's rule
-  card).
+- `StartFlow` (`StartFlow.tsx`) the guided start before the first throw, one question per paper card sliding in:
+  who's playing, (with a friend) take turns or at the same time with the key pictures, the names, how long with
+  about how many minutes, and "how to throw" when `howTo` is set; `last` opens on "welcome back, same as last time"
+  (one tap), `greeting` puts "小美 在等你" on the first card, `onMode` tells the scene the mode as soon as it is
+  picked. Props only: the game remembers the choices. `HowToCard` is the "how to throw" card again during play (the
+  "?" corner button appears when `ScoreHud` gets `onHelp`). `ScoreHud` with `panel={false}` hides the panel (not the
+  corner switches) until the match starts.
+- `MatchEnd` (totals, crown, cheer, tie card, a line against an inviter's score `rival`, anything passed as `children`
+  such as the group board, "play again") in `Match.tsx`, with `NameField`. `PaperCard` is the same paper note for
+  other cards (the game's rule card).
 - The panel shows each player's name over their total. `rule={{ icon, words, label }}` adds a chip with the round's
   rule beside the round tag; `rival={{ name, score }}` playing alone shows a friend's score "to beat" instead of your
   best. The crown is a pencil stand-in in `Doodles.tsx` until Rachel draws one.

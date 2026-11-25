@@ -47,6 +47,19 @@ export const GAME = {
    */
   names: { key: "plop.names" },
 
+  /**
+   * The guided start (the hud's `StartFlow`): last time's choices (who, how, how long) are remembered under
+   * `choiceKey`, so a returning player taps straight through; "how to throw" shows once per device (`howToKey`).
+   * "About N minutes" on the cards is estimated from a real throw on the live game (2026-11-25): release to the
+   * next turn about 7 s, so about `perThrow` seconds with aiming, plus `perRound` to read each round's rule card.
+   * "At the same time" both throw at once, so a round takes about `togetherThrows` throws. Rounded up.
+   */
+  start: {
+    choiceKey: "plop.start",
+    howToKey: "plop.howto",
+    minutes: { perThrow: 12, perRound: 5, togetherThrows: 1.2 },
+  },
+
   /** The group board on the end card (when there is a group): how many rows. */
   board: { limit: 5 },
 
@@ -215,7 +228,6 @@ export const TEXT = {
   hintTogether: (left: string, right: string) => [`${left}: A / D, hold W`, `${right}: ← / →, hold ↑`] as const,
   hintTogetherTouch: "each drag your own snowman back",
   together: "roll together!",
-  mode: { label: "How do you play?", turns: "take turns", together: "together" },
   /** Someone arrived from an invite: the start card greets them, and alone the panel shows the score to beat. */
   waiting: { zh: (name: string) => `${name} 在等你`, en: (name: string) => `${name} is waiting` },
   /**

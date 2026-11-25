@@ -4,7 +4,7 @@
  * The game's words and the one button over the scene: the first-time hint, the "Red Hat's turn!" note, and
  * "Put it down" (cancel a pull, also Escape). Each round's rule has its own card (`RuleCard.tsx`).
  */
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useEffect, useSyncExternalStore, type CSSProperties } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -135,65 +135,6 @@ export function CancelPull({ game, link }: { game: Game; link: GameLink }) {
         <X data-icon="inline-start" />
         {TEXT.cancel}
       </Button>
-    </div>
-  );
-}
-
-/**
- * "Take turns" or "together", chosen before the first throw. It sits on top of the hud's start card like a paper
- * tab (the card is the score panel feature's; this reads where it is, nothing more). Wanted from the hud: a `modes`
- * row inside `MatchStart` next to the rounds, then this goes.
- */
-export function ModePick({ game }: { game: Game }) {
-  const { phase, mode } = useGame(game);
-  const [box, setBox] = useState<{ left: number; top: number; width: number } | null>(null);
-
-  useEffect(() => {
-    if (phase !== "choosing") return;
-    let frame = 0;
-    const place = () => {
-      const card = document.querySelector<HTMLElement>('section[role="dialog"]');
-      const host = card?.closest("main");
-      if (card && host) {
-        const c = card.getBoundingClientRect();
-        const h = host.getBoundingClientRect();
-        setBox((old) => {
-          const next = { left: c.left - h.left, top: c.top - h.top, width: c.width };
-          return old && old.left === next.left && old.top === next.top && old.width === next.width ? old : next;
-        });
-      }
-      frame = requestAnimationFrame(place);
-    };
-    frame = requestAnimationFrame(place);
-    return () => cancelAnimationFrame(frame);
-  }, [phase]);
-
-  if (phase !== "choosing" || !box) return null;
-  return (
-    <div
-      role="radiogroup"
-      aria-label={TEXT.mode.label}
-      className="absolute z-30 flex justify-center gap-2"
-      style={{ left: box.left, width: box.width, top: box.top - 26 }}
-    >
-      {(["turns", "together"] as const).map((m, i) => {
-        const picked = mode === m;
-        return (
-          <button
-            key={m}
-            type="button"
-            role="radio"
-            aria-checked={picked}
-            onClick={() => game.setMode(m)}
-            className={`relative rounded-full px-4 py-1.5 font-heading text-lg leading-none transition-transform active:scale-95 ${
-              picked ? "bg-butter font-bold text-ink-deep" : "bg-paper text-ink"
-            }`}
-            style={{ rotate: `${i ? 2 : -2}deg`, boxShadow: picked ? "0 0 0 1.6px var(--ink)" : "0 0 0 1.2px color-mix(in oklab, var(--ink) 45%, transparent)" }}
-          >
-            {m === "turns" ? TEXT.mode.turns : TEXT.mode.together}
-          </button>
-        );
-      })}
     </div>
   );
 }

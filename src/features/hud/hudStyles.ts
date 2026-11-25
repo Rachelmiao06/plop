@@ -22,6 +22,12 @@ export const styles = {
   nameInput: "plop-hud-name",
   greet: "plop-hud-greet",
   chip: "plop-hud-chip",
+  step: "plop-hud-step",
+  howPin: "plop-hud-how-pin",
+  howThrower: "plop-hud-how-thrower",
+  howBall: "plop-hud-how-ball",
+  howTouch: "plop-hud-how-touch",
+  howKey: "plop-hud-how-key",
 } as const;
 
 export const hudCss = `
@@ -287,6 +293,68 @@ export const hudCss = `
   to { opacity: 1; transform: none; }
 }
 
+/* The guided start: each new card slides in softly (from the right going on, from the left going back). */
+.plop-hud-step {
+  animation: plop-hud-step var(--hud-slide-for) cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+@keyframes plop-hud-step {
+  from { opacity: 0; transform: translateX(var(--hud-slide)) rotate(0.6deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* "How to throw", one loop: pull back (the ball grows behind the snowman), let go, roll, the friends tip over. */
+.plop-hud-how-ball {
+  animation: plop-hud-how-ball var(--hud-howto) ease-in-out infinite;
+}
+@keyframes plop-hud-how-ball {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.35); }
+  6% { opacity: 1; transform: translateY(-14px) scale(0.35); }
+  40% { transform: translateY(6px) scale(1); }
+  43% { transform: translate(-1px, 6px) scale(1); }
+  46% { transform: translate(1px, 6px) scale(1); }
+  50% { transform: translateY(6px) scale(1); }
+  66% { transform: translateY(-118px) scale(0.72); }
+  86% { opacity: 1; transform: translateY(-122px) scale(0.7); }
+  100% { opacity: 0; transform: translateY(-122px) scale(0.7); }
+}
+.plop-hud-how-thrower {
+  animation: plop-hud-how-thrower var(--hud-howto) ease-in-out infinite;
+}
+@keyframes plop-hud-how-thrower {
+  0%, 6% { transform: none; }
+  40%, 50% { transform: rotate(-5deg) translateY(2px); }
+  56% { transform: translateY(-7px) rotate(2deg); }
+  64%, 100% { transform: none; }
+}
+.plop-hud-how-pin {
+  transform-origin: 50% 100%;
+  animation: plop-hud-how-pin var(--hud-howto) ease-out infinite;
+}
+@keyframes plop-hud-how-pin {
+  0%, 64% { transform: none; opacity: 1; }
+  74% { transform: rotate(var(--hud-tip)) translateY(3px); }
+  88% { transform: rotate(var(--hud-tip)) translateY(3px); opacity: 1; }
+  94% { opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.plop-hud-how-touch {
+  animation: plop-hud-how-touch var(--hud-howto) ease-in-out infinite;
+}
+@keyframes plop-hud-how-touch {
+  0%, 4% { opacity: 0; transform: translateY(-16px) scale(0.8); }
+  8% { opacity: 1; transform: translateY(-16px) scale(1); }
+  40%, 50% { opacity: 1; transform: translateY(8px); }
+  56%, 100% { opacity: 0; transform: translateY(8px) scale(1.3); }
+}
+.plop-hud-how-key {
+  animation: plop-hud-how-key var(--hud-howto) ease-in-out infinite;
+}
+@keyframes plop-hud-how-key {
+  0%, 6% { transform: none; }
+  9%, 50% { transform: translateY(2px) scale(0.94); background: color-mix(in oklab, var(--butter) 70%, transparent); border-radius: 8px; }
+  53%, 100% { transform: none; }
+}
+
 /* A little wiggle on toggle buttons when pressed. */
 .plop-hud-toggle:active {
   transform: scale(0.9) rotate(-4deg);
@@ -308,10 +376,20 @@ export const hudCss = `
   .plop-hud-pick,
   .plop-hud-pick:active,
   .plop-hud-greet,
-  .plop-hud-chip {
+  .plop-hud-chip,
+  .plop-hud-step,
+  .plop-hud-how-thrower,
+  .plop-hud-how-pin,
+  .plop-hud-how-touch,
+  .plop-hud-how-key {
     animation: none;
     transition: none;
     transform: none;
+  }
+  /* How to throw, still: the pulled-back moment, the ball big behind the snowman. */
+  .plop-hud-how-ball {
+    animation: none;
+    transform: translateY(6px);
   }
   /* Still show what happened, just without movement. */
   .plop-hud-plusOne {

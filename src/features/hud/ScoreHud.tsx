@@ -56,6 +56,10 @@ export type ScoreHudProps = {
    * whole round. `label` is read out instead of the words.
    */
   rule?: { icon: string; words: string; label: string } | null;
+  /** Show the panel (default true). The game leaves it out until the match starts; the corner switches stay. */
+  panel?: boolean;
+  /** Adds a "?" to the corner switches that opens "how to throw" again. */
+  onHelp?: () => void;
 };
 
 /**
@@ -179,6 +183,8 @@ export function ScoreHud({
   soloBest,
   rival,
   rule,
+  panel = true,
+  onHelp,
 }: ScoreHudProps) {
   const solo = soloBest !== undefined;
   const [hiddenState, setHiddenState] = useState(false);
@@ -204,12 +210,12 @@ export function ScoreHud({
         {hudCss}
       </style>
       <div className="absolute top-3 left-3">
-        <CornerToggles hidden={hidden} onHiddenChange={setHidden} showAudio={showAudioToggles} />
+        <CornerToggles hidden={hidden} onHiddenChange={setHidden} showAudio={showAudioToggles} onHelp={onHelp} />
       </div>
 
       {/* Phone: full width below the row of corner toggles and the scene's top-right buttons. Wider: centred at the top. */}
       <div className="flex justify-center px-3 pt-16 md:pt-3">
-        {!hidden && (
+        {!hidden && panel && (
           <section
             aria-label={t.panelLabel}
             className={`pointer-events-auto relative w-full max-w-md rounded-[var(--radius)] md:max-w-lg px-4 pt-2 pb-2.5 ${styles.glass} ${styles.enter}`}
