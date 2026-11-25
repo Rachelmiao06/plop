@@ -4,7 +4,7 @@
  * in development and prints the result in the browser console.
  */
 import { FEEL, copyFeel } from "./content";
-import type { Ground } from "./roll";
+import { pastSweet, sweetPull, type Ground } from "./roll";
 import { type BowlEvent, Bowling } from "./simulation";
 import { distance } from "./vec";
 
@@ -121,6 +121,23 @@ export function runBowlingChecks(): string[] {
     };
     check(throwOn(PACKED, 1.6).distance > throwOn(undefined, 1.6).distance, "a packed track runs further");
     check(throwOn(undefined, 0.5).startSpeed > throwOn(undefined, 1.6).startSpeed, "a small ball starts faster than a big one");
+    // The sweet spot: a full pull is heavy (slower than its size alone would make it) and its aim sways.
+    const sweetAt = sweetPull(FEEL);
+    const full = throwOn(undefined, 1.6);
+    check(pastSweet(full.power, FEEL) > 0.95, "a full pull is past the sweet spot");
+    check(pastSweet(throwOn(undefined, sweetAt - 0.05).power, FEEL) === 0, "a pull short of the sweet spot is not heavy");
+    const swaying = new Bowling(copyFeel());
+    swaying.press();
+    swaying.setTarget({ x: 0, z: lineZ + 1.6 });
+    let most = 0;
+    for (let k = 0; k < 120; k++) {
+      run(swaying, 1 / 60, 1 / 60);
+      most = Math.max(most, Math.abs(swaying.thrower.wobble));
+    }
+    check(most > FEEL.pull.sweet.wobbleDegrees * 0.5, "the aim sways at a full pull");
+    // Soft snow slows the roll (the aim line shows it).
+    const soft: Ground = { packedAt: () => 0, softAt: () => 1 };
+    check(throwOn(soft, 1.2).distance < throwOn(undefined, 1.2).distance * 0.6, "a soft mound slows the ball");
   }
 
   // Follow is frame-rate independent.

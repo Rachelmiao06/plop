@@ -5,7 +5,7 @@
  * Step it with `step(seconds)`; feed it slides and pull targets; read its state; listen to its events.
  */
 import type { Feel } from "./content";
-import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, movingSpeed, planRoll, snapShare, stepRoll } from "./roll";
+import { FRESH_SNOW, type Ground, ROLL_STEP, type RollPlan, movingSpeed, pastSweet, planRoll, powerOf, snapShare, stepRoll } from "./roll";
 import { type Vec2, add, clamp01, distance, ease, length, lerp, scale, sub } from "./vec";
 
 /** ready (sliding allowed) → pulling → thrown (a little hop) → ready. */
@@ -59,6 +59,11 @@ export type Thrower = {
   target: Vec2;
   /** Ball position minus foot: the pull a throw would use right now. */
   pull: Vec2;
+  /**
+   * Past the sweet spot the aim sways (`pull.sweet`): this many degrees right now (+ = the roll turns toward +x).
+   * The aim line and the roll both use the pull turned by it.
+   */
+  wobble: number;
   ball: PulledBall | null;
   /** The roll letting go now would make (also the aim line), or null if letting go would cancel. */
   aim: RollPlan | null;
@@ -140,6 +145,7 @@ export class Bowling {
       rawTarget: { ...foot },
       target: { ...foot },
       pull: { x: 0, z: 0 },
+      wobble: 0,
       ball: null,
       aim: null,
       lean: 0,
@@ -193,6 +199,7 @@ export class Bowling {
     t.rawTarget = { ...t.foot };
     t.target = { ...t.foot };
     t.pull = { x: 0, z: 0 };
+    t.wobble = 0;
     t.aim = null;
     // Beside the feet toward the middle of the lane (to the right when standing in the middle).
     const b = this.feel.pull.beside;
@@ -229,7 +236,7 @@ export class Bowling {
     const t = this.thrower;
     if (t.phase !== "pulling" || !t.ball) return;
     // Same function and inputs as the aim line drawn last frame.
-    const plan = planRoll(t.foot, t.pull, t.ball.size, t.ball.radius, this.feel, this.ground, t.ball.beside);
+    const plan = planRoll(t.foot, swayed(t.pull, t.wobble), t.ball.size, t.ball.radius, this.feel, this.ground, t.ball.beside);
     if (!plan) {
       this.crumble("short");
       return;
@@ -254,6 +261,7 @@ export class Bowling {
     t.ball = null;
     t.aim = null;
     t.pull = { x: 0, z: 0 };
+    t.wobble = 0;
     this.emit({ type: "launched", thrower: t.id, ballId, plan });
   }
 
@@ -323,6 +331,7 @@ export class Bowling {
     t.ball = null;
     t.aim = null;
     t.pull = { x: 0, z: 0 };
+    t.wobble = 0;
     if (ball) {
       this.emit({ type: "cancelled", thrower: t.id, at: { ...ball.position }, radius: ball.radius, reason });
     }
@@ -450,7 +459,10 @@ export class Bowling {
     ball.trembleOffset = { x: Math.sin(w) * amount, z: Math.cos(w * 1.37) * amount };
 
     t.pull = sub(next, t.foot);
-    t.aim = planRoll(t.foot, t.pull, ball.size, ball.radius, feel, this.ground, ball.beside);
+    // Past the sweet spot the aim sways a little (the line shows it; letting go rolls the line you see).
+    const sw = feel.pull.sweet;
+    t.wobble = pastSweet(powerOf(length(t.pull), feel), feel) * sw.wobbleDegrees * Math.sin(this.time * sw.wobbleSpeed * Math.PI * 2);
+    t.aim = planRoll(t.foot, swayed(t.pull, t.wobble), ball.size, ball.radius, feel, this.ground, ball.beside);
   }
 
   private tickRolls(dt: number) {
@@ -499,4 +511,14 @@ export class Bowling {
       }
     }
   }
+}
+
+/** The pull turned by `degrees` (+ turns the roll, which goes the opposite way to the pull, toward +x). */
+function swayed(pull: Vec2, degrees: number): Vec2 {
+  if (degrees === 0) return pull;
+  // One turn of the ground plane for both: the roll (-pull) turns toward +x by `degrees`.
+  const a = (degrees * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return { x: pull.x * c - pull.z * s, z: pull.x * s + pull.z * c };
 }

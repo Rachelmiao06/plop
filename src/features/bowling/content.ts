@@ -51,6 +51,15 @@ export const FEEL = {
      * the roll starts where the ball is drawn, so it rolls past the snowman instead of through it.
      */
     beside: { base: 0.2, share: 1, rampOver: 0.45, middle: 0.3 },
+    /**
+     * The sweet spot (Rachel: everyone just pulled all the way). Up to `at` of the power (0 = just past cancel,
+     * 1 = full pull) the ball only gets bigger and stronger. Past it the ball gets heavy: its start speed drops
+     * toward `speedAtFull` of normal at a full pull, and the aim starts to wobble, up to `wobbleDegrees` either
+     * way at a full pull, `wobbleSpeed` sways per second. The aim line shows the wobble (the roll is always the
+     * line you see when you let go), and a small pencil tick on the snow behind the thrower marks the spot
+     * (`LOOK.sweetTick`). A well-judged medium pull can beat a maxed one.
+     */
+    sweet: { at: 0.62, speedAtFull: 0.74, wobbleDegrees: 4.5, wobbleSpeed: 1.15 },
   },
 
   /** How the ball chases the finger while pulling. Rates are "share of the gap closed per second". */
@@ -133,6 +142,12 @@ export const FEEL = {
     stopSpeed: 0.12,
     /** A stopped ball stays in the snow this long before it goes away. */
     restTime: 6,
+    /**
+     * Soft snow (a mound on the lane, `Ground.softAt`): extra slowing per second at full softness, not eased by
+     * `early`, and a full-size ball sinks in more (`bigShare` times as much). A quick light ball punches through;
+     * a slow heavy one can get stuck in it. The aim line shows where it would stop.
+     */
+    soft: { drag: 15, bigShare: 1.5 },
     /** `burst()`: a ball asked to burst (the pins do, once it has rolled through them) poofs into snow over this long. */
     burstTime: 0.32,
   },
@@ -291,6 +306,13 @@ export const LOOK = {
 
   /** With "reduce motion" on: squash, stretch and hops keep this share (vibration and sound stay). */
   reducedMotion: 0.3,
+
+  /**
+   * The sweet spot's mark while pulling (`FEEL.pull.sweet`): two short pencil ticks across the pull line on the
+   * snow, `gap` apart, each `length` long and `width` wide, at the pull that reaches the sweet spot. Faint until the
+   * ball is within `near` of it (in power), then full ink; past it they fade back to `faint`.
+   */
+  sweetTick: { length: 0.26, width: 0.032, gap: 0.07, faint: 0.35, near: 0.08 },
 
   ball: {
     /** The --ink outline: width in scene units (the cut-outs' line is about 1.2% of their height), and how uneven. */

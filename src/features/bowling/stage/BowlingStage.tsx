@@ -32,6 +32,7 @@ import { FEEL, LOOK, type ThrowerLook } from "../content";
 import { connectFeedback, type Feedback } from "../feedback";
 import { createKeyboardInput, type KeyboardInput } from "../keyboard";
 import { createPointerInput } from "../pointer";
+import { powerOf, sweetPull } from "../roll";
 import { Bowling } from "../simulation";
 import { type Vec2, lerp } from "../vec";
 import { Clumps } from "./clumps";
@@ -56,7 +57,7 @@ const MARK = { lift: 0.012, dashLength: 0.16, dashWidth: 0.035, pinRingRadius: 0
 type Dash = { x: number; z: number; angle: number; length: number };
 
 /** The throwing line and a faint ring where the pins will stand, as pencil dashes. */
-function laneDashes(): Dash[] {
+function laneDashes(pinRing: boolean): Dash[] {
   const { lineZ, halfWidth, pinSpot } = FEEL.lane;
   let seed = 11;
   const jitter = () => {
@@ -70,6 +71,7 @@ function laneDashes(): Dash[] {
   for (let x = from; x <= to; x += MARK.dashLength * 1.9) {
     dashes.push({ x, z: lineAt + jitter() * 0.012, angle: jitter() * 0.07, length: MARK.dashLength * (0.85 + 0.3 * Math.abs(jitter())) });
   }
+  if (!pinRing) return dashes;
   const around = 2 * Math.PI * MARK.pinRingRadius;
   const count = Math.round(around / (MARK.dashLength * 2.2));
   for (let i = 0; i < count; i++) {
@@ -93,6 +95,16 @@ export type BowlingStageProps = {
   thrower?: ThrowerLook;
   /** Called once with the running game, for features that read the balls or events (pins, score). */
   onGame?: (game: Bowling) => void;
+  /**
+   * The faint dashed ring where the pins stand (default true). The game turns it off: its sets move around
+   * the lane, so a ring in the middle would point at the wrong place.
+   */
+  pinRing?: boolean;
+  /**
+   * Soft snow on the lane (a mound the game puts down), 0 normal .. 1 soft: the roll slows in it
+   * (`FEEL.roll.soft`), and the aim line shows it. Leave out for plain snow.
+   */
+  softAt?: (x: number, z: number) => number;
 };
 
 /** `?thrower=one|two` on the page, for test pages (no prop given). */
@@ -102,7 +114,7 @@ function throwerFromPage(): ThrowerLook | undefined {
   return v === "one" || v === "two" ? v : undefined;
 }
 
-export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
+export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: BowlingStageProps = {}) {
   const snow = useSnow();
   const snowPoint = useSnowPoint();
   const gl = useThree((s) => s.gl);
@@ -132,10 +144,15 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
       flatRing,
       flatDash,
       aimInk: ink(0.7),
+      sweetInk: ink(LOOK.sweetTick.faint),
       markInk: ink(0.45),
     };
   }, [palette]);
-  const dashes = useMemo(laneDashes, []);
+  const dashes = useMemo(() => laneDashes(pinRing), [pinRing]);
+  // The snow the rules read: the real snow, plus any soft mound the game laid down.
+  useEffect(() => {
+    game.setGround(softAt ? { packedAt: (x, z) => snow.packedAt(x, z), softAt } : snow);
+  }, [game, snow, softAt]);
 
   const throwerRef = useRef<ThrowerHandle>(null);
   const ballGroups = useRef<(Group | null)[]>([]);
@@ -155,6 +172,7 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
   }, [game, onGame]);
   const dotsRef = useRef<InstancedMesh>(null);
   const endRef = useRef<Mesh>(null);
+  const sweetRefs = useRef<(Mesh | null)[]>([]);
   const dashesRef = useRef<InstancedMesh>(null);
   const io = useRef<{ keyboard: KeyboardInput; feedback: Feedback } | null>(null);
   /**
@@ -458,6 +476,28 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
       dots.instanceMatrix.needsUpdate = true;
     }
 
+    // ---- The sweet spot: two pencil ticks across the pull line, where a pull reaches it (FEEL.pull.sweet).
+    const sw = LOOK.sweetTick;
+    const pulledBall = t.phase === "pulling" ? t.ball : null;
+    const pullLength = Math.hypot(t.pull.x, t.pull.z);
+    sweetRefs.current.forEach((tick, k) => {
+      if (!tick) return;
+      tick.visible = !!pulledBall && pullLength > 0.05;
+      if (!pulledBall || !tick.visible) return;
+      const back = { x: t.pull.x / pullLength, z: t.pull.z / pullLength };
+      const at = sweetPull(feel);
+      const off = (k - 0.5) * sw.gap;
+      // On the ball's path: the pull line moved over by where the ball sits beside it.
+      const x = t.foot.x + back.x * (at + off) + pulledBall.beside.x;
+      const z = t.foot.z + back.z * (at + off) + pulledBall.beside.z;
+      tick.position.set(x, snow.heightAt(x, z) + MARK.lift, z);
+      tick.rotation.set(0, Math.atan2(back.x, back.z) + Math.PI / 2 + (k ? 0.06 : -0.05), 0);
+      tick.scale.set(sw.length * (k ? 0.85 : 1), 1, sw.width);
+      const gap = feel.pull.sweet.at - powerOf(pullLength, feel);
+      const material = tick.material as MeshBasicMaterial;
+      material.opacity = gap > sw.near ? sw.faint : gap >= 0 ? 0.85 : sw.faint;
+    });
+
     // ---- Lane marks follow the snow if it gets pressed.
     const marksMesh = dashesRef.current;
     if (marksMesh) {
@@ -522,6 +562,18 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
         renderOrder={2}
       />
       <mesh ref={endRef} geometry={looks.flatRing} material={looks.aimInk} visible={false} renderOrder={2} />
+      {[0, 1].map((k) => (
+        <mesh
+          key={`sweet-${k}`}
+          ref={(m) => {
+            sweetRefs.current[k] = m;
+          }}
+          geometry={looks.flatDash}
+          material={looks.sweetInk}
+          visible={false}
+          renderOrder={2}
+        />
+      ))}
       <instancedMesh
         ref={dashesRef}
         args={[looks.flatDash, looks.markInk, dashes.length]}

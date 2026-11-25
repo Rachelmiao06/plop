@@ -1,6 +1,18 @@
 // Public surface of the bowling feature. Import from "@/features/bowling" only.
 export { FEEL, LOOK, TEXT, copyFeel, type Feel, type ThrowerLook } from "./content";
-export { FRESH_SNOW, ROLL_STEP, movingSpeed, planRoll, snapShare, stepRoll, type Ground, type RollPlan } from "./roll";
+export {
+  FRESH_SNOW,
+  ROLL_STEP,
+  movingSpeed,
+  pastSweet,
+  planRoll,
+  powerOf,
+  snapShare,
+  stepRoll,
+  sweetPull,
+  type Ground,
+  type RollPlan,
+} from "./roll";
 export {
   Bowling,
   type BowlEvent,
