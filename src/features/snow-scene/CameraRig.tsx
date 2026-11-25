@@ -5,7 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import type { Camera } from "three";
 import { content } from "./content";
 import { cameraDistance, getLayout } from "./layout";
-import { snowPointers, snowView } from "./pointers";
+import { snowCameraHome, snowPointers, snowView } from "./pointers";
 import { sharedUniforms } from "./sharedUniforms";
 
 // The diorama camera. Its whole state is two numbers: where it is on one
@@ -28,6 +28,13 @@ class CameraView {
   private spinPath = 0;
   private spinYaw = 0;
   private aspect = 1;
+  // The default view: where "Reset view" returns to and what the camera looks
+  // at. The scene's own play view unless a feature sets one (useSnowCameraView).
+  private homePath: number = content.cameraPath.playAt;
+  private homeYaw = 0;
+  private target: [number, number, number] = [0, content.camera.targetHeight, 0];
+  private homeDistance = 1;
+  private homeVersion = -1;
 
   setAspect(aspect: number): void {
     this.aspect = aspect;
@@ -78,14 +85,30 @@ class CameraView {
     this.spinYaw = yawPerSecond;
   }
 
+  /** Pick up a default view a feature has set (or dropped), and jump there. */
+  private readHome(): void {
+    if (snowCameraHome.version === this.homeVersion) return;
+    this.homeVersion = snowCameraHome.version;
+    const view = snowCameraHome.view;
+    const limit = content.orbit.yawLimit;
+    this.homePath = view ? clamp(view.pathAt, 0, 1) : content.cameraPath.playAt;
+    this.homeYaw = view ? clamp(view.turn ?? 0, -limit, limit) : 0;
+    this.target = view ? [...view.lookAt] : [0, content.camera.targetHeight, 0];
+    this.homeDistance = view ? clamp(view.distance ?? 1, 0.5, 2) : 1;
+    this.reset();
+    this.path = this.goalPath;
+    this.yaw = this.goalYaw;
+  }
+
   reset(): void {
-    this.goalPath = content.cameraPath.playAt;
-    this.goalYaw = 0;
+    this.goalPath = this.homePath;
+    this.goalYaw = this.homeYaw;
     this.spinPath = 0;
     this.spinYaw = 0;
   }
 
   update(seconds: number): void {
+    this.readHome();
     const input = content.cameraInput;
     if (this.spinPath !== 0 || this.spinYaw !== 0) {
       this.movePath(this.spinPath * seconds);
@@ -116,10 +139,13 @@ class CameraView {
     // Distance and angle move together along the path. Distance is blended
     // on a log scale, so each step feels the same size near and far.
     const home = this.homeLevel(this.yaw);
-    const level =
+    const pathLevel =
       w >= 0
         ? Math.exp(lerp(Math.log(home), Math.log(Math.max(p.highDistance, home)), w))
         : Math.exp(lerp(Math.log(home), Math.log(p.lowDistance), -w));
+    // A default view's distance: in full up to the play view, back to 1 at
+    // the high end, so the highest view is the same as ever.
+    const level = pathLevel * lerp(this.homeDistance, 1, Math.max(w, 0));
     const pitch =
       (w >= 0 ? lerp(c.elevation, p.highPitch, w) : lerp(c.elevation, p.lowPitch, -w)) *
       RAD;
@@ -138,12 +164,13 @@ class CameraView {
     const t = time * c.swaySpeed;
     const sway = c.swayAmount * Math.min(level, 1);
     const across = Math.sin(t) * sway;
+    const [tx, ty, tz] = this.target;
     camera.position.set(
-      flat * Math.sin(yaw) + across * Math.cos(yaw),
-      c.targetHeight + d * Math.sin(pitch) + Math.cos(t * 1.3) * sway * 0.5,
-      flat * Math.cos(yaw) - across * Math.sin(yaw),
+      tx + flat * Math.sin(yaw) + across * Math.cos(yaw),
+      ty + d * Math.sin(pitch) + Math.cos(t * 1.3) * sway * 0.5,
+      tz + flat * Math.cos(yaw) - across * Math.sin(yaw),
     );
-    camera.lookAt(0, c.targetHeight, 0);
+    camera.lookAt(tx, ty, tz);
   }
 
   /** For measuring: where on the path and how far turned. */
@@ -153,6 +180,8 @@ class CameraView {
       goalPath: this.goalPath,
       yaw: this.yaw,
       goalYaw: this.goalYaw,
+      homePath: this.homePath,
+      homeYaw: this.homeYaw,
     };
   }
 }

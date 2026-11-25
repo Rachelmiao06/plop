@@ -27,6 +27,8 @@ Inside `<SnowScene>`, these are available:
 - `freshSnowfall(options?)` (works from anywhere, inside or outside `<SnowScene>`): the falling snow gets heavier, then every groove and crater settles back to smooth, untouched snow over about 3 seconds (`freshSnow.duration`; pass `{ duration }` to change it), and the pressed tiles are freed so memory is back where it started. Pits fill from the bottom up (a flat floor of new snow rises), shallow dents and rims fade evenly, sharp walls round off, and the pressed tint fades with the depth that is left. Afterwards `packedAt` is 0 and `heightAt` is the untouched snow everywhere. Calling it again while one is running is safe: tiles already refilling keep their schedule, anything pressed since joins in. Snow pressed *during* a refill is refilled too.
 - `freshSnowfallAt(x, z, radius, options?)`: the same on one round patch, fading out over the outer part of the circle (`freshSnow.localEdge`). Tiles left completely smooth are freed. A second local call on a tile still refilling replaces the first one's circle there.
 - `snowTileCount()`: how many pressed tiles exist (0 = all untouched). For test pages.
+- `heapSnow(x, z, radiusX, radiusZ, height)` heaps a soft, slightly lumpy mound of snow (`radiusX` either side, `radiusZ` front to back, `height` in the middle). It becomes part of the untouched snow: it can be pressed and cratered, and fresh snowfall settles back to it instead of flattening it. Overlapping heaps take the taller, never stack. Tiles holding a heap are kept (never freed), so `snowTileCount()` stays above 0 after a fresh snowfall while scenery is shown. Made for scenery bases (`<Village />`).
+- `useSnowCameraView({ lookAt, pathAt, turn?, distance? })`, or the same as a component `<SnowCameraView … />`, sets the camera's **default view** from inside `<SnowScene>`: the point it looks at (`lookAt`, scene units), where on the camera path it starts (`pathAt`, 0 = low end, 1 = high end; the play view is `cameraPath.playAt` = 0.42), an optional starting turn in degrees (`turn`, clamped to the turn limit) and an optional `distance` (times what the path gives, 0.5 to 2; in full up to the play view, blending back to 1 at the high end so the highest view and the far plane are unchanged). The camera jumps there at once, "Reset view" glides back to it, and turning, the path and every limit work around it as before. When the component goes away the scene's own play view comes back. Without it nothing changes. Example, the paper-bowling throwing view: `<SnowCameraView {...throwingView(FEEL.lane)} />` (from `@/features/scenery`), which looks at a point 45% of the way from the line to the pin spot from about 24 degrees up, 1.6 times further back than the path gives there.
 - `claimSnowPointer(pointerId)`: call it in your pointer-down handler when a finger starts dragging one of your things (a character, for the slingshot). A claimed finger never turns or zooms the view. It is released by itself when the finger lifts. Fingers nobody claimed are "on empty snow": one turns the view, two pinch to zoom.
 
 The deeper the snow is pressed, the darker and bluer it gets and the taller its rim. Dents stay. Dust and small clumps fly by themselves whenever snow is pressed or hit; nothing to call.
@@ -35,7 +37,7 @@ The camera is part of the scene. Its whole state is two numbers: a position on o
 
 - trackpad two-finger swipe up/down, mouse wheel, trackpad pinch, phone pinch: along the path (fingers up / pinch together = rise; `cameraInput.invertScroll` swaps)
 - trackpad two-finger swipe sideways, or a drag on empty snow: turn (a drag up/down also moves along the path)
-- "Reset view": back to the play view
+- "Reset view": back to the default view (the play view, or the one a feature set with `useSnowCameraView`)
 - "Fresh snow" button, or the N key: `freshSnowfall()`
 
 A swipe picks one axis after a few pixels, so a mostly vertical swipe never turns the view. Mouse notches move a fixed step whatever size the browser reports. All gains and limits are in `content.ts` under `cameraPath`, `cameraInput` and `orbit`. Over the scene, the page never scrolls, bounces or zooms.
@@ -54,7 +56,7 @@ Snow is everywhere, and it can be pressed anywhere (up to `ground.pressReach` fr
 - `ViewControls.tsx` the buttons on top of the scene (fresh snow and its N key, reset view; temporary look / press switch).
 - `freshSnow.ts` lets anything ask the snow on screen for a fresh snowfall. The refill itself is in `snowField.ts` (`stepFresh`, advanced by `SnowGround` every frame with at most `freshSnow.pointsPerFrame` grid points per frame); the heavier flakes are in `SceneLook.tsx`. Test page: `/dev/snowfall`.
 - `SnowSpray.tsx` dust puffs and clumps thrown up when snow is pressed or hit.
-- `CameraRig.tsx` the camera: turning, zooming, limits, reset. `pointers.ts` which finger belongs to whom, and screen-to-snow aiming.
+- `CameraRig.tsx` the camera: turning, zooming, limits, reset. `cameraView.ts` lets a feature set the default view. `pointers.ts` which finger belongs to whom, and screen-to-snow aiming.
 - `SceneLook.tsx` sun and sky light, soft sky, snowfall.
 - `layout.ts` camera position and character spots from the screen shape.
 - `SnowCanvas.tsx` the 3D canvas. `SnowScene.tsx` loads it in the browser only.
