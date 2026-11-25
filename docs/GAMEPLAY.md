@@ -97,7 +97,7 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - There is a score (Rachel: hitting alone is not enough). Each cut-out knocked down is a point; a full clear
   gives a small bonus; the special cut-outs add theirs (section 6). See section 7b for how it looks.
 - One person can play alone ("just me" on the start card): one throw a round, against their own best.
-- Later mode: both throwers on the line at once, aiming at the same crowd ("together" mode). Turns come first.
+- "Together" mode: both throwers on the line at once, aiming at the same crowd (section 7d).
 
 ## 7b. Score display (first version; Rachel will design it properly later)
 
@@ -169,3 +169,24 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
   village frames the lane; small friends become pins.
 - **Characters (PR #22, 3D snowmen):** not needed for this version; the thrower is a paper standee. Parked.
 - **New:** toppling physics for cut-outs (`@react-three/rapier`), formations, the "N down!" moment, turns.
+
+## 7d. Together mode (2026-11-25)
+
+- On the start card, a small paper tab above the card: "take turns" (default) or "together". Together is always
+  two players.
+- Both snowmen stand on the line at once: Bucket on the left half, Red Hat on the right (the middle stays free).
+  Each pulled ball grows on its snowman's outer side, so the two never bump while pulling.
+- **Keys** (physical keys, one hand on each side of a Mac keyboard): Bucket slides and aims with A / D and pulls
+  with W (or Space); Red Hat slides and aims with ← / → and pulls with ↑ (or Enter). W A D and the arrow cluster are
+  far apart on the keyboard, so pressing both players' keys at once does not ghost on Apple keyboards. Mouse and
+  touch: drag whichever snowman you press (two fingers can pull both at once).
+- Each throws once a round, any time, even while the other ball rolls. The cards stay where they fell until both
+  have thrown, so the second thrower can clean up what is left. Then the round is counted.
+- **Whose card:** each card counts for whoever's ball touched it first, or knocked the card that knocked it. Each
+  player gets their own stars; the bunny's +2 goes to everyone whose ball (or chain) left it alone. On an
+  "All down!" everyone who knocked a card gets the full-clear bonus.
+- "N down!" shows the shared count, and under it each player's own: "Bucket 1 down!", "Red Hat 2 down! +2". Their
+  points fly into their totals one after the other.
+- The camera does not film a chase in together mode: the throwing view already frames both snowmen and the set.
+- Rounds, sets, the evening light and the end card work as in turns mode.
+

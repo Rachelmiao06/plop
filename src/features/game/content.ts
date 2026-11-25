@@ -75,7 +75,7 @@ export const GAME = {
    * players' keys at once never ghosts on Apple keyboards (they are wired in separate matrix rows).
    */
   together: {
-    slide: { left: [-2.2, -0.45] as [number, number], right: [0.45, 2.2] as [number, number] },
+    slide: { left: [-1.9, -0.45] as [number, number], right: [0.45, 1.9] as [number, number] },
     keys: {
       left: { left: ["KeyA"], right: ["KeyD"], pull: ["KeyW", "Space"] },
       right: { left: ["ArrowLeft"], right: ["ArrowRight"], pull: ["ArrowUp", "Enter"] },

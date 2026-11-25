@@ -111,6 +111,8 @@ export type BowlingStageProps = {
   slide?: [number, number];
   /** Draw the throwing line's pencil dashes (default true). With two stages, only one draws them. */
   laneMarks?: boolean;
+  /** Which side of the thrower the pulled ball grows on (1 = right, -1 = left). Default: toward the lane's middle. */
+  ballSide?: 1 | -1;
 };
 
 /** `?thrower=one|two` on the page, for test pages (no prop given). */
@@ -128,6 +130,7 @@ export function BowlingStage({
   keys = SOLO_KEYS,
   slide,
   laneMarks = true,
+  ballSide,
 }: BowlingStageProps = {}) {
   const snow = useSnow();
   const snowPoint = useSnowPoint();
@@ -163,6 +166,7 @@ export function BowlingStage({
     };
   }, [palette]);
   const dashes = useMemo(() => (laneMarks ? laneDashes(pinRing) : []), [pinRing, laneMarks]);
+  useEffect(() => game.setBallSide(ballSide ?? null), [game, ballSide]);
   // Part of the line only (two throwers side by side); it waits for the thrower to be ready.
   const slideMin = slide?.[0];
   const slideMax = slide?.[1];

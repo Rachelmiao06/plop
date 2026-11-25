@@ -34,7 +34,7 @@ export function tapBowling(): void {
 }
 
 /**
- * Every bowling game stepping right now (stepped within the last half second): one normally, two in "together"
+ * Every bowling game stepping right now (stepped within the last 2 seconds, so a slow background tab still counts): one normally, two in "together"
  * mode (two throwers on the line at once). Games that stopped stepping (unmounted) drop out.
  */
 export function currentBowlings(): Bowling[] {
@@ -43,7 +43,7 @@ export function currentBowlings(): Bowling[] {
   const now = performance.now();
   const live: Bowling[] = [];
   for (const [game, at] of all) {
-    if (now - at < 500) live.push(game);
+    if (now - at < 2000) live.push(game);
     else if (now - at > 5000) all.delete(game);
   }
   return live;

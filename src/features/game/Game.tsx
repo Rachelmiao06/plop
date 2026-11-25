@@ -167,6 +167,7 @@ export function Game() {
               thrower="one"
               keys={GAME.together.keys.left}
               slide={GAME.together.slide.left}
+              ballSide={-1}
               pinRing={false}
               softAt={softAt}
               onGame={onLeft}
@@ -176,6 +177,7 @@ export function Game() {
               thrower="two"
               keys={GAME.together.keys.right}
               slide={GAME.together.slide.right}
+              ballSide={1}
               pinRing={false}
               laneMarks={false}
               softAt={softAt}
