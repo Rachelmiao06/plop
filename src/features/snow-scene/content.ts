@@ -308,7 +308,7 @@ export const content = {
     // When the player drags, scrolls or presses a key during an interruptible shot: a slightly quicker glide.
     takeoverRate: 3.5,
     // Field-of-view springs never go outside these (degrees), whatever a shot or a kick asks for.
-    fovMin: 14,
+    fovMin: 9,
     fovMax: 60,
   },
 

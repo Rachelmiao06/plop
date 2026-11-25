@@ -39,8 +39,8 @@ calm glide, 6 follows with a little physical lag, 12 is tight. These change how 
 |---|---|---|
 | Aim | The view eases lower and closer behind the thrower as the pull loads | `aim.closer 0.16`, `lower 1.1`, `lookBack 1.4`, `rate 4` |
 | Launch | The push forward and the lens kick, times the pull's power; how fast it dives in | `launch.push 9`, `fovKick 45`, `rate 8.5` for `time 0.5` s, lens widens over `lensTime 0.55` s |
-| Chase | How far behind and above the ball (more for a big ball), how far ahead it looks, the lens, the lag | `chase.back 2.6 (+2.6 × radius)`, `height 1.05 (+1.6 × radius)`, `ahead 2.6`, `fov 30 (+0.9 per unit/s)`, `rate 5.5`, `lookRate 9` |
-| Impact | When it swings, the three-quarter angle and distance on the pins | `impact.triggerAhead 1.3`, `angle 40`, `distance 5`, `height 2.1`, `fov 30`, `rate 3.2` |
+| Chase | How far the camera pushes in (it never passes the snowman), how high, and how tightly the lens zooms on the ball | `chase.behind 3.4` (units behind the line), `height 2.3`, `followX 0.45`, `frame 3.4` units in view, lens `11`–`30`°, `rate 5` |
+| Impact | When it turns to the pins, how far it slides to the side (still behind the line), how close it zooms | `impact.triggerAhead 1.3`, `behind 3.6`, `height 2.6`, `side 1.6`, `frame 3.9` units, `rate 3.2` |
 | Return | The glide home once the pins pop back | `ret.rate 1.9` |
 
 Any drag, scroll, pinch or key during the chase or the impact hands the view back (`shots.takeoverRate` 3.5 in

@@ -7,9 +7,9 @@
  *
  * - aim: the player's own view; as the pull grows it eases a little lower and closer behind the thrower.
  * - launch: a quick push forward and a field-of-view kick, both scaled by the pull's power.
- * - chase: behind and a little above the ball, low over the snow, looking ahead down the lane, with a little lag.
- * - impact: a three-quarter side angle on the pins while they fall (the hit-stop runs underneath), held
- *   through "N down!".
+ * - chase: the camera pushes in part of the way, never past the snowman, and follows the ball by zooming in.
+ * - impact: from behind the line, a little to the side, zoomed in on the pins while they fall (the hit-stop
+ *   runs underneath), held through "N down!".
  * - return: a calm glide back to the player's own view for the next turn.
  *
  * Any drag, scroll or key during the chase or the impact hands the view back (the snow scene drops
@@ -32,6 +32,10 @@ const QUERY = "(prefers-reduced-motion: reduce)";
 function prefersLessMotion(): boolean {
   return typeof window !== "undefined" && !!window.matchMedia && window.matchMedia(QUERY).matches;
 }
+
+/** The lens (vertical degrees) that shows about `frame` units of the scene at `distance`, within limits. */
+const lensFor = (frame: number, distance: number, min: number, max: number) =>
+  Math.min(Math.max((2 * Math.atan(frame / 2 / Math.max(distance, 0.1)) * 180) / Math.PI, min), max);
 
 const smooth = (u: number) => u * u * (3 - 2 * u);
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
@@ -147,26 +151,24 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
         setSnowCameraShot({ lookShift: [dx * k, 0, dz * k], rate: r.rate, interruptible: true });
         return;
       } else {
+        // The camera pushes in only part of the way and stays behind the snowman; it follows by zooming.
         const ch = c.chase;
-        const d = ball.plan.direction;
-        const r = ball.plan.radius;
         const bx = ball.position.x;
         const bz = ball.position.z;
-        const back = ch.back + r * ch.backPerRadius;
-        // Never drive into the pins: the camera stops short of them and only turns to look.
-        const cz = Math.max(bz - d.z * back, pin.z + ch.stopBefore);
-        const cx = bx - d.x * back;
-        const ground = snow.heightAt(cx, cz);
-        const lx = bx + d.x * ch.ahead;
-        const lz = bz + d.z * ch.ahead;
+        const cx = bowling.thrower.x + (bx - bowling.thrower.x) * ch.followX;
+        const cz = FEEL.lane.lineZ + ch.behind;
+        const cy = snow.heightAt(cx, cz) + ch.height;
+        const lx = bx + ball.plan.direction.x * ch.ahead;
+        const lz = bz + ball.plan.direction.z * ch.ahead;
+        const ly = snow.heightAt(lx, lz) + ch.lookHeight;
+        const fov = lensFor(ch.frame, Math.hypot(lx - cx, ly - cy, lz - cz), ch.fovMin, ch.fovMax);
         // Ease from the launch push into the steady chase.
         const u = smooth(clamp01(st.since / c.launch.time));
         const lens = smooth(clamp01(st.since / c.launch.lensTime));
-        const lensFrom = snowCameraFov;
         setSnowCameraShot({
-          position: [cx, ground + ch.height + r * ch.heightPerRadius, cz],
-          lookAt: [lx, snow.heightAt(lx, lz) + ch.lookHeight, lz],
-          fov: lensFrom + (ch.fov + ch.fovPerSpeed * Math.min(ball.speed, ch.fullSpeed) - lensFrom) * lens,
+          position: [cx, cy, cz],
+          lookAt: [lx, ly, lz],
+          fov: snowCameraFov + (fov - snowCameraFov) * lens,
           rate: c.launch.rate + (ch.rate - c.launch.rate) * u,
           lookRate: ch.lookRate,
           interruptible: true,
@@ -183,14 +185,15 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
       return;
     }
     const im = c.impact;
-    const a = (im.angle * Math.PI) / 180;
-    const px = pin.x + st.side * Math.sin(a) * im.distance;
-    const pz = pin.z + Math.cos(a) * im.distance;
+    const px = bowling.thrower.x * 0.5 + st.side * im.side;
+    const pz = FEEL.lane.lineZ + im.behind;
+    const py = snow.heightAt(px, pz) + im.height;
     const lz = pin.z + im.lookBack;
+    const ly = snow.heightAt(pin.x, lz) + im.lookHeight;
     setSnowCameraShot({
-      position: [px, snow.heightAt(px, pz) + im.height, pz],
-      lookAt: [pin.x + st.side * im.lookSide, snow.heightAt(pin.x, lz) + im.lookHeight, lz],
-      fov: im.fov,
+      position: [px, py, pz],
+      lookAt: [pin.x, ly, lz],
+      fov: lensFor(im.frame, Math.hypot(pin.x - px, ly - py, lz - pz), c.chase.fovMin, c.chase.fovMax),
       rate: im.rate,
       lookRate: im.lookRate,
       interruptible: true,

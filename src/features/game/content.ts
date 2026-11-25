@@ -50,42 +50,39 @@ export const GAME = {
      */
     launch: { push: 9, fovKick: 45, minShare: 0.35, time: 0.5, rate: 8.5, lensTime: 0.55 },
     /**
-     * Chase: `back` units behind the ball (plus `backPerRadius` of its radius) and `height` above the snow
-     * (plus `heightPerRadius`), looking `ahead` units down the lane at `lookHeight`. A wider lens than the
-     * throwing view sells speed: `fov`, plus `fovPerSpeed` degrees per unit per second up to `fullSpeed`.
-     * The camera stops `stopBefore` units in front of the pin spot and only turns to look from there.
+     * Chase: the camera pushes in only part of the way and never passes the snowman (Rachel): it settles
+     * `behind` units behind the throwing line, `height` up (high enough to see over the snowman), following
+     * `followX` of the ball's sideways way, and looks at the ball (`ahead` units in front of it, at
+     * `lookHeight`). It follows by zooming: the lens keeps about `frame` units of snow in view around the ball,
+     * between `fovMin` and `fovMax` degrees, so the ball stays big all the way down the lane.
      */
     chase: {
-      back: 2.6,
-      backPerRadius: 2.6,
-      height: 1.05,
-      heightPerRadius: 1.6,
-      ahead: 2.6,
-      lookHeight: 0.25,
-      fov: 30,
-      fovPerSpeed: 0.9,
-      fullSpeed: 12,
-      stopBefore: 2.2,
-      rate: 5.5,
-      lookRate: 9,
+      behind: 3.4,
+      height: 2.3,
+      followX: 0.45,
+      ahead: 0.9,
+      lookHeight: 0.3,
+      frame: 3.4,
+      fovMin: 11,
+      fovMax: 30,
+      rate: 5,
+      lookRate: 8,
     },
     /**
      * Impact: when the ball is `triggerAhead` units before the pin spot (or the hit-stop starts, or it
-     * stops), the camera eases to a three-quarter view: `angle` off the lane toward the side the ball is on
-     * (straight lanes: right, unless the ball is `sideDeadZone` left of the middle), `distance` from the pin
-     * spot and `height` up, looking `lookBack` behind the spot (and `lookSide` toward the camera's side).
-     * It holds there through "N down!" until the pins pop back.
+     * stops), the camera, still behind the line (`behind`, `height`), slides `side` units toward the side the
+     * ball is on (`sideDeadZone`: straight balls go right) for a little angle, and zooms in so about `frame`
+     * units around the pins fill the view, looking `lookBack` behind the pin spot. It holds through "N down!".
      */
     impact: {
       triggerAhead: 1.3,
       sideDeadZone: 0.25,
-      angle: 40,
-      distance: 5,
-      height: 2.1,
-      lookBack: -0.45,
-      lookSide: -0.15,
-      lookHeight: 0.35,
-      fov: 30,
+      behind: 3.6,
+      height: 2.6,
+      side: 1.6,
+      frame: 3.9,
+      lookBack: -0.4,
+      lookHeight: 0.4,
       rate: 3.2,
       lookRate: 4,
     },
