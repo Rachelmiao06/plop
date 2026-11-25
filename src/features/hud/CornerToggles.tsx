@@ -46,7 +46,11 @@ function RoundToggle({
   );
 }
 
-/** The hide-score eye plus the music and sound-effect switches, stacked in the top-left corner. */
+/**
+ * The hide-score eye plus the music and sound-effect switches in the top-left corner: one row on a phone
+ * (level with the scene's top-right buttons, so the score panel gets the full width below), a column on
+ * wider screens (#46).
+ */
 export function CornerToggles({
   hidden,
   onHiddenChange,
@@ -68,7 +72,7 @@ export function CornerToggles({
       : content.text.musicWaiting;
 
   return (
-    <div className="pointer-events-auto flex flex-col gap-2">
+    <div className="pointer-events-auto flex flex-row gap-2 md:flex-col">
       <RoundToggle
         label={hidden ? content.text.show : content.text.hide}
         pressed={hidden}

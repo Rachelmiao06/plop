@@ -22,6 +22,17 @@ export const GAME = {
     { name: "Red Hat", look: "redHat", thrower: "two" },
   ] as const satisfies readonly [PlayerSpec, PlayerSpec],
 
+  /**
+   * The throwing view on a phone held upright (narrower than `maxAspect`, width / height), #46. A tall frame
+   * shows the long lane stretched out, with empty snow below the thrower and the pins pushed up under the
+   * score panel. Here the camera looks `lookAtShare` of the way from the line to the pins (at `lookAtHeight`),
+   * from `pathAt` on the camera path and `distance` times what the path gives there: lower and further back
+   * than on a wide screen, so the lane is shorter on screen, the pins sit near the middle, the village and
+   * paper hills show below the panel and the thrower stays clear of the hint. Wider screens keep the
+   * scenery's `throwingView` (0.45, 0.4, 0.15, 2.05).
+   */
+  phoneView: { maxAspect: 0.8, lookAtShare: 0.5, lookAtHeight: 0.35, pathAt: 0.04, distance: 2.4 },
+
   score: {
     /** Points for each cut-out knocked down. */
     perCard: 1,

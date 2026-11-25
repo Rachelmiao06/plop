@@ -169,6 +169,7 @@ Files: `village.ts` (fitting, blockers, checks, throwing view; no drawing), `thr
 The throwing view looks about 13° below the horizon at the top of the screen, so the real horizon never shows and
 the snow used to run on, empty, behind the village. Now the scene is built in layers like a paper theatre:
 
+- **The street lamp** stands part way down the left of the lane, with a warm `--butter` light: a soft halo on its glass and a real point light that warms the lit snow round its foot (`WarmLights` in `three/Atmosphere.tsx`, `atmosphere.lights`; this replaced the first painted glow, a banded halo and a flat warm patch, when Rachel asked for real light). The crayon fence is no longer placed (it clashed with the doodle set); pines and bushes frame the near corners.
 - **Sky and far hills (`three/Backdrop.tsx`, `backdrop` in `content.ts`):** a curved paper wall stands just behind the
   village (radius 9.6 round the throwing view's look-at point on a 5.6-unit lane, `backdrop.laneLength`; on a longer
   lane `Village` passes a `reach` so the wall moves back with the pins; 220° of arc), `--paper` blending toward `--snow-shadow`

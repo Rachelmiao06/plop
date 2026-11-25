@@ -308,6 +308,8 @@ export const layout: Placement[] = [
   { prop: "stump-snow", x: -4.75, z: -4.4, side: "left" },
   { prop: "bird-red", x: -4.72, z: -4.36, lift: 0.36, side: "left" },
   { prop: "pine-snow-short", x: -3.9, z: -2.2, scale: 0.85, side: "left" },
+  // The street lamp stands by the lane part way down, lighting the snow (its light: `atmosphere.lights`).
+  { prop: "street-lamp", x: -2.75, z: -2.45, side: "left" },
   { prop: "mound-snow", x: -3.3, z: -1.3, scale: 0.8, side: "left" },
 
   // right side
@@ -318,12 +320,16 @@ export const layout: Placement[] = [
   { prop: "skier", x: 2.55, z: -2.9, side: "right" },
   { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
   { prop: "snowballs", x: 3.05, z: -0.9, side: "right" },
+  // Filling the right side between the skier and the igloo, which the longer lane opened up.
+  { prop: "pine-snow-tall", x: 4.45, z: -4.0, scale: 0.9, flip: true, side: "right" },
+  { prop: "bush-snow", x: 3.2, z: -3.55, scale: 0.75, side: "right" },
+  { prop: "stump-snow", x: 3.9, z: -1.55, side: "right" },
 
   // near corners, framing the bottom of the throwing view
-  { prop: "street-lamp", x: -3.55, z: 0.3, side: "left" },
+  { prop: "bush-snow", x: -3.45, z: 0.35, scale: 0.7, side: "left" },
   { prop: "pine-snow-short", x: -3.75, z: 1.75, scale: 0.95, flip: true, side: "left" },
   { prop: "bush-snow", x: -3.3, z: 2.15, scale: 0.7, side: "left" },
-  { prop: "fence", x: 3.55, z: 1.9, side: "right" },
+  { prop: "pine-snow-short", x: 3.85, z: 1.85, scale: 0.9, side: "right" },
   { prop: "bush-snow", x: 3.7, z: 0.7, scale: 0.85, flip: true, side: "right" },
 ];
 

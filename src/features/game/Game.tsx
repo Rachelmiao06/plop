@@ -9,8 +9,9 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { BowlingStage, FEEL } from "@/features/bowling";
 import { ScoreHud } from "@/features/hud";
 import { createPins, PinsPopup, PinsStage } from "@/features/pins";
-import { throwingView, Village } from "@/features/scenery";
-import { SnowCameraView, SnowScene } from "@/features/snow-scene";
+import { PaperFinish } from "@/features/look";
+import { Village } from "@/features/scenery";
+import { SnowScene } from "@/features/snow-scene";
 
 import { GAME } from "./content";
 import { CameraDirector } from "./CameraDirector";
@@ -18,6 +19,7 @@ import { createLink, GameBridge } from "./GameBridge";
 import { CancelPull, GameHint, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
 import { createGame } from "./rules";
+import { ThrowingView } from "./ThrowingView";
 
 const players = [
   { name: GAME.players[0].name, look: GAME.players[0].look },
@@ -48,13 +50,14 @@ export function Game() {
         {gameCss}
       </style>
       <SnowScene>
-        <SnowCameraView {...throwingView(FEEL.lane)} />
+        <ThrowingView />
         <Village lane={FEEL.lane} />
         <BowlingStage />
         <PinsStage pins={pins} />
         <GameBridge game={game} pins={pins} link={link} />
         <CameraDirector pins={pins} link={link} />
       </SnowScene>
+      <PaperFinish />
       <GameHint game={game} />
       <TurnNote game={game} />
       <PinsPopup pins={pins} />

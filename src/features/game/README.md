@@ -34,7 +34,10 @@ One person alone simply keeps throwing: the snowmen alternate.
   pins pop back). Any drag, scroll or key during the chase or impact hands the view back; the next throw is filmed
   again. "Reduce motion" keeps only a gentle lean after the ball. Numbers: `GAME.camera` in `content.ts`.
 - `GameOverlay.tsx` the hint, the turn note and the cancel button. `gameStyles.ts` their small scoped stylesheet.
-- `Game.tsx` puts it all together.
+- `ThrowingView.tsx` the default camera view: the scenery's `throwingView` on wide screens, `GAME.phoneView` on a
+  phone held upright (#46).
+- `Game.tsx` puts it all together, with the paper finish (`<PaperFinish />` from `@/features/look`) over the
+  picture and under all UI.
 
 ## Asked of other features (worked around here for now)
 
