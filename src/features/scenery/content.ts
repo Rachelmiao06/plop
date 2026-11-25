@@ -710,9 +710,9 @@ export const atmosphere = {
     wanderSpeed: 0.6,
     /** Size at the chimney and at the end of its life (units across). */
     sizeFrom: 0.16,
-    sizeTo: 0.62,
+    sizeTo: 0.72,
     /** Most opacity, reached early, then a long fade. */
-    opacity: 0.72,
+    opacity: 0.85,
     /**
      * The whole puff takes `tint` of `--snow-shadow` (paper-white smoke would vanish against the paper sky), its
      * lower side `shade`; the ink outline's strength (0 = none).
@@ -745,7 +745,9 @@ export const atmosphere = {
       { prop: "cottage-red" as PropId, from: [0.2, 0.47], to: [0.55, 0.49], count: 6 },
       { prop: "cottage-blue" as PropId, from: [0.22, 0.37], to: [0.4, 0.53], count: 4 },
       { prop: "cottage-blue" as PropId, from: [0.68, 0.45], to: [0.82, 0.37], count: 3 },
-      { prop: "street-lamp" as PropId, from: [0.16, 0.68], to: [0.86, 0.68], count: 3 },
+      // The lamp: at the two ends of its snowy cap, clear of the bright glass (the halo would wash them out).
+      { prop: "street-lamp" as PropId, from: [0.1, 0.73], to: [0.24, 0.7], count: 2 },
+      { prop: "street-lamp" as PropId, from: [0.76, 0.7], to: [0.9, 0.73], count: 2 },
     ],
     /** Icicle length (units, a random share between) and width at the top. */
     icicleLength: [0.07, 0.19] as [number, number],
@@ -759,9 +761,9 @@ export const atmosphere = {
       { x: -2.6, z: -3.9, size: 0.19, turn: 75 },
       { x: -4.4, z: -3.45, size: 0.24, turn: 140 },
       { x: -3.0, z: -4.3, size: 0.14, turn: 200 },
-      { x: 2.8, z: -5.3, size: 0.28, turn: 40 },
+      { x: 2.8, z: -5.3, size: 0.36, turn: 40 },
       { x: 3.05, z: -4.95, size: 0.15, turn: 110 },
-      { x: 4.55, z: -5.35, size: 0.21, turn: 300 },
+      { x: 4.55, z: -5.35, size: 0.28, turn: 300 },
     ] as { x: number; z: number; size: number; turn: number }[],
     /** How deep a chunk sinks (share of its size) and the snow cap on top (share of its size). */
     chunkSink: 0.35,
