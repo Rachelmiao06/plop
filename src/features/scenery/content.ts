@@ -468,9 +468,6 @@ export const village = {
     turn: 0,
   },
 
-  /** How dark the sun's shadows are while the village is shown (1 = the snow scene's own deep blue). */
-  shadowStrength: 0.55,
-
   /** For the sight-line check: how tall the pins are that must stay visible from the throwing view. */
   pinSightHeight: 0.5,
 };
