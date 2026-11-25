@@ -16,34 +16,27 @@ import {
   type Texture,
 } from "three";
 
-import { characters, layout, previewCamera, propSrc, standee3d, type PropId } from "../content";
-import { cameraTarget, defaultCameraPosition } from "../view";
+import { previewCamera, propSrc, sceneItems, standee3d, type PropId } from "../content";
+import { cameraTarget } from "../view";
 import { Flecks } from "./Flecks";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
 import { PaperContext, TreatmentContext, type FrameStats, type PaperColors, type Treatment } from "./treatment";
 
-/** The bucket snowman stands in for both main characters (A is its model; B is not drawn yet). */
-const CHARACTER_STAND_IN: PropId = "snowman-bucket-hat";
-
 const normalSrc = (id: string) => `/assets/scenery/normals/${id}.webp`;
 
 type Placed = { key: string; id: PropId; x: number; z: number; scale?: number; flip?: boolean };
 
-const placed: Placed[] = [
-  ...layout.filter((p) => hasOutline(p.prop)).map((p, i) => ({ key: `${p.prop}-${i}`, id: p.prop, x: p.x, z: p.z, scale: p.scale, flip: p.flip })),
-  ...characters.map((c) => ({ key: `character-${c.name}`, id: CHARACTER_STAND_IN, x: c.x, z: c.z, flip: c.name === "B" })),
-];
+/** The frame, the example pins and both throwers, as on /dev/scenery. */
+const placed: Placed[] = sceneItems.filter((p) => hasOutline(p.id));
 const ids = [...new Set(placed.map((p) => p.id))];
 
 function startPosition({ yaw, elevation, level }: { yaw: number; elevation: number; level: number }): [number, number, number] {
-  const [, , homeZ] = defaultCameraPosition(level);
-  const [, homeY] = defaultCameraPosition(level);
-  const distance = Math.hypot(homeY - cameraTarget[1], homeZ);
+  const d = previewCamera.distance * level;
   const e = (elevation * Math.PI) / 180;
   const a = (yaw * Math.PI) / 180;
-  const flat = distance * Math.cos(e);
-  return [flat * Math.sin(a), cameraTarget[1] + distance * Math.sin(e), flat * Math.cos(a)];
+  const [tx, ty, tz] = cameraTarget;
+  return [tx + d * Math.cos(e) * Math.sin(a), ty + d * Math.sin(e), tz + d * Math.cos(e) * Math.cos(a)];
 }
 
 function sunDirection(): Vector3 {
@@ -189,6 +182,9 @@ export default function VillageCanvas({
             minDistance={cam.minDistance}
             maxDistance={cam.maxDistance}
             maxPolarAngle={Math.PI / 2 - (cam.minElevation * Math.PI) / 180}
+            minPolarAngle={Math.PI / 2 - (cam.maxElevation * Math.PI) / 180}
+            minAzimuthAngle={-(cam.maxTurn * Math.PI) / 180}
+            maxAzimuthAngle={(cam.maxTurn * Math.PI) / 180}
           />
           <FpsMeter stats={stats} />
         </PaperContext>

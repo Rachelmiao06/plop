@@ -48,3 +48,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · Kept the custom path camera instead of switching to drei CameraControls: a request to switch arrived, but Rachel then said the path camera feels good.
 - 2026-11-24 · Look comes first: hand-drawn feel, cuteness and matching the design tokens are the acceptance bar for every visual change, checked against Rachel's reference art. Recorded in CLAUDE.md.
 - 2026-11-24 · Scenery is flat hand-drawn cut-outs standing upright in the snow that turn to face the camera; only the two main characters are 3D. Keeps the sticker look and lets the image model make every prop (`src/features/scenery/`).
+- 2026-11-24 · Standee pillow shading is off by default and the card edge is uneven like real card: next to Rachel's sheets the faint normal-map tint read as computer-made. Scenery is laid out as lane framing for paper bowling; the thrower cut-outs are the front views of the two turnaround sheets.

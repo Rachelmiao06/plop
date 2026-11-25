@@ -3,8 +3,11 @@
 Flat hand-drawn cut-outs ("standees") planted upright in the 3D snow. Each one turns to face the camera.
 The main characters are 3D and are not part of this feature.
 
-- `content.ts`: the manifest (`props`, by name), the first village layout (`layout`), the two character spots,
-  the layout rules and `previewCamera` (a copy of the snow scene's default camera, for the previews).
+- `content.ts`: the manifest (`props`, by name), the lane (`lane`), the frame layout (`layout`), an example pin
+  formation (`examplePins`, preview only), the throwers (`throwers`) and `previewCamera` (the proposed throwing view).
+  Each standee has a `role` for paper bowling (docs/GAMEPLAY.md): `frame` (village along the lane, never knocked down),
+  `pin` (with `pin.footprint` = card base width and depth, and `pin.weight` light / medium / heavy, for the physics later)
+  or `thrower` (`thrower-bucket` for player 1, `thrower-redhat` for player 2, cut from the turnaround front views).
   Per prop: `set` (`doodle` = Rachel's current stickers, `crayon` = the first set, all spare),
   `kind` (`standee` by default; `character` = model for a 3D main character, never placed;
   `decal` = flat flourish such as the wind swirl), `spare`, and `motion: "loop"` for the skier and the
@@ -14,7 +17,7 @@ The main characters are 3D and are not part of this feature.
   in `public/assets/effects/`, sources in `art-source/effects/`. Not standees, never in the layout; each has a
   suggested size and a note on where it fits (the music notes float above the radio on `log-music`).
 - `CameraPreview.tsx`, `LayoutPreview.tsx`, `PropSheet.tsx`, `view.ts`: the `/dev/scenery` check page.
-  `CameraPreview` paints the layout back to front as the default camera sees it (and pulled back 1.6×);
+  `CameraPreview` paints the lane back to front as the throwing view sees it (and pulled back);
   `view.ts` is the small pinhole-camera maths behind it. Flat HTML only, no Three.js.
 - Art: `public/assets/scenery/*.webp`, cut from Rachel's sticker sheets in `art-source/scenery/` by `scripts/slice_scenery.py`.
 
@@ -53,17 +56,20 @@ see-through gap stays white, lower it or add a hole point.
 
 ## Units and axes
 
-- One scene unit = one main character's height.
-- Three.js axes: x to the right, y up, z toward the default camera. Negative z is the back of the village.
-- Characters stand at (-2.2, 0) and (2.2, 0): 4.4 apart, as the snow scene in PR #17 places them on a landscape screen.
-- The default camera (35° up, 22° field of view, a character fills a fifth of the screen height) is a close
-  diorama view: anything more than about 3 units behind the characters gets cut at the top if it is tall.
-  That is why the village sits close and the buildings are small (cottage 1.5, tree 1.65).
+- One scene unit = one thrower's height.
+- Three.js axes: x to the right, y up, z toward the camera. The thrower stands at the line (z = 0) and rolls toward
+  negative z; the pins stand around z = -6.5; the far end of the frame is around z = -10.
+- The throwing view (`previewCamera`): 20° up, the snow scene's 22° lens, 14 units from a point part way down the lane.
+  The snow scene does not have this view yet; it is the proposal the previews use. The free camera on the 3D page
+  keeps the snow scene's limits: at most 60° left or right and 76° up, so the cut-outs never show their backs.
+- `layoutProblems()` checks that no frame prop reaches into the clear lane (`lane.clear`) and nothing tall stands
+  between the camera and the thrower.
 
 ## Part 2: placing the props in the 3D scene
 
-Start from `props` and `layout`; nothing else is needed. Use `propSrc(id)`, `propPx(id)` and `propWidth(id)`.
-Only props in `layout` are placed; `spare` ones, the `character` model and `decal`s are not standees.
+Start from `props`, `lane` and `layout`; nothing else is needed. Use `propSrc(id)`, `propPx(id)` and `propWidth(id)`.
+`layout` holds only the frame. Pins go in formations (the pins work), the throwers at `lane.throwLine`;
+`spare` ones and `decal`s are not standees.
 
 1. For each `layout` entry, look up `props[entry.prop]`.
 2. Make a plane `propWidth(id) * scale` wide and `height * scale` tall, textured with `propSrc(id)`
@@ -76,7 +82,7 @@ Only props in `layout` are placed; `spare` ones, the `character` model and `deca
 6. Props do not block snowballs in the first version; they are decoration. If collisions come later,
    a short cylinder of radius `propWidth / 3` at the base is enough.
 7. `layoutProblems()` returns plain-language problems (prop in the lane, something tall in front of the
-   characters, outside the area). Run it in a dev check after editing the layout.
+   thrower, outside the map, not a frame prop). Run it in a dev check after editing the layout.
 
 Ideas for later, not done: a pale blue blob shadow (`--snow-shadow`) under each prop; a small sway on the flag
 and pines; snow piling up at the base where the prop meets the ground.
@@ -105,8 +111,11 @@ the source sheets; refresh them when the look changes.
   **On the real snow, use the snow scene's API instead** (raise the snow around each base with its mound/press
   tools in `src/features/snow-scene/`) so the heap is part of the snow and takes footprints and craters.
 - **Pillow shading:** `public/assets/scenery/normals/<name>.webp`, baked by the same script from a distance field
-  (thicker in the middle, curving down at the silhouette). It only tints the far edges toward `--snow-shadow`,
-  like a pale blue pencil pass (`pillow.strength`, kept low); it never brightens or adds a highlight.
+  (thicker in the middle, curving down at the silhouette). **Off by default**: next to the source sheets even a faint
+  edge tint read as a computer vignette. On the switch it only tints the far edges toward `--snow-shadow`.
+- **Card feel:** the side wall and back have a faint fibre speckle and slightly uneven shading (`card.grain`,
+  `card.uneven`), and the `--ink` edge line wavers in width and fades in places like a hand line. All of it mixes
+  only between the tokens.
 - **Half-turn:** each prop turns `turn.fraction` of the camera's swing around the village, capped at `turn.cap`
   degrees, on a spring (`turn.stiffness`, `turn.damping`). Swing the view to the side and the edges show; the art
   never collapses to a line. "Billboard" is the old always-face-the-camera behaviour, "Fixed" never turns.

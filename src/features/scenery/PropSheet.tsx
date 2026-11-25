@@ -5,63 +5,38 @@ import {
   effects,
   effectSrc,
   filesWithoutSettings,
-  layout,
   propSettings,
   propIds,
   propPx,
   props,
   propSrc,
   propWidth,
-  type PropGroup,
   type PropId,
   type SceneryProp,
 } from "./content";
 
-const groupOrder: { group: PropGroup; title: string }[] = [
-  { group: "big", title: "Big" },
-  { group: "tree", title: "Trees" },
-  { group: "mid", title: "Middle" },
-  { group: "small", title: "Small" },
-  { group: "person", title: "People" },
-  { group: "friend", title: "Little friends" },
-];
-
-const inLayout = new Set(layout.map((p) => p.prop));
 const current = propIds.filter((id) => props[id].set === "doodle");
-const isStandee = (id: PropId) => (propSettings(id)?.kind ?? "standee") === "standee";
+const role = (id: PropId) => propSettings(id)?.role;
 
-/** Every cut-out on a pale snow panel, base on the panel's bottom line, with its name and sizes. */
+/** Every cut-out on a pale snow panel, base on the panel's bottom line, with its name and sizes, grouped by role. */
 export function PropSheet() {
-  const unused = current.filter((id) => isStandee(id) && !inLayout.has(id));
-  const notScenery = current.filter((id) => !isStandee(id));
+  const groups: { title: string; ids: PropId[] }[] = [
+    { title: "Throwers", ids: current.filter((id) => role(id) === "thrower") },
+    { title: "Pins (can be knocked down)", ids: current.filter((id) => role(id) === "pin") },
+    { title: "Frame (village along the lane, never knocked down)", ids: current.filter((id) => role(id) === "frame") },
+    { title: "Not a standee", ids: current.filter((id) => !role(id)) },
+  ];
   const crayon = propIds.filter((id) => props[id].set === "crayon");
   return (
     <div className="flex flex-col gap-8">
-      {groupOrder.map(({ group, title }) => {
-        const ids = current.filter((id) => props[id].group === group && isStandee(id) && inLayout.has(id));
-        return ids.length === 0 ? null : (
-          <CardGroup key={group} title={title}>
-            {ids.map((id) => (
+      {groups.map((g) =>
+        g.ids.length === 0 ? null : (
+          <CardGroup key={g.title} title={g.title}>
+            {g.ids.map((id) => (
               <PropCard key={id} name={id} />
             ))}
           </CardGroup>
-        );
-      })}
-
-      {unused.length > 0 && (
-        <CardGroup title="Current set, not in the layout">
-          {unused.map((id) => (
-            <PropCard key={id} name={id} />
-          ))}
-        </CardGroup>
-      )}
-
-      {notScenery.length > 0 && (
-        <CardGroup title="Not scenery: main character model and decal">
-          {notScenery.map((id) => (
-            <PropCard key={id} name={id} />
-          ))}
-        </CardGroup>
+        ),
       )}
 
       <CardGroup title="Effects (not standees, never in the layout)">
@@ -88,6 +63,7 @@ export function PropSheet() {
     </div>
   );
 }
+
 function CardGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
@@ -125,6 +101,8 @@ function PropCard({ name }: { name: string }) {
           {settings &&
             ` · ${settings.height} tall × ${propWidth(name as PropId).toFixed(2)} wide · sinks ${settings.sink}`}
           {settings?.motion && " · moving: loop later"}
+          {settings?.pin &&
+            ` · pin: base ${settings.pin.footprint[0]} × ${settings.pin.footprint[1]}, ${settings.pin.weight}`}
           {!settings && " · add it to props in content.ts"}
         </span>
       </div>

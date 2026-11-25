@@ -20,7 +20,8 @@ export type Treatment = {
 export const fullTreatment: Treatment = {
   thick: true,
   shadow: true,
-  pillow: true,
+  // Off by default: it read as a computer vignette next to the source art. Still on the switch to compare.
+  pillow: false,
   sink: true,
   turn: "half",
   cap: standee3d.turn.cap,
@@ -45,11 +46,14 @@ export const looks: Record<string, Treatment> = {
   fixed: { ...fullTreatment, turn: "fixed" },
 };
 
-/** Starting cameras for the ?view= option: swing around the village (degrees) and height above the ground (degrees). */
+/** Starting cameras for the ?view= option: swing around the lane (degrees), height above the ground (degrees) and distance (times the throwing view). */
 export const views: Record<string, { yaw: number; elevation: number; level: number }> = {
-  default: { yaw: 0, elevation: 35, level: 1 },
-  side: { yaw: 62, elevation: 22, level: 1.15 },
-  high: { yaw: 18, elevation: 72, level: 1.5 },
+  /** The throwing view: behind and above the thrower, looking down the lane. */
+  default: { yaw: 0, elevation: 20, level: 1 },
+  side: { yaw: 50, elevation: 18, level: 1.05 },
+  high: { yaw: 15, elevation: 62, level: 1.3 },
+  /** Close to the thrower and the left frame, swung to the side: shows the card edges. */
+  closeup: { yaw: 42, elevation: 12, level: 0.42 },
 };
 
 export const TreatmentContext = createContext<Treatment>(fullTreatment);

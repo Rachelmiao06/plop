@@ -7,21 +7,20 @@ import { previewCamera } from "./content";
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-const { elevation, fieldOfView, characterScreenShare, targetHeight, aspect } = previewCamera;
+const { elevation, fieldOfView, distance, target, aspect } = previewCamera;
 const tanHalf = Math.tan(rad(fieldOfView) / 2);
-/** Distance at which a one-unit character fills `characterScreenShare` of the screen height. */
-const distance = 1 / characterScreenShare / 2 / tanHalf;
+const [targetX, targetHeight, targetZ] = target;
 const sinE = Math.sin(rad(elevation));
 const cosE = Math.cos(rad(elevation));
 
 /** Depth along the view direction, and the up/down offset across it, for a scene point. */
 function toCamera(x: number, y: number, z: number, level = 1) {
   const camY = targetHeight + distance * level * sinE;
-  const camZ = distance * level * cosE;
+  const camZ = targetZ + distance * level * cosE;
   const dy = y - camY;
   const dz = z - camZ;
   // forward = (0, -sinE, -cosE), up = (0, cosE, -sinE), right = (1, 0, 0)
-  return { depth: -dy * sinE - dz * cosE, up: dy * cosE - dz * sinE, right: x };
+  return { depth: -dy * sinE - dz * cosE, up: dy * cosE - dz * sinE, right: x - targetX };
 }
 
 export type ScreenPoint = {
@@ -54,7 +53,7 @@ export function project(x: number, y: number, z: number, level = 1): ScreenPoint
 /** The patch of snow the default camera sees: four ground corners (x, z), near left first, clockwise. */
 export function groundFootprint(): [number, number][] {
   const camY = targetHeight + distance * sinE;
-  const camZ = distance * cosE;
+  const camZ = targetZ + distance * cosE;
   const groundZ = (ndcY: number) => {
     // Ray through the screen's vertical position ndcY, hitting the ground (y = 0).
     const pitch = rad(elevation) - Math.atan(ndcY * tanHalf);
@@ -71,9 +70,9 @@ export function groundFootprint(): [number, number][] {
   ];
 }
 
-/** Where the default camera sits, `level` times its normal distance away. Looks at (0, targetHeight, 0). */
+/** Where the throwing-view camera sits, `level` times its normal distance away from `cameraTarget`. */
 export function defaultCameraPosition(level = 1): [number, number, number] {
-  return [0, targetHeight + distance * level * sinE, distance * level * cosE];
+  return [targetX, targetHeight + distance * level * sinE, targetZ + distance * level * cosE];
 }
 
-export const cameraTarget: [number, number, number] = [0, targetHeight, 0];
+export const cameraTarget: [number, number, number] = [targetX, targetHeight, targetZ];

@@ -5,7 +5,7 @@ Run after scripts/slice_scenery.py, from the repo root:
     python3 scripts/trace_standees.py
 
 Reads   public/assets/scenery/<name>.webp for every prop cut from a doodle sheet
-        (sheets in art-source/scenery/sheets.json whose file starts with "doodle-"),
+        (sheets in art-source/scenery/sheets.json whose file starts with "doodle-" or "thrower-"),
         except decals listed in SKIP.
 Writes  src/features/scenery/outlines.json
             {name: {"w": px, "h": px, "shapes": [{"outer": [[x, y], ...], "holes": [[[x, y], ...], ...]}]}}
@@ -47,7 +47,7 @@ def doodle_names() -> list[str]:
     config = json.loads(CONFIG.read_text())
     names: list[str] = []
     for sheet in config["sheets"]:
-        if sheet.get("target", "scenery") == "scenery" and sheet["file"].startswith("doodle-"):
+        if sheet.get("target", "scenery") == "scenery" and sheet["file"].startswith(("doodle-", "thrower-")):
             names += [n for n in sheet["names"] if n not in SKIP]
     return names
 

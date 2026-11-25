@@ -22,6 +22,21 @@ export type PropGroup = "big" | "tree" | "mid" | "small" | "person" | "friend";
  */
 export type PropKind = "standee" | "character" | "decal";
 
+/**
+ * What a standee does in paper bowling (docs/GAMEPLAY.md):
+ * frame: village scenery along the lane, never knocked down. pin: a cut-out the ball can topple.
+ * thrower: the paper snowman at the throwing line.
+ */
+export type PropRole = "frame" | "pin" | "thrower";
+
+/** Rough physics hints for a pin, for the toppling work later (no physics here yet). */
+export type PinSpec = {
+  /** Width and depth of the card's base on the snow, in scene units. */
+  footprint: [number, number];
+  /** light = tips at a touch (tall, thin); heavy = needs a big ball (wide, low). */
+  weight: "light" | "medium" | "heavy";
+};
+
 /** Settings per prop. */
 export type SceneryProp = {
   /** Shown on /dev/scenery. */
@@ -34,6 +49,9 @@ export type SceneryProp = {
   /** "doodle" = Rachel's current set. "crayon" = the first set, kept as spares. */
   set: "doodle" | "crayon";
   kind?: PropKind;
+  role?: PropRole;
+  /** Only for pins. */
+  pin?: PinSpec;
   /** Kept for later, not used in the layout. */
   spare?: boolean;
   /** Reads as moving: a candidate for a small looping motion later (part 2 or after). */
@@ -43,34 +61,34 @@ export type SceneryProp = {
 export const props = {
   /* ---- Current set: Rachel's doodle stickers ---- */
 
-  // Big: back of the village
-  "tree-snowmen": { label: "Big tree with tiny snowmen", height: 1.65, group: "big", sink: 0.08, set: "doodle" },
-  "cottage-blue": { label: "Cottage with a blue roof", height: 1.5, group: "big", sink: 0.08, set: "doodle" },
-  "igloo-friends": { label: "Igloo with a snowman in the window", height: 1.15, group: "big", sink: 0.08, set: "doodle" },
+  // Throwers: the paper snowman at the line, one per player (front views of the turnaround sheets).
+  "thrower-bucket": { label: "Thrower, player 1 (bucket snowman)", height: 1, group: "person", sink: 0.03, set: "doodle", role: "thrower" },
+  "thrower-redhat": { label: "Thrower, player 2 (red-hat snowman)", height: 1, group: "person", sink: 0.03, set: "doodle", role: "thrower" },
 
-  // Middle distance
-  "log-music": { label: "Hollow log with radio, snowman and penguin", height: 0.95, group: "mid", sink: 0.06, set: "doodle" },
-  "bench-snowmen": { label: "Two snowmen on a bench", height: 0.85, group: "mid", sink: 0.04, set: "doodle" },
-  "signpost-snowman": { label: "Signpost with a snowman arrow", height: 0.75, group: "mid", sink: 0.05, set: "doodle" },
-  "flag-blue": { label: "Blue snowman flag", height: 1.15, group: "mid", sink: 0.06, set: "doodle" },
+  // Frame: village scenery along the lane and at the far end. Never knocked down.
+  "tree-snowmen": { label: "Big tree with tiny snowmen", height: 2, group: "big", sink: 0.08, set: "doodle", role: "frame" },
+  "cottage-blue": { label: "Cottage with a blue roof", height: 1.6, group: "big", sink: 0.08, set: "doodle", role: "frame" },
+  "igloo-friends": { label: "Igloo with a snowman in the window", height: 1.2, group: "big", sink: 0.08, set: "doodle", role: "frame" },
+  "pine-snow-tall": { label: "Tall snowy pine", height: 1.6, group: "tree", sink: 0.05, set: "doodle", role: "frame" },
+  "pine-snow-short": { label: "Short snowy pine", height: 1.1, group: "tree", sink: 0.05, set: "doodle", role: "frame" },
+  "mound-snow": { label: "Snow mound", height: 0.38, group: "small", sink: 0.06, set: "doodle", role: "frame" },
+  "bush-snow": { label: "Round snowy bush", height: 0.5, group: "small", sink: 0.04, set: "doodle", role: "frame" },
 
-  // People and little friends
-  "boy-snowman": { label: "Boy holding hands with a little snowman", height: 0.85, group: "person", sink: 0.03, set: "doodle" },
-  "girl-earmuffs": { label: "Girl with earmuffs", height: 0.85, group: "person", sink: 0.03, set: "doodle" },
-  skier: { label: "Skier in a mint coat", height: 0.85, group: "person", sink: 0.03, set: "doodle", motion: "loop" },
-  "penguin-bag": { label: "Penguin with a shoulder bag", height: 0.6, group: "friend", sink: 0.03, set: "doodle" },
-  "pine-walking": { label: "Walking pine with a backpack", height: 0.9, group: "friend", sink: 0.03, set: "doodle" },
-  "penguin-slide": { label: "Sliding penguin", height: 0.35, group: "friend", sink: 0.02, set: "doodle", motion: "loop" },
-  "snowman-newspaper": { label: "Snowman reading a newspaper", height: 0.85, group: "friend", sink: 0.03, set: "doodle", spare: true },
+  // Pins: the little friends the ball knocks down. Footprint = card base (width, depth); weight for the physics later.
+  "flag-blue": { label: "Blue snowman flag", height: 1.15, group: "mid", sink: 0.06, set: "doodle", role: "pin", pin: { footprint: [0.2, 0.2], weight: "light" } },
+  "girl-earmuffs": { label: "Girl with earmuffs", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.4, 0.2], weight: "light" } },
+  skier: { label: "Skier in a mint coat", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.45, 0.25], weight: "light" }, motion: "loop" },
+  "penguin-bag": { label: "Penguin with a shoulder bag", height: 0.6, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.3, 0.18], weight: "light" } },
+  "penguin-slide": { label: "Sliding penguin", height: 0.35, group: "friend", sink: 0.02, set: "doodle", role: "pin", pin: { footprint: [0.4, 0.22], weight: "light" }, motion: "loop" },
+  "pine-walking": { label: "Walking pine with a backpack", height: 0.9, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.45, 0.22], weight: "medium" } },
+  "snowman-newspaper": { label: "Snowman reading a newspaper", height: 0.85, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.5, 0.25], weight: "medium" } },
+  "boy-snowman": { label: "Boy holding hands with a little snowman", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.75, 0.25], weight: "medium" } },
+  "signpost-snowman": { label: "Signpost with a snowman arrow", height: 0.75, group: "mid", sink: 0.05, set: "doodle", role: "pin", pin: { footprint: [0.75, 0.2], weight: "medium" } },
+  "snowman-bucket-hat": { label: "Big sitting snowman (bucket hat)", height: 0.9, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.6, 0.35], weight: "heavy" } },
+  "bench-snowmen": { label: "Two snowmen on a bench", height: 0.85, group: "mid", sink: 0.04, set: "doodle", role: "pin", pin: { footprint: [0.9, 0.35], weight: "heavy" } },
+  "log-music": { label: "Hollow log with radio, snowman and penguin", height: 0.95, group: "mid", sink: 0.06, set: "doodle", role: "pin", pin: { footprint: [1.5, 0.45], weight: "heavy" } },
 
-  // Quiet fillers: frame the sides and back, soften the foot of each cluster. Reused at different scales.
-  "pine-snow-tall": { label: "Tall snowy pine", height: 1.6, group: "tree", sink: 0.05, set: "doodle" },
-  "pine-snow-short": { label: "Short snowy pine", height: 1.1, group: "tree", sink: 0.05, set: "doodle" },
-  "mound-snow": { label: "Snow mound", height: 0.38, group: "small", sink: 0.06, set: "doodle" },
-  "bush-snow": { label: "Round snowy bush", height: 0.5, group: "small", sink: 0.04, set: "doodle" },
-
-  // Not scenery
-  "snowman-bucket-hat": { label: "Main character A (model for the 3D snowman)", height: 1, group: "person", sink: 0, set: "doodle", kind: "character" },
+  // Not a standee
   "wind-swirl": { label: "Wind swirl (decal)", height: 0.6, group: "small", sink: 0, set: "doodle", kind: "decal" },
 
   /* ---- Spares: the first crayon set ---- */
@@ -157,47 +175,52 @@ export const effectSrc = (id: string) => `/assets/effects/${id}.webp`;
 export const effectPx = (id: string) => effectPixelSizes[id];
 
 /* ------------------------------------------------------------------ */
-/* Camera (for the preview only)                                        */
+/* Throwing view camera (for the previews)                              */
 /* ------------------------------------------------------------------ */
 
 /**
- * The default camera of the snow scene (src/features/snow-scene/content.ts in PR #17), copied here
- * so /dev/scenery can show the village as the player first sees it. Keep in step if that changes.
+ * The paper-bowling throwing view (docs/GAMEPLAY.md): behind and above the thrower, looking down the lane.
+ * The snow scene does not have this view yet; this is the proposal the previews use. Same lens as the
+ * snow scene (22 degree field of view). Its camera turns at most 60 degrees left or right and never
+ * looks at the back of the cut-outs.
  */
 export const previewCamera = {
-  elevation: 35, // degrees above the ground
-  fieldOfView: 22, // vertical, degrees
-  characterScreenShare: 0.2, // a character one unit tall fills this share of the screen height
-  targetHeight: 0.35,
+  elevation: 20, // degrees above the ground
+  fieldOfView: 22, // vertical, degrees (the snow scene's lens)
+  distance: 14, // from the point it looks at
+  /** The point it looks at: a little above the snow, part way down the lane. */
+  target: [0, 0.5, -4] as [number, number, number],
   aspect: 16 / 9, // a landscape screen; a phone held upright sees less at the sides
-  /** A second preview, pulled back this many times the default distance, to see the whole village. */
-  pulledBack: 1.6,
+  /** A second preview, pulled back this many times the distance, to see the whole lane. */
+  pulledBack: 1.45,
 };
 
 /* ------------------------------------------------------------------ */
-/* First village layout                                                 */
+/* The lane and its framing                                             */
 /* ------------------------------------------------------------------ */
 
 /**
- * Where the two main characters stand (they are 3D, not part of the scenery). The snow scene in PR #17
- * puts them 4.4 apart on a landscape screen (its layout.characterDistance).
+ * Paper bowling: the thrower stands at the line near the camera (z = 0) and rolls toward the pins further
+ * down the lane (negative z). Village props frame both sides and the far end; the lane stays clear.
  */
-export const characters = [
-  { name: "A", x: -2.2, z: 0 },
-  { name: "B", x: 2.2, z: 0 },
-] as const;
-
-/** Rules the layout keeps. Part 2 can reuse them to check any edited layout. */
-export const layoutRules = {
-  /** The area shown on the top-down map. */
-  area: { minX: -6, maxX: 6, minZ: -5.5, maxZ: 3.5 },
-  /** Kept completely empty: a wide lane across the middle, between and around the characters. */
-  lane: { minX: -4.6, maxX: 4.6, minZ: -1.4, maxZ: 1.4 },
-  /** In front of the characters (z above this) and within `frontHalfWidth` of the middle, nothing taller than `frontMaxHeight`. */
-  frontZ: 0.5,
-  frontHalfWidth: 3.2,
-  frontMaxHeight: 0.6,
+export const lane = {
+  /** Where the thrower stands and slides left and right. */
+  throwLine: { z: 0, halfWidth: 1.6 },
+  /** Where pin formations stand (centre and half sizes). */
+  pinZone: { x: 0, z: -6.5, halfWidth: 1.6, halfDepth: 1.5 },
+  /** No frame prop may reach into this box: the roll path from the line to past the pins. */
+  clear: { minX: -2, maxX: 2, minZ: -8.6, maxZ: 1.6 },
+  /** Between the camera and the line (z above this) nothing taller than `nearMaxHeight` within the camera's middle. */
+  nearZ: 0.6,
+  nearHalfWidth: 3,
+  nearMaxHeight: 0.45,
 };
+
+/** Who throws: player 1 and player 2 (docs/GAMEPLAY.md section 2). */
+export const throwers: [PropId, PropId] = ["thrower-bucket", "thrower-redhat"];
+
+/** The area shown on the top-down map. */
+export const mapArea = { minX: -6.5, maxX: 6.5, minZ: -11.8, maxZ: 2.2 };
 
 export type Placement = {
   prop: PropId;
@@ -207,74 +230,83 @@ export type Placement = {
   flip?: boolean;
   /** Multiply the prop's height, for gentle variety in depth. Default 1. */
   scale?: number;
-  /** Which cluster it belongs to (only for reading the layout). */
-  cluster: "home" | "music" | "bench" | "edge" | "frame";
+  /** Which part of the frame it belongs to (only for reading the layout). */
+  side: "left" | "right" | "far";
 };
 
 /*
-  Cosy first, not complete: 13 standees in three small clusters with empty snow between them.
-  The default camera is a close diorama view, so the village sits fairly near the characters and
-  the buildings are small: a cottage is one and a half characters tall.
-  home   — back: the big tree as the tallest anchor just right of centre, the cottage in front of it on the
-           left, the igloo on the right, at different depths so they overlap a little; the boy and his
-           little snowman just in front; the flag alone farther back on the right as a landmark.
-  music  — left, middle distance: the log with the radio, the walking pine standing by as its audience.
-  bench  — right, middle distance: the bench snowmen (mirrored so the waving one is on the inside),
-           the signpost a little in front and outside it (mirrored so the arrow points to the middle),
-           the girl beside it and the bag penguin by the sign.
-  edge   — the two that read as moving have open snow ahead: the skier at the back left,
-           the sliding penguin crossing the empty front left.
-  frame  — quiet fillers: a snowy pine behind the cottage and one at each side, a bush and a
-           mound softening the foot of the clusters. Mirrored and scaled so no two look copy-pasted.
+  Lane framing, cosy and airy: village props on both sides and at the far end, the lane clear down the middle.
+  far    — the big tree as the anchor just right of centre behind the pins, a tall pine to its left and a short
+           one to its right, a bush and a mound softening the foot.
+  left   — the cottage about level with the pins, a tall pine behind it, a bush at its foot, and a short pine
+           and a mound nearer the thrower so the lane has a soft edge all the way.
+  right  — the igloo a little nearer than the cottage (not mirrored), a tall pine nearer the thrower, a short pine
+           further down and a mound at the igloo's foot.
+  Big things far, small things near; pines mirrored and scaled so no two look copy-pasted.
 */
 export const layout: Placement[] = [
-  // home
-  { prop: "tree-snowmen", x: 0.45, z: -3.0, cluster: "home" },
-  { prop: "cottage-blue", x: -1.7, z: -2.6, cluster: "home" },
-  { prop: "igloo-friends", x: 2.45, z: -2.8, cluster: "home" },
-  { prop: "boy-snowman", x: -0.4, z: -1.9, cluster: "home" },
-  { prop: "flag-blue", x: 4.3, z: -3.5, scale: 0.95, cluster: "home" },
+  // far end
+  { prop: "tree-snowmen", x: 0.5, z: -10.3, side: "far" },
+  { prop: "pine-snow-tall", x: -2.5, z: -10.8, scale: 1.05, side: "far" },
+  { prop: "pine-snow-short", x: 3.1, z: -10.0, flip: true, side: "far" },
+  { prop: "bush-snow", x: -1.25, z: -9.5, scale: 0.9, side: "far" },
+  { prop: "mound-snow", x: 2.0, z: -9.2, scale: 0.85, side: "far" },
 
-  // music corner
-  { prop: "log-music", x: -3.8, z: -2.2, cluster: "music" },
-  { prop: "pine-walking", x: -2.7, z: -1.7, cluster: "music" },
+  // left side
+  { prop: "cottage-blue", x: -3.75, z: -6.9, side: "left" },
+  { prop: "pine-snow-tall", x: -5.3, z: -8.9, scale: 0.9, flip: true, side: "left" },
+  { prop: "bush-snow", x: -2.75, z: -5.3, scale: 0.85, side: "left" },
+  { prop: "pine-snow-short", x: -3.7, z: -2.6, scale: 0.85, side: "left" },
+  { prop: "mound-snow", x: -3.4, z: -1.6, scale: 0.8, side: "left" },
 
-  // watching bench
-  { prop: "bench-snowmen", x: 3.7, z: -2.3, flip: true, cluster: "bench" },
-  { prop: "signpost-snowman", x: 4.5, z: -1.6, flip: true, cluster: "bench" },
-  { prop: "girl-earmuffs", x: 3.0, z: -1.75, cluster: "bench" },
-  { prop: "penguin-bag", x: 4.0, z: -1.5, scale: 0.95, cluster: "bench" },
-
-  // moving ones, with open snow ahead
-  { prop: "skier", x: -3.7, z: -3.9, cluster: "edge" },
-  { prop: "penguin-slide", x: -2.9, z: 2.1, cluster: "edge" },
-
-  // quiet fillers framing the village
-  { prop: "pine-snow-tall", x: -2.75, z: -3.35, scale: 0.92, cluster: "frame" },
-  { prop: "pine-snow-tall", x: -5.1, z: -3.0, scale: 0.82, flip: true, cluster: "frame" },
-  { prop: "pine-snow-short", x: 5.2, z: -2.75, scale: 1.05, cluster: "frame" },
-  { prop: "bush-snow", x: 1.55, z: -2.35, flip: true, cluster: "frame" },
-  { prop: "mound-snow", x: -4.5, z: -1.6, scale: 0.85, cluster: "frame" },
+  // right side
+  { prop: "igloo-friends", x: 3.6, z: -5.6, side: "right" },
+  { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
+  { prop: "pine-snow-short", x: 3.9, z: -8.3, scale: 1.1, flip: true, side: "right" },
+  { prop: "mound-snow", x: 2.75, z: -4.3, scale: 0.75, flip: true, side: "right" },
 ];
 
-/** Plain-language problems with the layout; empty when every rule holds. */
+/**
+ * An example pin formation (a triangle of six) so the previews show the whole picture.
+ * Preview only: real formations belong to the pins work (docs/GAMEPLAY.md section 6).
+ */
+export const examplePins: Omit<Placement, "side">[] = [
+  { prop: "penguin-bag", x: 0, z: -5.4 },
+  { prop: "girl-earmuffs", x: -0.48, z: -6.1 },
+  { prop: "snowman-newspaper", x: 0.5, z: -6.1 },
+  { prop: "pine-walking", x: -0.98, z: -6.8 },
+  { prop: "flag-blue", x: 0.02, z: -6.85 },
+  { prop: "signpost-snowman", x: 1.02, z: -6.8 },
+];
+
+/** Everything the previews draw: the frame, the example pins and both throwers (player 2 waiting beside the line). */
+export type SceneItem = { key: string; id: PropId; x: number; z: number; scale?: number; flip?: boolean; role: PropRole };
+
+export const sceneItems: SceneItem[] = [
+  ...layout.map((p, i) => ({ key: `frame-${p.prop}-${i}`, id: p.prop, x: p.x, z: p.z, scale: p.scale, flip: p.flip, role: "frame" as const })),
+  ...examplePins.map((p, i) => ({ key: `pin-${p.prop}-${i}`, id: p.prop, x: p.x, z: p.z, scale: p.scale, flip: p.flip, role: "pin" as const })),
+  { key: "thrower-1", id: throwers[0], x: 0, z: lane.throwLine.z, role: "thrower" },
+  { key: "thrower-2", id: throwers[1], x: -2.15, z: lane.throwLine.z - 0.6, scale: 0.95, role: "thrower" },
+];
+
+/** Plain-language problems with the framing; empty when every rule holds. */
 export function layoutProblems(list: Placement[] = layout): string[] {
-  const { lane, frontZ, frontHalfWidth, frontMaxHeight, area } = layoutRules;
+  const { clear, nearZ, nearHalfWidth, nearMaxHeight } = lane;
   const problems: string[] = [];
   for (const item of list) {
     const p = propSettings(item.prop)!;
     const h = p.height * (item.scale ?? 1);
     const halfW = (propWidth(item.prop) * (item.scale ?? 1)) / 2;
     const name = `${item.prop} at (${item.x}, ${item.z})`;
-    const overlapsLane =
-      item.x + halfW > lane.minX && item.x - halfW < lane.maxX && item.z > lane.minZ && item.z < lane.maxZ;
-    if (overlapsLane) problems.push(`${name} is inside the throwing lane`);
-    if (item.z > frontZ && h > frontMaxHeight && Math.abs(item.x) - halfW < frontHalfWidth)
-      problems.push(`${name} is ${h} tall in front of the characters`);
+    const inLane = item.x + halfW > clear.minX && item.x - halfW < clear.maxX && item.z > clear.minZ && item.z < clear.maxZ;
+    if (inLane) problems.push(`${name} reaches into the lane`);
+    if (item.z > nearZ && h > nearMaxHeight && Math.abs(item.x) - halfW < nearHalfWidth)
+      problems.push(`${name} is ${h} tall between the camera and the thrower`);
+    const area = mapArea;
     if (item.x < area.minX || item.x > area.maxX || item.z < area.minZ || item.z > area.maxZ)
-      problems.push(`${name} is outside the play area`);
+      problems.push(`${name} is outside the map`);
+    if (p.role !== "frame") problems.push(`${name} is not a frame prop`);
     if (p.spare) problems.push(`${name} is marked spare`);
-    if (p.kind && p.kind !== "standee") problems.push(`${name} is a ${p.kind}, not a standee`);
     if (!propPx(item.prop)) problems.push(`${name} has no file yet`);
   }
   return problems;
@@ -295,7 +327,7 @@ export const standee3d = {
 
   /** Half-turn toward the camera when it orbits. */
   turn: {
-    /** Share of the camera's swing around the village that each prop follows. */
+    /** Share of the camera's swing around the lane that each prop follows. */
     fraction: 0.5,
     /** Largest turn away from the home facing, in degrees. */
     cap: 30,
@@ -317,10 +349,19 @@ export const standee3d = {
     band: { from: 0.3, to: 0.7 },
   },
 
-  /** Faint "pillow" volume on the art, from the silhouette's normal map. */
+  /** The card's side wall and back: fibre speckle and uneven shading, so it reads as real card, not plastic. */
+  card: {
+    grain: 0.18,
+    uneven: 0.18,
+  },
+
+  /**
+   * Faint "pillow" volume on the art, from the silhouette's normal map. Off by default (see treatment.ts):
+   * next to the source sheets even a faint tint read as a soft computer vignette rather than a pencil pass.
+   */
   pillow: {
-    /** How strongly the far edges are tinted toward the shade colour. 0 = flat; kept low so it never fights the drawing. */
-    strength: 0.45,
+    /** How strongly the far edges are tinted toward the shade colour when switched on. 0 = flat. */
+    strength: 0.3,
     band: { from: 0.2, to: 0.62 },
   },
 
@@ -358,12 +399,12 @@ export const standee3d = {
     sunElevation: 24, // degrees above the horizon
     sunAzimuth: 128, // 0 = from the right, 90 = from behind the scene toward the viewer
     shadowMapSize: 2048,
-    shadowSoftness: 5,
+    shadowSoftness: 9,
     shadowArea: 12,
     shadowBias: -0.0004,
     shadowNormalBias: 0.02,
-    /** How much of the shadow colour shows (1 = exactly --snow-shadow). */
-    shadowStrength: 1,
+    /** How much of the shadow colour shows over the paper snow (1 = exactly --snow-shadow; lower = paler, still only the two tokens). */
+    shadowStrength: 0.75,
   },
 
   /** Light haze: far things fade into the paper colour (fog density, exponential). */
@@ -375,5 +416,9 @@ export const standee3d = {
     maxDistance: 40,
     /** Lowest the camera may go, in degrees above the ground. */
     minElevation: 6,
+    /** Highest, in degrees: never straight down (the snow scene's limit). */
+    maxElevation: 76,
+    /** Turn left or right at most this far, in degrees: never round to the back of the cut-outs (the snow scene's limit). */
+    maxTurn: 60,
   },
 };

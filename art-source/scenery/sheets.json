@@ -1,5 +1,5 @@
 {
-  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60), target (\"effects\" = source in art-source/effects/, output public/assets/effects/). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
+  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60), erase ([{box}] paint over drawn blue ground shadows), target (\"effects\" = source in art-source/effects/, output public/assets/effects/). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
   "sheets": [
     {
       "file": "doodle-1-friends-tree.png",
@@ -55,6 +55,42 @@
         "bush-snow"
       ],
       "min_piece": 15
+    },
+    {
+      "file": "thrower-1-bucket-turnaround.png",
+      "grid": "4x1",
+      "names": [
+        "thrower-bucket"
+      ],
+      "min_piece": 200,
+      "erase": [
+        {
+          "box": [
+            60,
+            640,
+            384,
+            720
+          ]
+        }
+      ]
+    },
+    {
+      "file": "thrower-2-redhat-turnaround.png",
+      "grid": "4x1",
+      "names": [
+        "thrower-redhat"
+      ],
+      "min_piece": 200,
+      "erase": [
+        {
+          "box": [
+            60,
+            690,
+            384,
+            745
+          ]
+        }
+      ]
     },
     {
       "file": "effects-1-marks.png",

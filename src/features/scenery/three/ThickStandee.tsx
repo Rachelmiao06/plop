@@ -56,7 +56,7 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
 
   const band = standee3d.shading.band;
   const capMaterial = useMemo(
-    () => toonMaterial({ base: paper.paper, shade: paper.shade, light: drawingLight, band }),
+    () => toonMaterial({ base: paper.paper, shade: paper.shade, light: drawingLight, band, card: standee3d.card }),
     [paper, band],
   );
   const sideMaterial = useMemo(
@@ -67,6 +67,7 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
         light: drawingLight,
         band,
         edge: { color: paper.ink, halfDepth: depth / 2 },
+        card: standee3d.card,
       }),
     [paper, band, depth],
   );

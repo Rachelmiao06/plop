@@ -17,6 +17,7 @@ Writes
   Sheets with "target": "effects" (sources in art-source/effects/) go to public/assets/effects/ and
   src/features/scenery/effect-sizes.json instead.
   WebPs in those folders that no sheet produces any more are deleted (listed in the output).
+  "erase" boxes paint over drawn ground shadows before cutting (the turnaround sheets have them).
 
 How the background is removed
   A colour key would eat the white snow, so only paper connected to the sheet's
@@ -144,6 +145,24 @@ def remove_background(rgb: np.ndarray, sheet: dict) -> tuple[np.ndarray, np.ndar
     return alpha, clean
 
 
+def erase_drawn_shadows(rgb: np.ndarray, sheet: dict) -> None:
+    """Paint over drawn ground shadows (pale blue hatching under the feet) with the paper colour.
+
+    sheets.json: "erase": [{"box": [x0, y0, x1, y1]}]. Only bluish, light pixels inside the box change,
+    so the outline and white parts stay. The real 3D shadow replaces the drawn one.
+    """
+    if not sheet.get("erase"):
+        return
+    border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]])
+    paper = np.median(border, axis=0)
+    for item in sheet["erase"]:
+        x0, y0, x1, y1 = item["box"]
+        region = rgb[y0:y1, x0:x1]
+        lum = region.mean(axis=2)
+        bluish = (region[..., 2] > region[..., 0] + 4) & (lum > 120)
+        region[bluish] = paper
+
+
 def cut_sheet(sheet: dict) -> dict[str, Image.Image]:
     path = TARGETS[sheet.get("target", "scenery")]["src"] / sheet["file"]
     if not path.exists():
@@ -155,6 +174,7 @@ def cut_sheet(sheet: dict) -> dict[str, Image.Image]:
 
     rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
     h, w, _ = rgb.shape
+    erase_drawn_shadows(rgb, sheet)
     alpha, clean = remove_background(rgb, sheet)
 
     # Each solid piece belongs to the cell its centre falls in.

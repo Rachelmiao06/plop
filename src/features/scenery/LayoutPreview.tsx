@@ -1,32 +1,46 @@
 import Image from "next/image";
 
-import { characters, layout, layoutRules, propPx, propSettings, propSrc, propWidth } from "./content";
+import { lane, mapArea as area, propPx, propSettings, propSrc, propWidth, sceneItems } from "./content";
 import { groundFootprint } from "./view";
 
-const { area, lane } = layoutRules;
-/** Extra room above the back row so the tall props there are not cut off in the preview. */
+/** Extra room above the far end so the tall props there are not cut off on the map. */
 const HEADROOM = 1.2;
 const viewMinZ = area.minZ - HEADROOM;
 const spanX = area.maxX - area.minX;
 const spanZ = area.maxZ - viewMinZ;
 
-/** Percent across the rectangle for x, and percent down for z (back of the village at the top). */
+/** Percent across the rectangle for x, and percent down for z (far end of the lane at the top). */
 const left = (x: number) => ((x - area.minX) / spanX) * 100;
 const top = (z: number) => ((z - viewMinZ) / spanZ) * 100;
 
 /** Thumbnails are drawn a little smaller than true size so the ground between them stays readable. */
 const THUMB = 0.7;
 
+function Box({ minX, maxX, minZ, maxZ, className }: { minX: number; maxX: number; minZ: number; maxZ: number; className: string }) {
+  return (
+    <div
+      className={`absolute rounded-lg border-2 border-dashed ${className}`}
+      style={{
+        left: `${left(minX)}%`,
+        top: `${top(minZ)}%`,
+        width: `${((maxX - minX) / spanX) * 100}%`,
+        height: `${((maxZ - minZ) / spanZ) * 100}%`,
+      }}
+    />
+  );
+}
+
 /**
- * A flat map of the first village layout, seen from above with the default camera at the bottom.
- * Each prop is a small thumbnail standing on its base point; the dashed box is the throwing lane;
- * the faint outline is the patch of snow the default camera sees.
+ * A flat map of the lane seen from above, the throwing view at the bottom. Frame props, example pins and
+ * the throwers stand on their base points; dashed boxes are the clear lane and the pin zone; the faint
+ * outline is the patch of snow the throwing view sees.
  */
 export function LayoutPreview() {
-  const sorted = [...layout].sort((a, b) => a.z - b.z); // back first, so nearer props overlap them
+  const sorted = [...sceneItems].sort((a, b) => a.z - b.z); // far first, so nearer props overlap them
   const footprint = groundFootprint()
     .map(([x, z]) => `${left(x)},${top(z)}`)
     .join(" ");
+  const { pinZone, throwLine, clear } = lane;
 
   return (
     <div className="flex flex-col gap-2">
@@ -34,7 +48,6 @@ export function LayoutPreview() {
         className="relative w-full overflow-hidden rounded-xl border-2 border-snow-shadow bg-muted/60"
         style={{ aspectRatio: `${spanX} / ${spanZ}` }}
       >
-        {/* What the default camera sees */}
         <svg className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
           <polygon
             points={footprint}
@@ -45,25 +58,31 @@ export function LayoutPreview() {
           />
         </svg>
 
-        {/* Throwing lane */}
+        <Box {...clear} className="border-sky-blue bg-paper/50" />
+        <Box
+          minX={pinZone.x - pinZone.halfWidth}
+          maxX={pinZone.x + pinZone.halfWidth}
+          minZ={pinZone.z - pinZone.halfDepth}
+          maxZ={pinZone.z + pinZone.halfDepth}
+          className="border-berry/60"
+        />
+        {/* Throwing line */}
         <div
-          className="absolute rounded-lg border-2 border-dashed border-sky-blue bg-paper/50"
+          className="absolute h-0.5 -translate-y-1/2 bg-ink/60"
           style={{
-            left: `${left(lane.minX)}%`,
-            top: `${top(lane.minZ)}%`,
-            width: `${((lane.maxX - lane.minX) / spanX) * 100}%`,
-            height: `${((lane.maxZ - lane.minZ) / spanZ) * 100}%`,
+            left: `${left(-throwLine.halfWidth)}%`,
+            top: `${top(throwLine.z)}%`,
+            width: `${((2 * throwLine.halfWidth) / spanX) * 100}%`,
           }}
         />
 
-        {sorted.map((item, i) => {
-          const p = propSettings(item.prop)!;
-          const scale = item.scale ?? 1;
-          const w = (propWidth(item.prop) * scale * THUMB) / spanX;
-          const px = propPx(item.prop) ?? { w: 1, h: 1 };
+        {sorted.map((item) => {
+          const p = propSettings(item.id)!;
+          const w = (propWidth(item.id) * (item.scale ?? 1) * THUMB) / spanX;
+          const px = propPx(item.id) ?? { w: 1, h: 1 };
           return (
             <div
-              key={`${item.prop}-${i}`}
+              key={item.key}
               className="absolute"
               style={{
                 left: `${left(item.x)}%`,
@@ -72,10 +91,10 @@ export function LayoutPreview() {
                 aspectRatio: `${px.w} / ${px.h}`,
                 transform: "translate(-50%, -100%)",
               }}
-              title={`${p.label} (${item.x}, ${item.z})`}
+              title={`${p.label} (${item.x}, ${item.z}) · ${item.role}`}
             >
               <Image
-                src={propSrc(item.prop)}
+                src={propSrc(item.id)}
                 alt={p.label}
                 width={px.w}
                 height={px.h}
@@ -87,21 +106,11 @@ export function LayoutPreview() {
             </div>
           );
         })}
-
-        {characters.map((c) => (
-          <div
-            key={c.name}
-            className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
-            style={{ left: `${left(c.x)}%`, top: `${top(c.z)}%` }}
-          >
-            <span
-              className={`size-5 rounded-full border-2 border-ink sm:size-7 ${c.name === "A" ? "bg-berry" : "bg-sky-blue"}`}
-            />
-            <span className="text-xs font-bold">{c.name}</span>
-          </div>
-        ))}
       </div>
-      <p className="text-center text-xs">↓ default camera looks from here, above and in front; dashed outline = what it sees ↓</p>
+      <p className="text-center text-xs">
+        ↓ the throwing view looks from here, behind and above the thrower; dashed outline = what it sees; blue box = clear
+        lane; red box = where pins stand ↓
+      </p>
     </div>
   );
 }
