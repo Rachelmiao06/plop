@@ -24,8 +24,8 @@ export const INVITE = {
   },
 
   /**
-   * The ≥ 300 × 300 first image in <body> WeChat uses for its chat card: Rachel's mouse-with-a-letter cut-out on
-   * paper, made from `public/assets/scenery/mouse-letter.webp` by `scripts/make_invite_card.py`.
+   * The ≥ 300 × 300 first image in <body> WeChat uses for its chat card: "Plop!" with Rachel's sliding penguin on
+   * `--snow-white`, like the opening page, made by `scripts/make_invite_card.py` from her existing art.
    */
   squareImage: { src: "/assets/invite/invite-square.jpg", size: 600 },
 

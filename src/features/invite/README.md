@@ -32,8 +32,9 @@ WeChat ignores Open Graph without an Official Account. It takes the page `<title
 - `generateMetadata` sets "{name} 邀请你来打雪仗 · Plop!" (server), and `InviteCard` sets `document.title` and the
   description again in the browser, because the address is read at request time (Cache Components) and WeChat is
   not on Next.js's list of bots that get the title in `<head>` up front.
-- the first body image is `public/assets/invite/invite-square.jpg` (600 × 600): Rachel's mouse cut-out on `--paper`,
-  made by `python3 scripts/make_invite_card.py` (no drawing, just placed on paper).
+- the first body image is `public/assets/invite/invite-square.jpg` (600 × 600): "Plop!" with Rachel's sliding penguin on
+  `--snow-white`, like the opening page, made by `python3 scripts/make_invite_card.py` (no drawing: the penguin as it is,
+  the lettering lifted from the share card).
 
 ## Files
 

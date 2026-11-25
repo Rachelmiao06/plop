@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 // --paper from globals.css (meta tags cannot read CSS variables).
-export const viewport: Viewport = { themeColor: "#fffdf8" };
+export const viewport: Viewport = { themeColor: "#ffffff" }; // --snow-white, like the white opening page
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
