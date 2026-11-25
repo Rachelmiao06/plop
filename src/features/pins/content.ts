@@ -186,7 +186,7 @@ export const PINS = {
   /** A card squashes a little when it flops into the snow, then springs back (drawing only). */
   flop: {
     /** Squash at the hardest landing (share of the card's length); a soft lay-down squashes less. */
-    squash: 0.12,
+    squash: 0.14,
     stiffness: 260,
     damping: 11,
   },

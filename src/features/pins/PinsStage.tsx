@@ -382,7 +382,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         playFwump(strength, clamp01((s.height * s.width - 0.15) / 0.8));
         haptic("flop", strength);
         // A little squash on landing, harder for a harder flop.
-        rt.squash.v += PINS.flop.squash * (0.4 + 0.6 * strength) * 24;
+        rt.squash.v += PINS.flop.squash * (0.5 + 0.5 * strength) * 30;
       }),
     [specs, snow],
   );

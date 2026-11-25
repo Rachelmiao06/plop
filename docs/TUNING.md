@@ -23,3 +23,22 @@ seconds, units per second.
 - **The score bar's spring:** `src/features/hud/content.ts` (`bar.stiffness`, `bar.damping`).
 - **A ball left in the snow melts away** `GAME.timing.meltBallAfterResult` (1.1 s) after the count, so the reset never waits for it.
 - **Camera:** the throwing view comes from `throwingView()` in `src/features/scenery/`; turning and zoom limits are in snow-scene `content.ts` (`cameraPath`, `orbit`).
+
+## Feel in the hand: vibration, squash and bounce (#10)
+
+Every key moment has a vibration (Android phones; iPhones and computers skip it silently), a sound and a
+squash or bounce. Vibration follows the sound-effects switch. "Reduce motion" on the device keeps the vibration
+and sound but shrinks squash, stretch and hops (`reducedMotion` share in bowling and pins `content.ts`; the
+pop-up and score bounces become fades).
+
+| Moment | What you feel / see | Number(s) today | Where |
+|---|---|---|---|
+| Vibration patterns | Buzz lengths (ms) per moment, the gap before the same one may repeat, and a cap of 260 ms of buzzing per second so nothing ever hums | tap 7 · tick 4–7 · charge 16/45/22 · launch 14–38 · hit 10–22 · flop 5–11 · down 10/60/10 · full clear 7-beat | `src/lib/haptics.ts` · `HAPTICS` |
+| Press the thrower | Tiny squash, soft pat, a tap | `0.12` | `src/features/bowling/content.ts` · `LOOK.thrower.pressSquash`, `FEEL.beats.pressThump` |
+| Pulling | Crunch ticks that quicken as the ball grows; each tick squashes the ball a little | `5` → `13` ticks/s · `0.06` | `FEEL.beats.ticksSmall`, `ticksBig`, `tickFullSpeed` · `LOOK.ballSquash.tick` |
+| Full charge | Clunk, stronger pulse, ball squash, the snowman puffs up, then the tremble | `0.16` · `0.1` · `0.25` | `LOOK.ballSquash.charge` · `LOOK.thrower.chargePop` · `FEEL.beats.chargeThump` |
+| Let go | Whoosh, launch pulse, the ball stretches along its roll, the snowman's stretchy hop | `0.18` · hop `0.14` / `0.2` | `LOOK.ballSquash.launch` · `LOOK.thrower.hop` |
+| Ball meets the first card | Hit-stop: time drops to 12% and eases back over 0.14 s; a thump and a bump | `0.14` s · `0.12` | `src/features/pins/content.ts` · `PINS.hitStop` |
+| A card flops | Soft flop tick (rate-limited in big chains), the card squashes in the snow | `0.14` | `PINS.flop` |
+| "N down!" / "All down!" | Pops in tall, lands squashed wide, settles; a pop sound, or a little chime and a celebration buzz on a full clear | `0.16` / `0.24` · `0.6` / `0.8` s | `PINS.popup.squash`, `bounceIn`, `chime` |
+| Score "+1" and the bar | "+1" lands squashed in the bar, the bar bumps, the total pops with squash-and-stretch | `0.22` · `420` ms | `src/features/hud/content.ts` · `bump`, `pop` |
