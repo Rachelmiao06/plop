@@ -23,13 +23,15 @@ import {
   type RapierCollider,
   type RapierRigidBody,
 } from "@react-three/rapier";
-import { Euler, Quaternion, SRGBColorSpace, Vector3, type Group, type Texture } from "three";
+import { Euler, Quaternion, SphereGeometry, SRGBColorSpace, Vector3, type Group, type Mesh, type Texture } from "three";
 
 import { playThump } from "@/lib/audio";
 import { haptic } from "@/lib/haptics";
 
 import type { BowlEvent, Bowling } from "@/features/bowling";
 import { propSrc } from "@/features/scenery";
+import { standee3d } from "@/features/scenery/content";
+import { toonMaterial } from "@/features/scenery/three/materials";
 import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
 
 import { currentBowling, tapBowling } from "./ballTap";
@@ -44,6 +46,11 @@ const MAX_BALLS = 6;
 /** Where unused ball colliders wait, far under the snow. */
 const PARK_Y = -40;
 const DEG = Math.PI / 180;
+const UP = new Vector3(0, 1, 0);
+/** The heap under a fallen card: a soft half dome, scaled to size each frame (same shape as the scenery's mound). */
+const heapGeometry = new SphereGeometry(1, 20, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+/** The drawing light all paper shading comes from (same as the scenery look and PinCard). */
+const drawingLight = new Vector3(...standee3d.shading.from).normalize();
 
 type Pose = { p: Vector3; q: Quaternion };
 type Anim = { kind: "reset" | "leave" | "arrive"; start: number; duration: number; from: Pose; to: Pose };
@@ -57,6 +64,8 @@ type PinRuntime = {
   struck?: boolean;
   /** The flop squash spring (drawing only): amount and its speed. */
   squash: { q: number; v: number };
+  /** How far the drawing of a fallen card is propped up off the snow (radians, drawing only). */
+  lift: number;
 };
 
 const MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -121,6 +130,15 @@ function tiltOf(q: { x: number; y: number; z: number; w: number }): number {
   return Math.acos(Math.max(-1, Math.min(1, upY))) / DEG;
 }
 
+/** Distance on the ground from (x, z) to the segment from (ax, az) to (bx, bz). */
+function segmentDistance(x: number, z: number, ax: number, az: number, bx: number, bz: number): number {
+  const vx = bx - ax;
+  const vz = bz - az;
+  const len = vx * vx + vz * vz;
+  const t = len > 1e-9 ? Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / len)) : 0;
+  return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
+}
+
 /** A new throw: nothing is down or landed yet. */
 function clearCounts(list: PinRuntime[]) {
   for (const rt of list) {
@@ -150,6 +168,14 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   const runtime = useRef<PinRuntime[]>([]);
   /** Which set `runtime` was made for (it is replaced in an effect, a moment after the new set mounts). */
   const runtimeFor = useRef<string | null>(null);
+  /** The group inside each card's drawing that props it up when it lies fallen, and its heap of snow. */
+  const lifts = useRef<(Group | null)[]>([]);
+  const heaps = useRef<(Mesh | null)[]>([]);
+  const heapMaterial = useMemo(
+    () => toonMaterial({ base: paper.paper, shade: paper.shade, light: drawingLight, band: standee3d.shading.band }),
+    [paper],
+  );
+  useEffect(() => () => heapMaterial.dispose(), [heapMaterial]);
   const ballBodies = useRef<(RapierRigidBody | null)[]>([]);
   const ballColliders = useRef<(RapierCollider | null)[]>([]);
   const flow = useRef({
@@ -158,7 +184,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     /** When the current phase started. */
     since: 0,
     launchedAt: 0,
-    stoppedAt: null as number | null,
+    /** When every ball of the throw was through the pins (burst or stopped clear of them); null while one still rolls among them. */
+    clearAt: null as number | null,
     settledFor: 0,
     activeBalls: new Set<number>(),
     /** Balls thrown in the throw being counted; only these (and rolling ones) push cards. */
@@ -192,6 +219,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       boingAt: -10,
       hidden: entry.arrive,
       squash: { q: 0, v: 0 },
+      lift: 0,
     }));
     runtimeFor.current = entry.id;
     if (!entry.arrive) pins.emit({ type: "ready", formation: entry.id, total: specs.length });
@@ -233,7 +261,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   const startThrow = () => {
     const f = flow.current;
     f.launchedAt = f.clock;
-    f.stoppedAt = f.activeBalls.size ? null : f.clock;
+    f.clearAt = null;
     f.settledFor = 0;
     f.pendingThrow = false;
     f.hitThisThrow = false;
@@ -326,7 +354,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       f.activeBalls.add(e.ballId);
       f.throwBalls.add(e.ballId);
       if (f.phase === "ready") startThrow();
-      else if (f.phase === "throw") f.stoppedAt = null;
+      else if (f.phase === "throw") f.clearAt = null;
       else {
         f.pendingThrow = true;
         if (f.phase === "result") {
@@ -336,7 +364,6 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       }
     } else if (e.type === "stopped" || e.type === "removed") {
       f.activeBalls.delete(e.ballId);
-      if (!f.activeBalls.size && f.stoppedAt === null) f.stoppedAt = f.clock;
     }
   };
   const onBowlRef = useRef(onBowl);
@@ -363,8 +390,16 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
             const m = body.mass();
             const v = ball.speed;
             body.applyImpulse({ x: d.x * im.push * m * v, y: im.lift * m, z: d.z * im.push * m * v }, true);
+            // Plus a tip backward about the card's own width (away from the throwing line), so it lands face-up.
+            const r = body.rotation();
+            const across = new Vector3(1, 0, 0).applyQuaternion(new Quaternion(r.x, r.y, r.z, r.w));
+            const back = -im.faceUp * m * v;
             body.applyTorqueImpulse(
-              { x: d.z * im.tumble * m * v, y: (Math.random() * 2 - 1) * im.twist * m * v, z: -d.x * im.tumble * m * v },
+              {
+                x: d.z * im.tumble * m * v + across.x * back,
+                y: (Math.random() * 2 - 1) * im.twist * m * v,
+                z: -d.x * im.tumble * m * v + across.z * back,
+              },
               true,
             );
           }
@@ -428,11 +463,16 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const body = ballBodies.current[slot];
       const collider = ballColliders.current[slot];
       if (!body || !collider || !game) continue;
-      const fade = ball.rolling ? 1 : clamp01((game.feel.roll.restTime - ball.restAge) / PINS.ball.fadeTime);
+      const bursting = ball.bursting !== null;
+      const fade = bursting
+        ? 1 - clamp01(ball.bursting! / game.feel.roll.burstTime) ** 2
+        : ball.rolling
+          ? 1
+          : clamp01((game.feel.roll.restTime - ball.restAge) / PINS.ball.fadeTime);
       const r = ball.plan.radius * fade;
       collider.setRadius(Math.max(0.005, r * PINS.ball.radiusShare));
-      // Only a rolling ball, or one still part of the throw being counted, pushes cards.
-      const pushes = ball.rolling || (f.phase === "throw" && f.throwBalls.has(ball.id));
+      // Only a rolling ball, or one still part of the throw being counted, pushes cards; a bursting one never.
+      const pushes = !bursting && (ball.rolling || (f.phase === "throw" && f.throwBalls.has(ball.id)));
       if (collider.isSensor() === pushes) collider.setSensor(!pushes);
       let ground = snow.heightAt(ball.position.x, ball.position.z);
       if (!ball.rolling) {
@@ -453,6 +493,45 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       body?.setNextKinematicTranslation({ x: slot * 3, y: PARK_Y, z: 0 });
     }
   });
+
+  /**
+   * The balls of this throw that are through the pins burst into snow (so they never park over the fallen
+   * cards): past every card, or slow among them. True once none of them can touch a card any more.
+   */
+  const cardEnd = useMemo(() => new Vector3(), []);
+  const scratchQ = useMemo(() => new Quaternion(), []);
+  const ballsThrough = (): boolean => {
+    const f = flow.current;
+    const game = f.game;
+    if (!game) return true;
+    const B = PINS.burst;
+    let clear = true;
+    for (const ball of game.balls) {
+      if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
+      const r = ball.plan.radius;
+      const d = ball.plan.direction;
+      const bx = ball.position.x;
+      const bz = ball.position.z;
+      let past = true;
+      let near = false;
+      specs.forEach((s, i) => {
+        const b = bodies.current[i];
+        if (!b || runtime.current[i]?.hidden) return;
+        const t = b.translation();
+        const q = b.rotation();
+        // The card on the ground: from its foot to where its head is now (upright, that is the foot again).
+        cardEnd.set(0, s.height, 0).applyQuaternion(scratchQ.set(q.x, q.y, q.z, q.w));
+        const hx = t.x + cardEnd.x;
+        const hz = t.z + cardEnd.z;
+        // Past its foot: a fallen card's head may still lie ahead, and the ball bursts on it.
+        if ((bx - t.x) * d.x + (bz - t.z) * d.z < r + B.pastMargin) past = false;
+        if (segmentDistance(bx, bz, t.x, t.z, hx, hz) < r + s.card[0] + B.amongMargin) near = true;
+      });
+      if (past || (near && ball.speed < B.slowSpeed)) game.burst(ball.id);
+      else if (ball.rolling) clear = false;
+    }
+    return clear;
+  };
 
   useAfterPhysicsStep(() => {
     const f = flow.current;
@@ -483,9 +562,11 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const w = b.angvel();
       const spin = Math.hypot(w.x, w.y, w.z);
       if (spin > c.angular) b.setAngvel({ x: (w.x * c.angular) / spin, y: (w.y * c.angular) / spin, z: (w.z * c.angular) / spin }, true);
-      if (!b.isSleeping() && (Math.hypot(x, y, z) > d.settleSpeed || spin > d.settleSpin)) moving = true;
-
       const isDown = tiltOf(b.rotation()) > d.tiltDegrees;
+      // A card lying in the snow can no longer change the count, so it may still slide a little.
+      const loose = isDown && rt.landed ? d.lyingShare : 1;
+      if (!b.isSleeping() && (Math.hypot(x, y, z) > d.settleSpeed * loose || spin > d.settleSpin * loose)) moving = true;
+
       if (f.phase === "throw" && isDown && !rt.down) newlyDown = true;
       if (f.phase === "throw") rt.down = isDown;
     });
@@ -494,11 +575,73 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       pins.emit({ type: "knocked", down: runtime.current.filter((rt) => rt.down).length, total: specs.length });
     }
     f.settledFor = moving ? 0 : f.settledFor + dt;
-    const ballsDone = f.activeBalls.size === 0;
+    const clear = ballsThrough();
+    if (clear && f.clearAt === null) f.clearAt = f.clock;
+    if (!clear) f.clearAt = null;
     const timedOut =
-      (f.stoppedAt !== null && f.clock - f.stoppedAt > d.timeoutAfterStop) || f.clock - f.launchedAt > d.timeoutAfterLaunch;
-    if ((ballsDone && f.settledFor >= d.settleHold) || timedOut) finishThrow();
+      (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) || f.clock - f.launchedAt > d.timeoutAfterLaunch;
+    // The count is certain once no ball can reach a card and the cards are still: "N down!" pops now.
+    if ((clear && f.settledFor >= d.settleHold) || timedOut) finishThrow();
   });
+
+  /* ---------------- a fallen card rests propped up on a little heap ---------------- */
+
+  const prop = useMemo(() => ({ q: new Quaternion(), inv: new Quaternion(), up: new Vector3(), axis: new Vector3(), along: new Vector3() }), []);
+  /**
+   * Drawing only: a card lying in the snow lifts its head (turning on its bottom edge) until it rests
+   * `rest.elevationDegrees` off the snow, on a heap of snow, so it stays readable from the low camera.
+   */
+  const propUp = (s: PinSpec, i: number, b: RapierRigidBody, rt: PinRuntime, dt: number) => {
+    const lifted = lifts.current[i];
+    const heap = heaps.current[i];
+    if (!lifted || !heap) return;
+    const R = PINS.rest;
+    const r = b.rotation();
+    prop.q.set(r.x, r.y, r.z, r.w);
+    // The card's own up (bottom to head) in the world, and its height off the snow as an angle.
+    prop.along.copy(UP).applyQuaternion(prop.q);
+    const elevation = Math.asin(Math.max(-1, Math.min(1, prop.along.y)));
+    const lying = rt.landed && rt.down && !rt.anim && !rt.hidden && b.isDynamic();
+    const goal = lying ? Math.max(0, Math.min(R.elevationDegrees * DEG - elevation, (R.elevationDegrees + 12) * DEG)) : 0;
+    // Back down quickly when it pops up again, so the hop starts from the card itself.
+    const rate = lying ? R.rate : R.rate * 4;
+    rt.lift += (goal - rt.lift) * (1 - Math.exp(-rate * dt));
+    if (rt.lift < 1e-3) {
+      rt.lift = 0;
+      if (heap.visible) {
+        heap.visible = false;
+        lifted.quaternion.identity();
+      }
+      return;
+    }
+    // Turn about the bottom edge, toward the sky: the axis is across the card, at right angles to world up.
+    prop.up.copy(UP).applyQuaternion(prop.inv.copy(prop.q).invert());
+    prop.axis.set(0, 1, 0).cross(prop.up);
+    if (prop.axis.lengthSq() < 0.04) {
+      lifted.quaternion.identity();
+      heap.visible = false;
+      return;
+    }
+    lifted.quaternion.setFromAxisAngle(prop.axis.normalize(), rt.lift);
+
+    // The heap: under the lifted part, as tall as the gap it props up there.
+    const t = b.translation();
+    const flat = Math.hypot(prop.along.x, prop.along.z);
+    if (flat < 0.2) {
+      heap.visible = false;
+      return;
+    }
+    const H = R.heap;
+    const reach = s.height * H.at;
+    const x = t.x + (prop.along.x / flat) * reach;
+    const z = t.z + (prop.along.z / flat) * reach;
+    const shown = Math.min(1, rt.lift / (6 * DEG));
+    const tall = H.fill * reach * Math.sin(elevation + rt.lift) * shown;
+    heap.visible = tall > 0.005;
+    heap.position.set(x, snow.heightAt(x, z) - 0.01, z);
+    heap.rotation.set(0, Math.atan2(prop.along.x, prop.along.z), 0);
+    heap.scale.set(((s.width * H.widthShare) / 2) * shown, Math.max(0.001, tall), ((s.height * H.lengthShare) / 2) * shown);
+  };
 
   /* ---------------- every frame ---------------- */
 
@@ -627,6 +770,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       if (Math.abs(sq.q) < 1e-4 && Math.abs(sq.v) < 1e-3) sq.q = sq.v = 0;
       const flop = Math.max(-0.3, Math.min(0.3, sq.q)) * motion;
 
+      propUp(s, i, b, rt, dt);
+
       const since = f.clock - rt.boingAt;
       if (since >= 0 && since < 1.6) {
         const fade = Math.exp(-r.boingDecay * since);
@@ -716,6 +861,18 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         </RigidBody>
       ))}
 
+      {specs.map((s, i) => (
+        <mesh
+          key={`heap-${s.key}`}
+          ref={(m) => {
+            heaps.current[i] = m;
+          }}
+          geometry={heapGeometry}
+          material={heapMaterial}
+          visible={false}
+        />
+      ))}
+
       {specs.map((s, i) => {
         const w = PINS.weight[s.weight];
         const lift = PINS.card.sink; // colliders start at the snow; the drawing sinks a little into it
@@ -756,7 +913,13 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
               }}
               visible={!entry.arrive}
             >
-              <PinCard id={s.id} width={s.width} height={s.height} depth={s.depth} flip={s.flip} art={textures[s.id]} paper={paper} artOnBack={PINS.card.artOnBack} />
+              <group
+                ref={(g) => {
+                  lifts.current[i] = g;
+                }}
+              >
+                <PinCard id={s.id} width={s.width} height={s.height} depth={s.depth} flip={s.flip} art={textures[s.id]} paper={paper} artOnBack={PINS.card.artOnBack} />
+              </group>
             </group>
           </RigidBody>
         );

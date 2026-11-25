@@ -55,6 +55,7 @@ and wind curls and extra spray trail a fast ball (`LOOK.speed`, now `from 5` to 
 
 - **Snow depth and how dark pressed snow gets:** `src/features/snow-scene/content.ts` (`ground.depth` 0.9, and the press colours).
 - **The score bar's spring:** `src/features/hud/content.ts` (`bar.stiffness`, `bar.damping`).
+- **The hit, readable (#47, #48, #52):** the ball poofs into snow once it is through the pins (`PINS.burst`: `pastMargin 0.2`, `slowSpeed 2.4`; the poof is `FEEL.roll.burstTime 0.32` s and `LOOK.burst` in bowling), and "N down!" pops as soon as the cards are still for `PINS.down.settleHold` (`0.25` s; a card lying in the snow may still slide at `lyingShare` `4`×), at most `timeoutAfterClear` (`1.4` s) after the ball is through. Fallen cards rest propped `PINS.rest.elevationDegrees` (`16`°) off the snow on a little heap (`rest.heap`); higher reads more like a standing card. While pulling, the ball sits beside the feet: `FEEL.pull.beside` (`base 0.2` + `share 1` × radius, eased in over `rampOver 0.45`).
 - **A ball left in the snow melts away** `GAME.timing.meltBallAfterResult` (1.1 s) after the count, so the reset never waits for it.
 - **Camera:** the throwing view comes from `throwingView()` in `src/features/scenery/`; turning and zoom limits are in snow-scene `content.ts` (`cameraPath`, `orbit`); the throw's camera moves are `GAME.camera` (above).
 

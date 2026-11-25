@@ -43,6 +43,14 @@ export const FEEL = {
     cancelBelow: 0.25,
     /** The aim can turn at most this many degrees left or right of straight down the lane. */
     maxAimDegrees: 28,
+    /**
+     * The ball grows beside the thrower's feet, not straight behind them, so from the camera behind the line it
+     * never covers the snowman's face (issue #52), like a bowler swinging the ball at their side. It sits `base` +
+     * `share` × its radius to the side of the pull line (toward the middle of the lane; to the right in the
+     * middle), easing in over the first `rampOver` units of pull. The aim and the power still come from the pull;
+     * the roll starts where the ball is drawn, so it rolls past the snowman instead of through it.
+     */
+    beside: { base: 0.2, share: 1, rampOver: 0.45, middle: 0.3 },
   },
 
   /** How the ball chases the finger while pulling. Rates are "share of the gap closed per second". */
@@ -125,6 +133,8 @@ export const FEEL = {
     stopSpeed: 0.12,
     /** A stopped ball stays in the snow this long before it goes away. */
     restTime: 6,
+    /** `burst()`: a ball asked to burst (the pins do, once it has rolled through them) poofs into snow over this long. */
+    burstTime: 0.32,
   },
 
   /** How the ball presses the snow (passed to the snow scene's `pressGroove`). */
@@ -271,6 +281,13 @@ export const LOOK = {
     /** Never squashes more than this share either way. */
     max: 0.25,
   },
+
+  /**
+   * A ball bursting into snow (`burst()`): it flattens and shrinks away while a puff of snow and clumps is thrown
+   * up, carried a little along its roll. `amount` is on the snow's puff scale at the biggest ball; `flatten` is the
+   * squash it springs to (up to `ballSquash.max`).
+   */
+  burst: { amount: 0.16, radius: 1.3, carry: 0.35, flatten: 0.25 },
 
   /** With "reduce motion" on: squash, stretch and hops keep this share (vibration and sound stay). */
   reducedMotion: 0.3,
