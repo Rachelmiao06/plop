@@ -92,10 +92,25 @@ export function setCentre(formation: Formation): { x: number; z: number } {
   return { x: spot.x + (formation.shift ?? 0), z: spot.z };
 }
 
+/**
+ * A place in a set (`dx`, `dz` from its middle) turned by the set's `turn` about that middle: positive turns the
+ * set's right side away down the lane, as seen from the line.
+ */
+export function placeIn(formation: Formation, dx: number, dz: number): { dx: number; dz: number } {
+  const a = ((formation.turn ?? 0) * Math.PI) / 180;
+  if (!a) return { dx, dz };
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return { dx: dx * c + dz * s, dz: -dx * s + dz * c };
+}
+
 /** A set's soft snow mounds on the lane (world positions). */
 export function moundsOf(formation: Formation): { x: number; z: number; radius: number }[] {
   const c = setCentre(formation);
-  return (formation.mounds ?? []).map((m) => ({ x: c.x + m.dx, z: c.z + m.dz, radius: m.radius }));
+  return (formation.mounds ?? []).map((m) => {
+    const p = placeIn(formation, m.dx, m.dz);
+    return { x: c.x + p.dx, z: c.z + p.dz, radius: m.radius };
+  });
 }
 
 /**
@@ -132,8 +147,9 @@ export function buildPins(formation: Formation, ground: GroundPatch): PinSpec[] 
     const colH = height * c.heightShare;
     const footprint = settings.pin?.footprint ?? [colW, 0.1];
     const footW = Math.min(footprint[0] * scale, colW);
-    const x = spot.x + p.dx;
-    const z = spot.z + p.dz;
+    const at = placeIn(formation, p.dx, p.dz);
+    const x = spot.x + at.dx;
+    const z = spot.z + at.dz;
     const yaw = (((p.turn ?? 0) + jitter(i + formation.id.length * 7) * c.yawJitterDegrees) * Math.PI) / 180;
     return {
       key: `${formation.id}-${i}-${p.prop}`,
