@@ -6,7 +6,7 @@
  */
 import { Vector3, type Camera } from "three";
 
-import { FORMATIONS, OVERLAP, type Formation } from "./content";
+import { ALL_SETS, OVERLAP, type Formation } from "./content";
 import { buildPins, type GroundPatch, type PinSpec } from "./layout";
 
 type Rect = { x0: number; x1: number; y0: number; y1: number };
@@ -79,5 +79,5 @@ export function formationOverlap(formation: Formation, ground: GroundPatch, came
 
 /** Every formation, for the console table on /dev/pins. */
 export function allFormationOverlaps(ground: GroundPatch, camera: Camera): FormationOverlap[] {
-  return FORMATIONS.map((f) => formationOverlap(f, ground, camera));
+  return ALL_SETS.map((f) => formationOverlap(f, ground, camera));
 }

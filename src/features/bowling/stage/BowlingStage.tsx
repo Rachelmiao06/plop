@@ -487,15 +487,15 @@ export function BowlingStage({ thrower, onGame, pinRing = true, softAt }: Bowlin
       const back = { x: t.pull.x / pullLength, z: t.pull.z / pullLength };
       const at = sweetPull(feel);
       const off = (k - 0.5) * sw.gap;
-      // On the ball's path: the pull line moved over by where the ball sits beside it.
-      const x = t.foot.x + back.x * (at + off) + pulledBall.beside.x;
-      const z = t.foot.z + back.z * (at + off) + pulledBall.beside.z;
+      // On the pull line itself, which runs beside the ball (it sits `pull.beside` off it), so the ball never covers it.
+      const x = t.foot.x + back.x * (at + off);
+      const z = t.foot.z + back.z * (at + off);
       tick.position.set(x, snow.heightAt(x, z) + MARK.lift, z);
       tick.rotation.set(0, Math.atan2(back.x, back.z) + Math.PI / 2 + (k ? 0.06 : -0.05), 0);
       tick.scale.set(sw.length * (k ? 0.85 : 1), 1, sw.width);
       const gap = feel.pull.sweet.at - powerOf(pullLength, feel);
       const material = tick.material as MeshBasicMaterial;
-      material.opacity = gap > sw.near ? sw.faint : gap >= 0 ? 0.85 : sw.faint;
+      material.opacity = gap > sw.near ? sw.faint : gap >= 0 ? 1 : sw.faint;
     });
 
     // ---- Lane marks follow the snow if it gets pressed.

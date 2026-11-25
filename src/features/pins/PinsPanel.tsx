@@ -8,7 +8,7 @@ import { useSyncExternalStore, type MouseEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { FORMATIONS, TEXT } from "./content";
+import { ALL_SETS, TEXT } from "./content";
 import type { Pins } from "./controller";
 
 /** Buttons give focus back, so Space keeps pulling the snowball instead of pressing the button again. */
@@ -39,7 +39,7 @@ export function PinsPanel({ pins }: { pins: Pins }) {
       <p className="rounded-lg bg-background/75 px-3 py-1 font-heading text-lg text-ink">{TEXT.count(state.down, state.total)}</p>
       <div className="flex flex-wrap justify-end gap-1 rounded-lg bg-background/70 p-1">
         <span className="self-center px-1 text-xs text-muted-foreground">{TEXT.formation}</span>
-        {FORMATIONS.map((f) => (
+        {ALL_SETS.map((f) => (
           <Button
             key={f.id}
             size="xs"

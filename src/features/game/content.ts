@@ -15,6 +15,8 @@ export type PlayerSpec = {
   thrower: string;
 };
 
+export type MatchLength = 3 | 5;
+
 export const GAME = {
   /** Player 1 (bucket snowman) on the left of the score panel, player 2 (red-hat snowman) on the right. */
   players: [
@@ -38,6 +40,22 @@ export const GAME = {
     perCard: 1,
     /** Extra points when every cut-out in the set is down. */
     fullClearBonus: 3,
+    // The star friend and the bunny's bonuses are the pins' (`SPECIALS` in pins content): they come with the result.
+  },
+
+  /**
+   * The match (docs/GAMEPLAY.md section 7c): choose 3 or 5 rounds before the first throw (the first is the
+   * default). In each round every player throws once, then the next round brings a new set. `rounds` lists the
+   * set (pins `ROUND_SETS` id) of each round, in order: a little harder each time, and from round 3 a soft mound.
+   */
+  match: {
+    lengths: [3, 5] as const,
+    rounds: {
+      3: ["round-corner", "round-split", "round-slant"],
+      5: ["round-corner", "round-split", "round-slant", "round-picnic", "round-village"],
+    } as Record<3 | 5, readonly string[]>,
+    /** Playing alone: the best total for each length is remembered on this device under this key. */
+    bestKey: "plop.best",
   },
 
   /**
@@ -119,6 +137,10 @@ export const GAME = {
     turnNoteFor: 1.6,
     /** The first-time hint fades out over this long after the first throw. */
     hintFade: 0.9,
+    /** The "star friend" / "let the bunny be" hint shows this long the first time each appears (or until the throw). */
+    specialHintFor: 7,
+    /** After the last throw is counted, the end card comes this long after the pins stand again. */
+    endCardAfter: 0.4,
   },
 } as const;
 
@@ -129,6 +151,14 @@ export const TEXT = {
   /** Touch screens get this instead of the Space line. */
   hintTouch: "drag the snowman back, let go to roll",
   turn: (name: string) => `${name}'s turn!`,
+  /** A new round: "Round 2 / 3" and what its set asks. */
+  round: (now: number, of: number) => `Round ${now} / ${of}`,
+  /** Shown once on the hint: the pencil tick behind the snowman. */
+  hintSweet: "the little pencil tick is the sweet spot",
+  special: {
+    star: "a star friend: +2 when it falls",
+    friend: "let the bunny be: +2 if it stays up",
+  },
   cancel: "Put it down",
   cancelTitle: "Cancel this pull (Esc)",
 };

@@ -20,7 +20,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { FEEL, type Bowling, type RollingBall } from "@/features/bowling";
-import type { Pins } from "@/features/pins";
+import { formationById, setCentre, type Pins } from "@/features/pins";
 import { kickSnowCamera, resumeSnowCamera, setSnowCameraShot, snowCameraFov, useSnow } from "@/features/snow-scene";
 
 import { GAME } from "./content";
@@ -109,7 +109,10 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     if (!bowling) return;
 
     st.since += Math.min(delta, 0.1);
-    const pin = FEEL.lane.pinSpot;
+    // The set on the lane now: round sets stand left or right of the middle and some are wider.
+    const set = formationById(pins.getState().formation);
+    const pin = setCentre(set);
+    const setWidth = Math.max(...set.pins.map((p) => Math.abs(p.dx))) * 2 + 1;
     const ball: RollingBall | undefined = bowling.balls.find((b) => b.id === st.ballId);
     if (ball) st.last = { x: ball.position.x, z: ball.position.z };
 
@@ -195,7 +198,7 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     setSnowCameraShot({
       position: [px, py, pz],
       lookAt: [pin.x, ly, lz],
-      fov: lensFor(im.frame / narrow, Math.hypot(pin.x - px, ly - py, lz - pz), c.chase.fovMin, c.chase.fovMax),
+      fov: lensFor(Math.max(im.frame, setWidth) / narrow, Math.hypot(pin.x - px, ly - py, lz - pz), c.chase.fovMin, c.chase.fovMax),
       rate: im.rate,
       lookRate: im.lookRate,
       interruptible: true,

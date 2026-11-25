@@ -188,3 +188,38 @@ export function SpeakerIcon({ on }: { on: boolean }) {
     </svg>
   );
 }
+
+/**
+ * A little pencil crown for the winner. STAND-IN, drawn here like the faces and the star, until Rachel draws one
+ * (then it becomes a file in public/assets/effects/).
+ */
+export function CrownDoodle({ size = 44 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 44 34" width={size} height={(size * 34) / 44} aria-hidden className="overflow-visible">
+      <path
+        d="M6.2 27.6 C5.6 21.2 4.6 14.6 3.6 8.4 C8.4 12.4 11.6 15.2 14.4 17.8 C16.8 12.6 19.2 7.8 22.1 3.4 C24.9 8 27.3 12.6 29.6 17.6 C32.6 14.8 36 12 40.6 8.6 C39.6 14.8 38.6 21.2 37.9 27.4 C27.4 29.4 16.6 29.5 6.2 27.6 Z"
+        fill="var(--butter)"
+        {...stroke}
+      />
+      <path d="M7.4 23.6 C17.2 25.2 27.2 25.1 36.8 23.4" fill="none" {...stroke} strokeWidth={1.1} opacity={0.55} />
+      <circle cx="3.6" cy="7.6" r="2.1" fill="var(--berry)" {...stroke} strokeWidth={1.2} />
+      <circle cx="22.1" cy="2.6" r="2.3" fill="var(--sky-blue)" {...stroke} strokeWidth={1.2} />
+      <circle cx="40.7" cy="7.8" r="2.1" fill="var(--berry)" {...stroke} strokeWidth={1.2} />
+      <circle cx="22" cy="19.6" r="1.9" fill="var(--mint)" {...stroke} strokeWidth={1.1} />
+    </svg>
+  );
+}
+
+/** A few little snowballs in a row, for the "3 or 5 rounds" choice. */
+export function SnowballDots({ count, size = 10 }: { count: number; size?: number }) {
+  return (
+    <span aria-hidden className="inline-flex items-center gap-0.5">
+      {Array.from({ length: count }, (_, i) => (
+        <svg key={i} viewBox="0 0 12 12" width={size} height={size} className="overflow-visible">
+          <path d={pencilCircle(6, 6, 4.6, i * 3 + count, { wobble: 0.35 })} fill="var(--paper)" {...stroke} strokeWidth={1.2} />
+          <path d="M3.6 7.6 C4.6 8.6 6.4 8.8 7.8 7.9" fill="none" stroke="var(--snow-shadow)" strokeWidth={1.4} strokeLinecap="round" />
+        </svg>
+      ))}
+    </span>
+  );
+}

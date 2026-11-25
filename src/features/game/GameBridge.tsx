@@ -5,7 +5,8 @@
  * `<BowlingStage />` and `<PinsStage />`. Draws nothing.
  *
  * - bowling `pressed` / `launched` / `cancelled` → pulling, and the throw starts
- * - pins `knocked` → "+1"s · `result` → points · `ready` → the turn passes a moment later
+ * - pins `knocked` → "+1"s · `result` → points (and, after a round's last throw, the next round's set is asked
+ *   for) · `ready` → the turn passes a moment later (or the next round starts, or the match ends)
  * - a pull may only start while it is the aim stage and the pins stand still
  * - the thrower follows whose turn it is
  */
@@ -42,12 +43,19 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
         const d = due.current;
         if (e.type === "knocked") game.knocked(e.down);
         if (e.type === "result") {
-          game.result(e.result.down, e.result.fullClear);
+          // The last throw of a round: once "N down!" has been seen, the next round's set comes instead of a reset.
+          const st = game.getState();
+          if (st.phase === "playing" && game.lastOfRound() && !game.lastRound()) pins.changeAfterResult(game.setFor(st.round + 1));
+          game.result(e.result);
           d.melt = d.now + GAME.timing.meltBallAfterResult;
         }
         if (e.type === "ready") {
           game.pinsReady();
-          if (game.getState().stage === "passing") d.pass = d.now + GAME.timing.passTurnAfterReady;
+          const st = game.getState();
+          if (st.stage === "passing") {
+            const lastThrow = game.lastOfRound() && game.lastRound();
+            d.pass = d.now + (lastThrow ? GAME.timing.endCardAfter : GAME.timing.passTurnAfterReady);
+          }
         }
       }),
     [game, pins],
