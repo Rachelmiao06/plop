@@ -29,9 +29,9 @@ export const look = {
    * Outline thickness in scene units (a snowman is 1 unit tall), so it scales with zoom like a
    * drawn line, but never thinner or thicker than these pixel limits.
    */
-  outlineWidth: 0.016,
+  outlineWidth: 0.022,
   outlineMinPx: 1.6,
-  outlineMaxPx: 9,
+  outlineMaxPx: 11,
   /** How much the line width wobbles along its length (0 = perfectly even). */
   outlineWobble: 0.35,
   /** Light specks inside the line, like crayon skipping over paper tooth. */
@@ -73,8 +73,8 @@ export const shape = {
   /** Head centre height and radius; head and body overlap a little at the neck. */
   head: { radius: 0.27, y: 0.735, offsetX: 0.008, tilt: 0.04 },
   feet: [
-    { x: -0.155, z: 0.235, radius: 0.1 },
-    { x: 0.16, z: 0.23, radius: 0.105 },
+    { x: -0.15, z: 0.27, radius: 0.115 },
+    { x: 0.155, z: 0.265, radius: 0.12 },
   ],
   neckY: 0.53,
   scarf: { ringRadius: 0.205, tube: 0.068, height: 1.25, tilt: 0.06 },

@@ -28,6 +28,18 @@ const bucket = useRef<SnowmanHandle>(null);
 />
 ```
 
+On the real snow, stand them on the snow scene's spots (inside `<SnowScene>`), sunk to the snow's height:
+
+```tsx
+const { spots } = useSnowLayout();
+const snow = useSnow();
+const [l, r] = spots;
+<Snowman variant="bucket" position={[l.x, snow.heightAt(l.x, l.z), l.z]} facing={faceToward([l.x, l.z], [r.x, r.z])} />
+<Snowman variant="redhat" position={[r.x, snow.heightAt(r.x, r.z), r.z]} facing={faceToward([r.x, r.z], [l.x, l.z])} />
+```
+
+The snow scene's camera turns up to 60 degrees and rises to 76; the snowmen are real 3D, so every view in that range is covered.
+
 It must render inside a React Three Fiber `<Canvas>` and inside `<Suspense>` (the face textures load first).
 The look assumes `<Canvas flat>` (no tone mapping) so the token colours come out exactly.
 
