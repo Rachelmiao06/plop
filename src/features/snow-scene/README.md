@@ -31,7 +31,11 @@ Inside `<SnowScene>`, these are available:
 - `useSnowCameraView({ lookAt, pathAt, turn?, distance? })`, or the same as a component `<SnowCameraView … />`, sets the camera's **default view** from inside `<SnowScene>`: the point it looks at (`lookAt`, scene units), where on the camera path it starts (`pathAt`, 0 = low end, 1 = high end; the play view is `cameraPath.playAt` = 0.42), an optional starting turn in degrees (`turn`, clamped to the turn limit) and an optional `distance` (times what the path gives, 0.5 to 2; in full up to the play view, blending back to 1 at the high end so the highest view and the far plane are unchanged). The camera jumps there at once, "Reset view" glides back to it, and turning, the path and every limit work around it as before. When the component goes away the scene's own play view comes back. Without it nothing changes. Example, the paper-bowling throwing view: `<SnowCameraView {...throwingView(FEEL.lane)} />` (from `@/features/scenery`), which looks at a point 45% of the way from the line to the pin spot from about 24 degrees up, 1.6 times further back than the path gives there.
 - `claimSnowPointer(pointerId)`: call it in your pointer-down handler when a finger starts dragging one of your things (a character, for the slingshot). A claimed finger never turns or zooms the view. It is released by itself when the finger lifts. Fingers nobody claimed are "on empty snow": one turns the view, two pinch to zoom.
 
-The deeper the snow is pressed, the darker and bluer it gets and the taller its rim. Dents stay. Dust and small clumps fly by themselves whenever snow is pressed or hit; nothing to call.
+- `snowShadow` (a plain value, not a hook): `{ color, strength }`, how the snow paints shade and shadows. A feature that paints its own shadows (a `ShadowMaterial`, say) uses these so they match. Set in `content.shade`, nowhere else.
+
+The snow is painted, not rendered: it is exactly `--paper` where the sun reaches, and where light is missing (a cast shadow or a slope turned from the sun) it gets one flat wash of `--snow-shadow`, like a watercolour shadow on paper. The lights only decide how much wash goes where. The snow skips tone mapping (tone mapping turns paper white into light grey), as the cut-outs do. Every colour in `content.ts` is a token from `globals.css`, copied with its name.
+
+The deeper the snow is pressed, the darker and bluer it gets (pale blue to `--sky-blue` at hard ground) and the taller its rim. Dents stay. Dust and small clumps fly by themselves whenever snow is pressed or hit; nothing to call.
 
 The camera is part of the scene. Its whole state is two numbers: a position on one path (low and close looking across the snow, through the play view, up to high, far and steep where everything looks small) and a turn left/right (up to 60 degrees, never behind). Every input moves those two, so they never fight:
 
@@ -57,7 +61,7 @@ Snow is everywhere, and it can be pressed anywhere (up to `ground.pressReach` fr
 - `freshSnow.ts` lets anything ask the snow on screen for a fresh snowfall. The refill itself is in `snowField.ts` (`stepFresh`, advanced by `SnowGround` every frame with at most `freshSnow.pointsPerFrame` grid points per frame); the heavier flakes are in `SceneLook.tsx`. Test page: `/dev/snowfall`.
 - `SnowSpray.tsx` dust puffs and clumps thrown up when snow is pressed or hit.
 - `CameraRig.tsx` the camera: turning, zooming, limits, reset. `cameraView.ts` lets a feature set the default view. `pointers.ts` which finger belongs to whom, and screen-to-snow aiming.
-- `SceneLook.tsx` sun and sky light, soft sky, snowfall.
+- `SceneLook.tsx` sun and sky light, soft sky, snowfall. How shade is painted on the snow (`content.shade`) is in `SnowGround.tsx`.
 - `layout.ts` camera position and character spots from the screen shape.
 - `SnowCanvas.tsx` the 3D canvas. `SnowScene.tsx` loads it in the browser only.
 - `TempDragPress.tsx` **temporary** test hook, see below.
