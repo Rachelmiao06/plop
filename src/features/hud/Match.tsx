@@ -8,6 +8,7 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PosterButton } from "@/features/poster";
 
 import { content, type SnowmanLook } from "./content";
 import { CrownDoodle, HaloDoodle, PaperFill, PencilFrame, SnowmanFace } from "./Doodles";
@@ -99,6 +100,8 @@ export type MatchEndProps = {
   rival?: { name: string; score: number } | null;
   /** Team up: one team total, both snowmen crowned, no winner. */
   team?: boolean;
+  /** The match's rounds, for the share poster (it falls back to last time's start choice). */
+  rounds?: number;
   onAgain: () => void;
   onChoose: () => void;
   /** Under the totals, above "play again": the group board and its "pop it on" prompt, when there is a group. */
@@ -132,7 +135,7 @@ function Finisher({ player, crown, seed, hideTotal }: { player: EndPlayer; crown
 }
 
 /** After the last round: the totals, a crown and a cheer, and "play again". Never "you lose". */
-export function MatchEnd({ players, solo, bestThrow, rival, team, onAgain, onChoose, children }: MatchEndProps) {
+export function MatchEnd({ players, solo, bestThrow, rival, team, rounds, onAgain, onChoose, children }: MatchEndProps) {
   const [a, b] = players;
   const tie = !solo && !team && a.total === b.total;
   const winner = solo ? null : a.total > b.total ? 0 : b.total > a.total ? 1 : null;
@@ -185,6 +188,8 @@ export function MatchEnd({ players, solo, bestThrow, rival, team, onAgain, onCho
       )}
       {bestThrow && <p className="mt-1 font-heading text-base leading-tight opacity-80">{t.end.bestThrow(bestThrow.name, bestThrow.points, bestThrow.round)}</p>}
       {children && <div className="mt-3 flex flex-col items-center gap-3">{children}</div>}
+      {/* A saved image with a QR code: the way to spread on WeChat Moments, which cannot post links. */}
+      <PosterButton players={players} solo={!!solo} team={!!team} rounds={rounds} className="mt-4" />
       <Button
         ref={again}
         size="lg"
