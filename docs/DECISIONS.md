@@ -47,3 +47,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · The test press keeps its real size on the snow at any distance: close up a drag leaves a wide groove, from far a thin one (Rachel). Growing it with distance was tried and rejected because from far it looked too coarse.
 - 2026-11-24 · Kept the custom path camera instead of switching to drei CameraControls: a request to switch arrived, but Rachel then said the path camera feels good.
 - 2026-11-24 · Look comes first: hand-drawn feel, cuteness and matching the design tokens are the acceptance bar for every visual change, checked against Rachel's reference art. Recorded in CLAUDE.md.
+- 2026-11-24 · Snowmen run around a shared field instead of standing at fixed spots: moving rolls the ball (grows on fresh snow), stopping to aim is the slingshot. One shared screen with a camera that frames both players, no split screen. Details in docs/GAMEPLAY.md (draft 1, for Rachel to change). Rachel: fixed spots felt strange.
