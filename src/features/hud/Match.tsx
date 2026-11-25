@@ -97,6 +97,8 @@ export type MatchEndProps = {
   bestThrow?: { name: string; points: number; round: number } | null;
   /** Alone after a friend's invite: their score, for one kind line. */
   rival?: { name: string; score: number } | null;
+  /** Team up: one team total, both snowmen crowned, no winner. */
+  team?: boolean;
   onAgain: () => void;
   onChoose: () => void;
   /** Under the totals, above "play again": the group board and its "pop it on" prompt, when there is a group. */
@@ -104,7 +106,7 @@ export type MatchEndProps = {
 };
 
 /** A snowman's face with its total, a crown when it won. */
-function Finisher({ player, crown, seed }: { player: EndPlayer; crown: boolean; seed: number }) {
+function Finisher({ player, crown, seed, hideTotal }: { player: EndPlayer; crown: boolean; seed: number; hideTotal?: boolean }) {
   const e = content.end;
   return (
     <div className="flex flex-col items-center">
@@ -124,22 +126,24 @@ function Finisher({ player, crown, seed }: { player: EndPlayer; crown: boolean; 
         </div>
       </div>
       <p className="font-heading text-lg leading-none">{player.name}</p>
-      <p className="font-heading text-4xl leading-tight font-bold text-ink-deep tabular-nums">{player.total}</p>
+      {!hideTotal && <p className="font-heading text-4xl leading-tight font-bold text-ink-deep tabular-nums">{player.total}</p>}
     </div>
   );
 }
 
 /** After the last round: the totals, a crown and a cheer, and "play again". Never "you lose". */
-export function MatchEnd({ players, solo, bestThrow, rival, onAgain, onChoose, children }: MatchEndProps) {
+export function MatchEnd({ players, solo, bestThrow, rival, team, onAgain, onChoose, children }: MatchEndProps) {
   const [a, b] = players;
-  const tie = !solo && a.total === b.total;
+  const tie = !solo && !team && a.total === b.total;
   const winner = solo ? null : a.total > b.total ? 0 : b.total > a.total ? 1 : null;
   const newBest = !!solo && (solo.best === null || a.total > solo.best);
-  const title = solo ? t.end.solo : tie ? t.end.tie : t.end.wins(players[winner!].name);
+  const title = solo ? t.end.solo : team ? t.end.team : tie ? t.end.tie : t.end.wins(players[winner!].name);
   // "Play again" takes the focus for the keyboard, without scrolling a tall card (one with the board) to its end.
   const again = useRef<HTMLButtonElement>(null);
   useEffect(() => again.current?.focus({ preventScroll: true }), []);
-  const sub = solo
+  const sub = team
+    ? t.end.teamKind(a.name, b.name)
+    : solo
     ? newBest
       ? t.end.newBest
       : t.end.best(solo.best ?? 0)
@@ -155,10 +159,20 @@ export function MatchEnd({ players, solo, bestThrow, rival, onAgain, onChoose, c
       <img src="/assets/effects/music-notes.webp" alt="" className="absolute -top-6 -right-2 w-12 rotate-[10deg]" />
       <p className="font-heading text-4xl leading-none font-bold text-ink-deep">{title}</p>
       {!solo && !tie && <p className="mt-0.5 font-heading text-xl leading-none">{t.end.cheer}</p>}
-      <div className="mt-3 flex items-end justify-center gap-6">
-        <Finisher player={a} crown={tie || winner === 0 || newBest} seed={3} />
-        {!solo && <Finisher player={b} crown={tie || winner === 1} seed={8} />}
-      </div>
+      {team ? (
+        <div className="mt-3 flex flex-col items-center">
+          <div className="flex items-end justify-center gap-2">
+            <Finisher player={a} crown seed={3} hideTotal />
+            <Finisher player={b} crown seed={8} hideTotal />
+          </div>
+          <p className="font-heading text-5xl leading-tight font-bold text-ink-deep tabular-nums">{a.total + b.total}</p>
+        </div>
+      ) : (
+        <div className="mt-3 flex items-end justify-center gap-6">
+          <Finisher player={a} crown={tie || winner === 0 || newBest} seed={3} />
+          {!solo && <Finisher player={b} crown={tie || winner === 1} seed={8} />}
+        </div>
+      )}
       <p className="mt-2 font-heading text-xl leading-tight">{sub}</p>
       {solo && rival && (
         <p className="mt-1 font-heading text-xl leading-tight font-bold text-berry-deep">

@@ -147,7 +147,8 @@ export function Game() {
     const [a, b] = game.getState().scores;
     // No names: the length, the mode and how many played.
     track("match_end", { rounds: game.getState().rounds, mode: game.getState().mode, players: game.getState().players });
-    if (game.getState().players === 2 && a === b) playTie();
+    // Taking turns is a match (a tie gets its own tune); teaming up always wins together.
+    if (game.getState().players === 2 && game.getState().mode === "turns" && a === b) playTie();
     else playWin();
   }, [state.phase, game]);
 
@@ -269,6 +270,8 @@ export function Game() {
         rival={rival}
         // Hidden until the match starts (the start cards ask first); alone it shows one player and your best.
         panel={state.phase !== "choosing"}
+        // Team up: one team total for both snowmen (taking turns is a match between them).
+        team={together}
         onHelp={state.phase === "playing" ? () => setHelp(true) : undefined}
         rule={
           rule
@@ -312,6 +315,7 @@ export function Game() {
             { ...players[1], total: state.scores[1] },
           ]}
           solo={solo ? { best: bestBefore } : null}
+          team={together}
           bestThrow={bestThrow}
           rival={rival}
           onAgain={() => begin(state.rounds, state.players, true)}

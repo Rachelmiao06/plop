@@ -29,6 +29,8 @@ import { ScoreHud } from "@/features/hud";
   scene the mode as soon as it is picked. Props only: the game remembers the choices. `HowToCard` is the "how to
   throw" card again during play (the "?" corner button appears when `ScoreHud` gets `onHelp`). `ScoreHud` with
   `panel={false}` hides the panel (not the corner switches) until the match starts.
+- `team` on `ScoreHud` and `MatchEnd` (team up): one team total with both faces, and a "Team total!" end card with both
+  crowned. Taking turns stays a match between the two.
 - `MatchEnd` (totals, crown, cheer, tie card, a line against an inviter's score `rival`, anything passed as `children`
   such as the group board, "play again") in `Match.tsx`, with `NameField`. `PaperCard` is the same paper note for
   other cards (the game's rule card).

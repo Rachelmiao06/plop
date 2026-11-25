@@ -118,9 +118,10 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - **Before the first throw** two hand-drawn paper cards (2026-11-25, Rachel: one crowded card confused first-timers,
   then five steps felt too rigid for a simple game; two is right). English leads, Chinese beneath. The second card
   slides in softly, "← back" returns, two snowball dots show where you are, and the snow scene stays visible:
-  1. **How do you two play?** Playing with a friend is the main case, so it is what the card asks: "Take turns"
-     (one rolls, then the other, like bowling) or "At the same time" (both snowmen on the line, with the key
-     pictures W A D and ↑ ← →, or "each drags their own snowman" on a touch screen). Playing alone is a small
+  1. **How do you two play?** Playing with a friend is the main case, so it is what the card asks: "Take turns ·
+     versus" (one rolls, then the other; most points wins, a PK) or "Team up · one team" (both snowmen on the line
+     at once and their points add up, with the key pictures W A D and ↑ ← →, or "each drags their own snowman" on
+     a touch screen). Playing alone is a small
      "Just me →" option on top of the card. A tap goes on; the scene behind already shows one snowman or two.
   2. **Names, rounds, go:** one name field alone, two (Bucket's and Red Hat's faces) with a friend, filled in from
      the device (empty means "Bucket" / "Red Hat"); "3 rounds · about N min" or "5 rounds" (minutes from real play,
@@ -172,6 +173,10 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - **The aim:** a good straight throw at the middle may score well (Rachel prefers the classic look); variety
   comes from the sweet spot on the pull, the small shifts, where the star stands, the bunny and the mounds.
   Measured with the real roll and physics (`src/features/game/measure`, numbers in `docs/TUNING.md`).
+- **Team up** (2026-11-25, Rachel: taking turns is a PK, rolling at the same time is a team): the panel shows both
+  faces with one team total, each throw's points fly into it, and the end card says "Team total!" with both snowmen
+  crowned and "lovely teamwork, Bucket & Red Hat"; no winner, no tie. Underneath the game still counts each
+  snowman's own points (7d), and the group board still takes each player's own score.
 - **The end card:** both snowmen's faces with their totals, a crown doodle and "hooray!" for the winner and a kind
   word for the other ("lovely rolling, Bucket"), or "A snowy tie! two crowns today". Alone: your total, and
   "a new best!" (with the crown) or your best so far. A line names the best single roll of the match. "Play again"

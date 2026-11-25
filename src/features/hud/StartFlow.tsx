@@ -74,6 +74,7 @@ function Choice({
   name,
   line,
   seed,
+  tag,
   children,
 }: {
   picked: boolean;
@@ -82,6 +83,8 @@ function Choice({
   name: Words;
   line: Words;
   seed: number;
+  /** A small chip after the name ("versus", "one team"). */
+  tag?: Words;
   children?: ReactNode;
 }) {
   return (
@@ -97,7 +100,14 @@ function Choice({
       <PencilFrame seed={seed} radius={22} overshoot={picked ? 7 : 3} />
       <span className="relative flex w-[5.5rem] shrink-0 items-end justify-center">{picture}</span>
       <span className="relative min-w-0 flex-1">
-        <span className={`block font-heading text-xl leading-none text-ink ${picked ? "font-bold" : ""}`}>{name.en}</span>
+        <span className={`flex items-center gap-1.5 font-heading text-xl leading-none text-ink ${picked ? "font-bold" : ""}`}>
+          {name.en}
+          {tag && (
+            <span className="rounded-full bg-butter/70 px-2 py-0.5 font-heading text-sm leading-none font-normal text-ink">
+              {tag.en} <span className="font-sans text-[11px] text-ink/85">{tag.zh}</span>
+            </span>
+          )}
+        </span>
         <Zh className="text-[13px] leading-tight">{name.zh}</Zh>
         <span className="mt-1 block font-heading text-base leading-tight text-ink">{line.en}</span>
         <Zh className="text-xs leading-tight">{line.zh}</Zh>
@@ -431,6 +441,7 @@ export function StartFlow({
                 </span>
               }
               name={t.turns}
+              tag={t.turns.tag}
               line={t.turns.line}
               seed={19}
             />
@@ -444,6 +455,7 @@ export function StartFlow({
                 </span>
               }
               name={t.together}
+              tag={t.together.tag}
               line={touch ? t.together.lineTouch : t.together.line}
               seed={23}
             >

@@ -19,6 +19,9 @@ export const content = {
     round: (now: number, of: number) => `round ${now} / ${of}`,
     roundLabel: (now: number, of: number) => `Round ${now} of ${of}`,
     soloBest: "best",
+    /** Team up: one total for both snowmen. */
+    team: "team",
+    teamTotal: (a: string, b: string, total: number) => `Team ${a} and ${b}: ${total}`,
     /** Arrived from an invite, playing alone: the right side shows the inviter's score to beat. */
     toBeat: "to beat",
     gain: (points: number) => `+${points}`,
@@ -39,16 +42,19 @@ export const content = {
       how: { zh: "你们俩怎么玩？", en: "How do you two play?" },
       /** The small side option on top of the first card. */
       soloSide: { zh: "一个人玩", en: "Just me" },
+      /** Taking turns is a match against each other (PK); at the same time is one team adding up its points. */
       turns: {
         zh: "轮流打",
         en: "Take turns",
-        line: { zh: "一人滚一球，再换另一个，像打保龄球", en: "one rolls, then the other, like bowling" },
+        tag: { zh: "PK", en: "versus" },
+        line: { zh: "你一球我一球，看谁分高", en: "one rolls, then the other; most points wins" },
       },
       together: {
-        zh: "一起打",
-        en: "At the same time",
-        line: { zh: "两个雪人同时站上线，各用各的键", en: "both snowmen on the line, each with their own keys" },
-        lineTouch: { zh: "两个雪人同时站上线，各拖各的雪人", en: "both on the line, each drags their own snowman" },
+        zh: "组队打",
+        en: "Team up",
+        tag: { zh: "组队", en: "one team" },
+        line: { zh: "两个人同时打，分数加在一起", en: "both roll at once, your points add up" },
+        lineTouch: { zh: "两个人同时打，各拖各的雪人，分数加在一起", en: "both roll at once, each drags their own; points add up" },
       },
       /** The key pictures under "at the same time" (GAMEPLAY 7d): pull key on top, slide keys below. */
       keys: { left: { pull: "W", slide: ["A", "D"] }, right: { pull: "↑", slide: ["←", "→"] } },
@@ -61,7 +67,7 @@ export const content = {
       nameLabel: (fallback: string) => `${fallback}'s name`,
       length: { zh: "玩几局？", en: "How many rounds?" },
       rounds: (n: number) => ({ zh: `${n} 局`, en: `${n} rounds` }),
-      minutes: (m: number) => ({ zh: `大约 ${m} 分钟`, en: `about ${m} min` }),
+      minutes: (m: number) => ({ zh: `约 ${m} 分钟`, en: `~${m} min` }),
       howTo: { zh: "怎么滚雪球", en: "How to throw" },
       howToFirst: { zh: "第一次玩？看看怎么滚", en: "New here? How to throw" },
       /** The how-to card's lines: [zh, en]; the first differs on a touch screen. */
@@ -89,6 +95,8 @@ export const content = {
       cheer: "hooray!",
       kind: (name: string) => `lovely rolling, ${name}`,
       tie: "A snowy tie!",
+      team: "Team total!",
+      teamKind: (a: string, b: string) => `lovely teamwork, ${a} & ${b}`,
       tieKind: "two crowns today",
       solo: "Your snowy total",
       newBest: "a new best!",
@@ -99,7 +107,7 @@ export const content = {
       tiedRival: (name: string) => `just like ${name}!`,
       underRival: (name: string, score: number) => `${name} has ${score} · so close!`,
       again: "Play again",
-      choose: "换个玩法 · change how we play",
+      choose: "change how we play · 换个玩法",
       points: (n: number) => `${n} points`,
     },
   },
