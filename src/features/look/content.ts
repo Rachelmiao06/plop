@@ -26,9 +26,9 @@ export const LOOK = {
    * the phone view; the lane and the pins in the middle are untouched.
    */
   edge: {
-    on: false,
+    on: true,
     /** How much paper shows at the very corners (0..1). */
-    corner: 0.55,
+    corner: 0.45,
     /** Where the corner fade starts, as a share of the ellipse (0..1); smaller = the fade reaches further in. */
     cornerFrom: 0.62,
     /** How much paper shows at the bottom edge (0..1). */
