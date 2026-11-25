@@ -180,7 +180,7 @@ export function Backdrop({ center }: Props) {
     [hillsRadius, b.hillsHeight, arc],
   );
   const hillsMaterial = useMemo(
-    () => artPlaneMaterial(hillsTex, new Color(paper.paper), b.haze, repeats, true),
+    () => artPlaneMaterial(hillsTex, new Color(paper.shade), b.haze, repeats, true),
     [hillsTex, repeats, paper, b.haze],
   );
 

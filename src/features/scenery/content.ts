@@ -614,8 +614,8 @@ export const backdrop = {
   /** Far hills band: height on the wall (width follows the drawing), how far its foot sinks into the snow. */
   hillsHeight: 0.95,
   hillsSink: 0.12,
-  /** Far things fade a little toward `--paper`, so they sit behind the village. */
-  haze: 0.12,
+  /** The far hills fade this much toward `--snow-shadow` (distance haze), so they sit behind the village on the lit snow. */
+  haze: 0.3,
   /** Fade the whole backdrop out between these camera heights (degrees above the snow). */
   fadeFrom: 38,
   fadeTo: 50,
