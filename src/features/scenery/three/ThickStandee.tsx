@@ -2,22 +2,11 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import {
-  Color,
-  DoubleSide,
-  FrontSide,
-  Group,
-  MeshDepthMaterial,
-  MeshStandardMaterial,
-  RGBADepthPacking,
-  SphereGeometry,
-  Vector2,
-  Vector3,
-  type Texture,
-} from "three";
+import { DoubleSide, Group, MeshDepthMaterial, RGBADepthPacking, SphereGeometry, Vector3, type Texture } from "three";
 
 import { propSettings, propWidth, standee3d, type PropId } from "../content";
 import { useFlecks } from "./Flecks";
+import { artMaterial, toonMaterial } from "./materials";
 import { artGeometry, bodyGeometry } from "./standeeGeometry";
 import { usePaper, useTreatment } from "./treatment";
 
@@ -34,38 +23,17 @@ type Props = {
   normal: Texture;
   /** Where the orbit camera looks; the half-turn follows the camera's swing around this point. */
   target: Vector3;
-  /** Material for the snow mound (shared with the ground). */
-  snow: MeshStandardMaterial;
 };
 
-/** Side wall of the cut-out: cream paper with a faint brown line along both edges. */
-function paperSideMaterial(side: string, edge: string, halfDepth: number) {
-  const material = new MeshStandardMaterial({ color: new Color(side), roughness: 0.95, metalness: 0 });
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uHalfDepth = { value: halfDepth };
-    shader.uniforms.uEdge = { value: new Color(edge) };
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying float vLocalZ;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvLocalZ = position.z;");
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nuniform float uHalfDepth;\nuniform vec3 uEdge;\nvarying float vLocalZ;")
-      .replace(
-        "#include <color_fragment>",
-        `#include <color_fragment>
-        float rim = uHalfDepth - abs(vLocalZ);
-        float line = 1.0 - smoothstep(0.0, uHalfDepth * 0.4, rim);
-        diffuseColor.rgb = mix(diffuseColor.rgb, uEdge, line * 0.5);`,
-      );
-  };
-  return material;
-}
+/** The fixed drawing light all paper shading comes from (see standee3d.shading). */
+const drawingLight = new Vector3(...standee3d.shading.from).normalize();
 
 /**
  * One scenery prop as a thick cut-out ornament: traced silhouette body, art on the front with a
  * soft pillow normal map, true-silhouette shadow, sunk into a small snow mound, half-turning toward
  * the camera, swaying and wobbling. Every part can be switched off (see treatment.ts).
  */
-export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, target, snow }: Props) {
+export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, target }: Props) {
   const t = useTreatment();
   const paper = usePaper();
   const spawnFlecks = useFlecks();
@@ -86,32 +54,38 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
   const body = useMemo(() => bodyGeometry(id, width, height, depth), [id, width, height, depth]);
   const card = useMemo(() => artGeometry(width, height), [width, height]);
 
+  const band = standee3d.shading.band;
   const capMaterial = useMemo(
-    () => new MeshStandardMaterial({ color: new Color(paper.side), roughness: 0.95, metalness: 0 }),
-    [paper.side],
+    () => toonMaterial({ base: paper.paper, shade: paper.shade, light: drawingLight, band }),
+    [paper, band],
   );
-  const sideMaterial = useMemo(() => paperSideMaterial(paper.side, paper.edge, depth / 2), [paper, depth]);
-
-  const p = standee3d.pillow;
-  const artMaterial = useMemo(
+  const sideMaterial = useMemo(
     () =>
-      new MeshStandardMaterial({
-        map: art,
-        // The drawn colour mostly shows as-is (emissive); the lights only add a faint light and shade side.
-        color: new Color(p.litShare, p.litShare, p.litShare),
-        emissive: new Color(1, 1, 1),
-        emissiveMap: art,
-        emissiveIntensity: p.artGlow,
-        normalMap: t.pillow ? normal : null,
-        normalScale: new Vector2(p.normalScale, p.normalScale),
-        roughness: 1,
-        metalness: 0,
-        alphaTest: 0.5,
-        side: t.thick ? FrontSide : DoubleSide,
-        // Keep the drawn colours as drawn: no tone mapping on the art itself.
-        toneMapped: false,
+      toonMaterial({
+        base: paper.paper,
+        shade: paper.shade,
+        light: drawingLight,
+        band,
+        edge: { color: paper.ink, halfDepth: depth / 2 },
       }),
-    [art, normal, t.pillow, t.thick, p.artGlow, p.litShare, p.normalScale],
+    [paper, band, depth],
+  );
+  const moundMaterial = useMemo(
+    () => toonMaterial({ base: paper.paper, shade: paper.shade, light: drawingLight, band }),
+    [paper, band],
+  );
+  const artCard = useMemo(
+    () =>
+      artMaterial({
+        map: art,
+        normalMap: normal,
+        pillow: t.pillow ? standee3d.pillow.strength : 0,
+        shade: paper.shade,
+        light: drawingLight,
+        band: standee3d.pillow.band,
+        doubleSided: !t.thick,
+      }),
+    [art, normal, t.pillow, t.thick, paper.shade],
   );
 
   // When there is no thick body, the flat card itself casts a silhouette shadow (alpha-tested).
@@ -126,10 +100,11 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
       card.dispose();
       capMaterial.dispose();
       sideMaterial.dispose();
-      artMaterial.dispose();
+      moundMaterial.dispose();
+      artCard.dispose();
       cardDepth.dispose();
     },
-    [body, card, capMaterial, sideMaterial, artMaterial, cardDepth],
+    [body, card, capMaterial, sideMaterial, moundMaterial, artCard, cardDepth],
   );
 
   useFrame(({ camera, clock }, delta) => {
@@ -197,14 +172,13 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
         <group ref={lifeRoot} onPointerDown={onHit}>
           <group scale-x={flip ? -1 : 1}>
           {thickOn && (
-            <mesh geometry={body!} material={[capMaterial, sideMaterial]} castShadow={t.shadow} receiveShadow />
+            <mesh geometry={body!} material={[capMaterial, sideMaterial]} castShadow={t.shadow} />
           )}
           <mesh
             geometry={card}
-            material={artMaterial}
+            material={artCard}
             position-z={thickOn ? depth / 2 + 0.002 : 0}
             castShadow={t.shadow && !thickOn}
-            receiveShadow
             customDepthMaterial={cardDepth}
           />
           </group>
@@ -213,7 +187,7 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
       {t.sink && (
         <mesh
           geometry={moundGeometry}
-          material={snow}
+          material={moundMaterial}
           scale={[(width * standee3d.mound.widthShare) / 2, standee3d.mound.height, standee3d.mound.depth / 2]}
           position-y={-y * 0.15}
         />

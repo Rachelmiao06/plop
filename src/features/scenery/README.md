@@ -87,25 +87,33 @@ A test of the look Rachel approved, on plain flat snow, before the real snow sce
 Switches on the page turn each part on and off; `?view=default|side|high` and `?look=full|flat|billboard|fixed`
 pick the starting camera and look (handy for sharing a link).
 
+**Acceptance bar (Rachel): hand-drawn, cute, design tokens.** Nothing on this page is lit physically and nothing is glossy.
+Every surface is a flat token colour; the shade side is a mix toward `--snow-shadow`, from a fixed "drawing light" at the
+upper left (`standee3d.shading`), the way a crayon artist shades the far side. The real sun only decides where shadows fall.
+The art card shows the drawn colours exactly as drawn (no tone mapping). `review/` holds side-by-side screenshots against
+the source sheets; refresh them when the look changes.
+
 - **Thickness:** `scripts/trace_standees.py` traces each standee's alpha silhouette with OpenCV, simplifies it
   and writes `outlines.json` (about 2,000 points for all 19, cached; nothing is traced at load). The page extrudes it
-  `thicknessShare` of the prop's height (3.5%). Front: the art card. Sides and back: cream paper (`--paper` token)
-  with a faint brown line (`--ink`) along both edges, drawn in the side material's shader.
-- **Shadow:** the thick body casts the true silhouette; with thickness off, the flat card casts it through an
-  alpha-tested depth material. Shadows are pale (`light.shadowIntensity`) and blue because only the cool sky lights them.
-- **Sunk into the snow:** the base sits `sink` below the surface with a small white mound (a flattened half sphere).
+  `thicknessShare` of the prop's height (3.5%). Front: the art card. Sides and back: `--paper`, shaded toward
+  `--snow-shadow` on the far side, with a faint `--ink` line along both edges.
+- **Shadow:** the thick body casts the true silhouette (with thickness off, the flat card casts it through an
+  alpha-tested depth material). The snow is plain `--paper`; shadows are painted on it in exactly `--snow-shadow`
+  (a shadow-only layer), as `docs/DECISIONS.md` asks.
+- **Haze:** far things fade into `--paper` (`hazeDensity`).
+- **Sunk into the snow:** the base sits `sink` below the surface with a small paper-white mound shaded like the sides.
   **On the real snow, use the snow scene's API instead** (raise the snow around each base with its mound/press
   tools in `src/features/snow-scene/`) so the heap is part of the snow and takes footprints and craters.
 - **Pillow shading:** `public/assets/scenery/normals/<name>.webp`, baked by the same script from a distance field
-  (thicker in the middle, curving down at the silhouette). The art material keeps the drawn colours mostly as they are
-  (`pillow.artGlow`, no tone mapping) and lets the low sun add only a faint light and shade side (`pillow.litShare`).
+  (thicker in the middle, curving down at the silhouette). It only tints the far edges toward `--snow-shadow`,
+  like a pale blue pencil pass (`pillow.strength`, kept low); it never brightens or adds a highlight.
 - **Half-turn:** each prop turns `turn.fraction` of the camera's swing around the village, capped at `turn.cap`
   degrees, on a spring (`turn.stiffness`, `turn.damping`). Swing the view to the side and the edges show; the art
   never collapses to a line. "Billboard" is the old always-face-the-camera behaviour, "Fixed" never turns.
 - **Small life:** `sway.props` sway gently; clicking a prop (stand-in for a snowball hit) wobbles it and shakes
   `wobble.flecks` snow flecks loose (`three/Flecks.tsx`).
 
-Files: `three/standeeGeometry.ts` (outline to extruded body), `three/ThickStandee.tsx` (one prop),
+Files: `three/materials.ts` (the drawn-style shaders), `three/standeeGeometry.ts` (outline to extruded body), `three/ThickStandee.tsx` (one prop),
 `three/VillageCanvas.tsx` (scene, lights, camera), `three/Village3D.tsx` (page UI), `three/treatment.ts` (switches).
-Light and snow colours copy the snow scene's settings in PR #17; keep them in step until part 2 moves this into it.
+The sun direction copies the snow scene in PR #17; keep it in step until part 2 moves this into it.
 Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.

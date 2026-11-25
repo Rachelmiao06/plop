@@ -55,9 +55,16 @@ export const views: Record<string, { yaw: number; elevation: number; level: numb
 export const TreatmentContext = createContext<Treatment>(fullTreatment);
 export const useTreatment = () => useContext(TreatmentContext);
 
-/** Paper colours read from the design tokens (globals.css), so the 3D page never types its own. */
-export type PaperColors = { side: string; edge: string };
-export const PaperContext = createContext<PaperColors>({ side: "white", edge: "black" });
+/** The token colours the 3D page uses, read from globals.css at runtime so it never types its own. */
+export type PaperColors = {
+  /** --paper: snow, paper sides, haze. */
+  paper: string;
+  /** --snow-shadow: shadows and the shade side. */
+  shade: string;
+  /** --ink: the faint edge line. */
+  ink: string;
+};
+export const PaperContext = createContext<PaperColors>({ paper: "white", shade: "lightblue", ink: "black" });
 export const usePaper = () => useContext(PaperContext);
 
 /** Counts frames; the page reads `fps` twice a second (no React re-render per frame). */

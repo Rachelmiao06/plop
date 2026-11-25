@@ -286,8 +286,8 @@ export function layoutProblems(list: Placement[] = layout): string[] {
 
 /**
  * Feel settings for the "half-turning thick standee" look. Tune here, not in the components.
- * Light and snow colours copy the snow scene in PR #17 (src/features/snow-scene/content.ts) so the
- * test page looks like the real thing; keep them in step. Paper colours come from the design tokens.
+ * Every colour on the 3D page comes from the design tokens in globals.css: --paper (snow, paper sides,
+ * haze), --snow-shadow (shadows and the shade side), --ink (edge line). None are typed here.
  */
 export const standee3d = {
   /** Depth of the cut-out, as a share of the prop's height. */
@@ -304,14 +304,24 @@ export const standee3d = {
     damping: 9,
   },
 
-  /** Soft "pillow" volume from the silhouette's normal map. */
+  /**
+   * Drawn-style shading. Nothing is lit physically: each surface is a token colour, mixed toward the
+   * token shade colour (--snow-shadow) on the side facing away from a fixed drawing light, like a crayon
+   * artist shading the far side. The light comes from the upper left and a little in front, the way
+   * the stickers themselves are drawn; the real sun (below) only decides where shadows fall.
+   */
+  shading: {
+    /** Direction the drawing light comes from (x right, y up, z toward the default camera). */
+    from: [-0.55, 0.75, 0.6] as [number, number, number],
+    /** Paper sides and mounds: where lit turns to shade (0 = facing away, 1 = facing the light). */
+    band: { from: 0.3, to: 0.7 },
+  },
+
+  /** Faint "pillow" volume on the art, from the silhouette's normal map. */
   pillow: {
-    /** Strength of the normal map. 0 = flat. */
-    normalScale: 0.9,
-    /** How much of the drawn colour shows on its own, unlit, so lighting only adds a faint light and shade side. */
-    artGlow: 0.8,
-    /** How much the lights add on top. */
-    litShare: 0.26,
+    /** How strongly the far edges are tinted toward the shade colour. 0 = flat; kept low so it never fights the drawing. */
+    strength: 0.45,
+    band: { from: 0.2, to: 0.62 },
   },
 
   /** Soft mound of snow around each base (a stand-in for the real snow's API, see README). */
@@ -321,8 +331,6 @@ export const standee3d = {
     /** Mound depth front to back, in scene units. */
     depth: 0.3,
     height: 0.05,
-    /** A touch brighter than the flat ground so it reads as a soft heap, not a shadow. */
-    glow: 0.45,
   },
 
   /** Gentle sway in the wind. */
@@ -345,32 +353,20 @@ export const standee3d = {
     fleckLife: 1.3, // seconds
   },
 
+  /** The sun of the snow scene in PR #17: only used to cast shadows (painted in --snow-shadow). */
   light: {
     sunElevation: 24, // degrees above the horizon
     sunAzimuth: 128, // 0 = from the right, 90 = from behind the scene toward the viewer
-    sunStrength: 5,
-    skyStrength: 1.7,
-    /** A little brighter than the snow scene's 1.0: this flat test ground has none of the real snow's shading. */
-    exposure: 1.2,
     shadowMapSize: 2048,
     shadowSoftness: 5,
     shadowArea: 12,
     shadowBias: -0.0004,
     shadowNormalBias: 0.02,
-    /** How dark shadows get (0 = none, 1 = full). Pale, so they read soft blue. */
-    shadowIntensity: 0.55,
+    /** How much of the shadow colour shows (1 = exactly --snow-shadow). */
+    shadowStrength: 1,
   },
 
-  colors: {
-    snow: "#dfe7f2",
-    sun: "#ffe2bd",
-    skyFill: "#a9c8ff",
-    groundBounce: "#dfe6f5",
-    fog: "#e3eaf5",
-    fleck: "#ffffff",
-  },
-
-  /** Light haze: fog density (exponential). */
+  /** Light haze: far things fade into the paper colour (fog density, exponential). */
   hazeDensity: 0.012,
 
   /** Free camera limits on the test page. */

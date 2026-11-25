@@ -7,9 +7,10 @@ import {
   Color,
   DirectionalLight,
   FogExp2,
-  MeshStandardMaterial,
-  NeutralToneMapping,
+  MeshBasicMaterial,
   NoColorSpace,
+  NoToneMapping,
+  ShadowMaterial,
   SRGBColorSpace,
   Vector3,
   type Texture,
@@ -52,9 +53,9 @@ function sunDirection(): Vector3 {
   return new Vector3(Math.cos(el) * Math.cos(az), Math.sin(el), -Math.cos(el) * Math.sin(az));
 }
 
-function Lights({ shadow }: { shadow: boolean }) {
+/** The sun only casts shadows; nothing on this page is lit physically (see materials.ts). */
+function Sun({ shadow }: { shadow: boolean }) {
   const l = standee3d.light;
-  const c = standee3d.colors;
   const sun = useRef<DirectionalLight>(null);
   const dir = useMemo(() => sunDirection().multiplyScalar(20), []);
   useEffect(() => {
@@ -62,35 +63,31 @@ function Lights({ shadow }: { shadow: boolean }) {
     sun.current?.target.updateMatrixWorld();
   }, []);
   return (
-    <>
-      <hemisphereLight args={[c.skyFill, c.groundBounce, l.skyStrength]} />
-      <directionalLight
-        ref={sun}
-        color={c.sun}
-        intensity={l.sunStrength}
-        position={dir.toArray()}
-        castShadow={shadow}
-        shadow-mapSize={[l.shadowMapSize, l.shadowMapSize]}
-        shadow-radius={l.shadowSoftness}
-        shadow-bias={l.shadowBias}
-        shadow-normalBias={l.shadowNormalBias}
-        shadow-intensity={l.shadowIntensity}
-      >
-        <orthographicCamera attach="shadow-camera" args={[-l.shadowArea, l.shadowArea, l.shadowArea, -l.shadowArea, 1, 45]} />
-      </directionalLight>
-    </>
+    <directionalLight
+      ref={sun}
+      position={dir.toArray()}
+      castShadow={shadow}
+      shadow-mapSize={[l.shadowMapSize, l.shadowMapSize]}
+      shadow-radius={l.shadowSoftness}
+      shadow-bias={l.shadowBias}
+      shadow-normalBias={l.shadowNormalBias}
+    >
+      <orthographicCamera attach="shadow-camera" args={[-l.shadowArea, l.shadowArea, l.shadowArea, -l.shadowArea, 1, 45]} />
+    </directionalLight>
   );
 }
 
 /** Art is drawn in sRGB; normal maps are plain data. */
-function prepareTextures(loaded: unknown) {
-  for (const [key, tex] of Object.entries(loaded as Record<string, Texture>)) {
+function prepareTextures(loaded: Record<string, Texture>) {
+  for (const [key, tex] of Object.entries(loaded)) {
     tex.colorSpace = key.startsWith("art:") ? SRGBColorSpace : NoColorSpace;
     tex.anisotropy = 8;
+    // Re-upload with the right colour space, or the art shows pale and washed out.
+    tex.needsUpdate = true;
   }
 }
 
-function Village({ snow }: { snow: MeshStandardMaterial }) {
+function Village() {
   const urls = useMemo(() => {
     const out: Record<string, string> = {};
     for (const id of ids) {
@@ -99,7 +96,9 @@ function Village({ snow }: { snow: MeshStandardMaterial }) {
     }
     return out;
   }, []);
-  const textures = useTexture(urls, prepareTextures);
+  const textures = useTexture(urls);
+  // Before the first draw: art is sRGB, normal maps are data.
+  useMemo(() => prepareTextures(textures), [textures]);
   const target = useMemo(() => new Vector3(...cameraTarget), []);
 
   return (
@@ -115,7 +114,6 @@ function Village({ snow }: { snow: MeshStandardMaterial }) {
           art={textures[`art:${p.id}`]}
           normal={textures[`normal:${p.id}`]}
           target={target}
-          snow={snow}
         />
       ))}
     </>
@@ -127,7 +125,10 @@ function FpsMeter({ stats }: { stats: FrameStats }) {
   return null;
 }
 
-/** The 3D test scene: flat snow, low warm sun, light haze, free orbit camera, the village as thick standees. */
+/**
+ * The 3D test scene: flat paper-white snow, shadows painted in --snow-shadow, a light haze into --paper,
+ * a free orbit camera and the village as thick standees. Only token colours appear.
+ */
 export default function VillageCanvas({
   treatment,
   stats,
@@ -141,21 +142,15 @@ export default function VillageCanvas({
   // This file only ever loads in the browser (dynamic import, no server render), so the tokens can be read here.
   const [paper] = useState<PaperColors>(() => {
     const css = getComputedStyle(document.documentElement);
-    return { side: css.getPropertyValue("--paper").trim(), edge: css.getPropertyValue("--ink").trim() };
+    const token = (name: string) => css.getPropertyValue(name).trim();
+    return { paper: token("--paper"), shade: token("--snow-shadow"), ink: token("--ink") };
   });
 
-  const c = standee3d.colors;
-  const snow = useMemo(() => new MeshStandardMaterial({ color: new Color(c.snow), roughness: 1, metalness: 0 }), [c.snow]);
-  const mound = useMemo(
-    () =>
-      new MeshStandardMaterial({
-        color: new Color(c.snow),
-        emissive: new Color(c.snow),
-        emissiveIntensity: standee3d.mound.glow,
-        roughness: 1,
-        metalness: 0,
-      }),
-    [c.snow],
+  // The snow is plain paper colour; shadows are painted on top in exactly the shade token.
+  const ground = useMemo(() => new MeshBasicMaterial({ color: new Color(paper.paper) }), [paper.paper]);
+  const shadowPaint = useMemo(
+    () => new ShadowMaterial({ color: new Color(paper.shade), opacity: standee3d.light.shadowStrength }),
+    [paper.shade],
   );
   const cam = standee3d.camera;
 
@@ -165,22 +160,25 @@ export default function VillageCanvas({
       dpr={[1, 2]}
       camera={{ fov: previewCamera.fieldOfView, near: 0.5, far: 120, position: startPosition(start) }}
       onCreated={({ gl, scene }) => {
-        gl.toneMapping = NeutralToneMapping;
-        gl.toneMappingExposure = standee3d.light.exposure;
-        scene.background = new Color(c.fog);
-        scene.fog = new FogExp2(c.fog, standee3d.hazeDensity);
+        // Token colours exactly as written: no tone mapping.
+        gl.toneMapping = NoToneMapping;
+        scene.background = new Color(paper.paper);
+        scene.fog = new FogExp2(paper.paper, standee3d.hazeDensity);
       }}
       style={{ touchAction: "none" }}
     >
       <TreatmentContext value={treatment}>
         <PaperContext value={paper}>
-          <Lights key={treatment.shadow ? "shadow" : "flat"} shadow={treatment.shadow} />
-          <mesh rotation-x={-Math.PI / 2} receiveShadow material={snow}>
+          <Sun key={treatment.shadow ? "shadow" : "flat"} shadow={treatment.shadow} />
+          <mesh rotation-x={-Math.PI / 2} material={ground}>
+            <planeGeometry args={[120, 120]} />
+          </mesh>
+          <mesh rotation-x={-Math.PI / 2} position-y={0.002} receiveShadow material={shadowPaint}>
             <planeGeometry args={[120, 120]} />
           </mesh>
           <Flecks>
             <Suspense fallback={null}>
-              <Village snow={mound} />
+              <Village />
             </Suspense>
           </Flecks>
           <OrbitControls

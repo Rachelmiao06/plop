@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Color, InstancedMesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3 } from "three";
 
 import { standee3d } from "../content";
+import { usePaper } from "./treatment";
 
 const MAX = 240;
 
@@ -62,7 +63,8 @@ export function Flecks({ children }: { children: ReactNode }) {
   const mesh = useRef<InstancedMesh>(null);
   const [pool] = useState(() => new FleckPool());
   const geometry = useMemo(() => new SphereGeometry(1, 6, 4), []);
-  const material = useMemo(() => new MeshBasicMaterial({ color: new Color(standee3d.colors.fleck) }), []);
+  const paper = usePaper();
+  const material = useMemo(() => new MeshBasicMaterial({ color: new Color(paper.paper) }), [paper.paper]);
 
   useFrame((_, delta) => {
     if (mesh.current) pool.step(delta, mesh.current);

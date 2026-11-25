@@ -20,6 +20,19 @@ No database, no accounts, no AI features, no online play.
 - `public/assets/<feature>/` images and sounds, per feature.
 - `docs/` SPEC, DECISIONS.
 
+## Look comes first (Rachel's top priority)
+
+Rachel cares most about three things: it feels hand-drawn, it is cute, and it matches the design tokens.
+A visual change is not done until it passes all of these:
+
+- **Hand-drawn:** looks like her doodle art (thin uneven dark-brown line, light flat colour, lots of paper white,
+  tiny dot eyes set far apart). Never glossy, plastic, smooth-gradient, vector or "default 3D".
+- **Cute:** round, soft, a little lopsided; motion is springy and gentle, never stiff or mechanical.
+- **Tokens:** colours only from `src/app/globals.css` (or `content.ts` values copied from them). If her art and the
+  tokens disagree, say so and propose a token change in its own PR; never quietly invent a new colour.
+- **Proof:** every visual PR shows screenshots next to the matching reference art (`art-source/`, `docs/reference/`)
+  and says honestly where it still falls short.
+
 ## Rules
 
 - A feature never edits another feature's folder. It imports shared parts.
