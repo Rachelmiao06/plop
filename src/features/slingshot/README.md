@@ -26,16 +26,25 @@ ground plane and up is `y`.
 
 ## Plugging in a 3D renderer
 
-```ts
-import { FEEL, copyFeel, createSlingshot, createKeyboardInput, createPointerInput, connectFeedback } from "@/features/slingshot";
+Inside `<SnowScene>` (from `@/features/snow-scene`):
 
-const sim = createSlingshot(copyFeel());          // or FEEL itself if nothing tunes it live
-const keyboard = createKeyboardInput(sim);
-const pointer = createPointerInput(sim, canvasElement, {
-  toGround: (clientX, clientY) => snowPoint(clientX, clientY), // useSnowPoint() from the snow scene
-  onClaim: (pointerId) => claimSnowPointer(pointerId),         // so the camera ignores that finger
-});
-const feedback = connectFeedback(sim);
+```tsx
+import { FEEL, createSlingshot, createKeyboardInput, createPointerInput, connectFeedback } from "@/features/slingshot";
+import { claimSnowPointer, useSnow, useSnowPoint } from "@/features/snow-scene";
+
+const snowPoint = useSnowPoint();             // (clientX, clientY) => { x, z } | null
+const gl = useThree((s) => s.gl);             // the canvas: gl.domElement
+
+useEffect(() => {
+  const sim = createSlingshot(FEEL);          // or copyFeel() if something tunes it live
+  const keyboard = createKeyboardInput(sim);
+  const pointer = createPointerInput(sim, gl.domElement, {
+    toGround: snowPoint,                      // already the right shape
+    onClaim: (pointerId) => claimSnowPointer(pointerId), // that finger no longer moves the camera
+  });
+  const feedback = connectFeedback(sim);
+  // keep sim, keyboard, feedback in refs for useFrame; dispose all three on cleanup
+}, [gl, snowPoint]);
 
 // every frame (useFrame):
 keyboard.update(delta);
@@ -43,8 +52,13 @@ sim.step(delta);
 feedback.update();
 ```
 
-`toGround` must return the scene `{ x, z }` under the pointer, or null. Use the snow scene's
-`useSnowPoint()`: it aims at the untouched surface, so the ball never jumps at a pit or rim.
+`toGround` must return the scene `{ x, z }` under the pointer, or null; `useSnowPoint()`
+does exactly that and aims at the untouched surface, so the ball never jumps at a pit or rim.
+Put the pointer listener on the 3D canvas. The snow scene's camera only decides what a
+finger does on its first move, so a claim made in pointer-down (which `onClaim` does) is
+always in time.
+The snow scene does not listen to keys (and keys are not claimable), so W A S D and the
+arrow keys never move the camera.
 A pointer that goes down within `character.grabRadius` of a character is claimed; ask
 `pointer.isClaimed(id)` or use `onClaim`. Pointers that start elsewhere are never touched,
 so empty snow still turns the camera.
@@ -88,7 +102,8 @@ From the snow scene's `useSnow()`:
   (`dwell` > 0), so it sinks in.
 - **Crater**: on `landed`, call `punchCrater(e.at.x, e.at.z, e.radius)`.
 - **Sitting on the snow**: draw the pulled ball at `y = heightAt(x, z) + radius` and the flying ball at `heightAt(x, z) + height`.
-- **Resistance (later)**: `packedAt(x, z)` could lower `follow.rateLight/rateHeavy` in fresh snow; not wired yet.
+- **Resistance (later)**: `packedAt(x, z)` (0 untouched … 1 packed) could lower the follow rate in fresh snow so it feels heavier than a packed track; not wired yet. The snow scene's feel notes say to ease the rate itself toward its new value, or the ball jerks when it crosses from fresh snow onto a track.
+- **Character spots**: the homes here are fixed at x = ±3, z = 0 (`content.ts` `homes`). `useSnowLayout().spots` (`[left, right]`) is where the snow scene puts the characters for the screen shape; when wiring, the homes must follow those spots, or the balls will start beside the characters.
 
 ## Input notes
 
@@ -101,3 +116,7 @@ From the snow scene's `useSnow()`:
 - If the window loses focus mid-pull, the pull is cancelled rather than thrown.
 - Aim and power come from where the ball is (it lags the finger), not from the finger:
   what you see is what you throw.
+- The follow already matches the snow scene's feel notes: an eased share of the gap per frame
+  (`1 - exp(-rate * seconds)`) and a cap on how far the ball may trail (`follow.maxTrail`).
+  The snow scene's press test felt best at a trail of at most 0.35 (`docs/DECISIONS.md`);
+  the slingshot allows 0.7 because the weight is meant to show. Worth comparing by hand.
