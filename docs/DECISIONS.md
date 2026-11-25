@@ -47,3 +47,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · The test press keeps its real size on the snow at any distance: close up a drag leaves a wide groove, from far a thin one (Rachel). Growing it with distance was tried and rejected because from far it looked too coarse.
 - 2026-11-24 · Kept the custom path camera instead of switching to drei CameraControls: a request to switch arrived, but Rachel then said the path camera feels good.
 - 2026-11-24 · Look comes first: hand-drawn feel, cuteness and matching the design tokens are the acceptance bar for every visual change, checked against Rachel's reference art. Recorded in CLAUDE.md.
+- 2026-11-24 · Fresh snowfall (button, N key, `freshSnowfall()`) makes the snow fall harder, then fills dents from the bottom and fades rims and tint over about 3 seconds before freeing the tiles; never a cut or a reset, so it reads as new snow settling.
