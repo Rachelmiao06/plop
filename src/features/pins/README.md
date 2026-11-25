@@ -37,8 +37,11 @@ Wiring the HUD later: on `knocked` pass `down`/`total` and a new `knock` id; on 
 ## A match: round sets, special cut-outs, mounds
 
 - `ROUND_SETS` (content.ts) are the sets of a match, one per round; `ALL_SETS` is free play plus round sets (the
-  picker on `/dev/pins` shows them all). A set may have a `shift` (it stands left or right of the lane's middle),
-  `mounds` (soft snow in front of it) and a `note` (the words under "Round 2 / 3").
+  picker on `/dev/pins` shows them all). Rachel: every round is the classic bowling-pin crowd in the middle of the
+  lane (triangle, crowd of friends, ring, a ten-pin triangle, the village), changed only a little. A set may have a
+  `shift` (it stands left or right of the lane's middle, at most 0.3 in a round set), a `turn` (the whole set and
+  its mounds turned a few degrees about its middle, `placeIn` in layout.ts), `mounds` (small soft snow at the
+  sides in front of it) and a `note` (the words under "Round 2 / 3").
 - A pin may be `kind: "star"` (a star doodle above its head, `SPECIALS.star`; +2 when it falls) or
   `kind: "friend"` (the white rabbit: never counted as a card; +2 if every friend is still standing, nothing taken
   away when knocked). `scoring.ts` `countThrow` makes the result (`down`, `total`, `fullClear`, `stars`,
@@ -50,7 +53,7 @@ Wiring the HUD later: on `knocked` pass `down`/`total` and a new `knock` id; on 
 
 ## Formations
 
-Five to eight small friends per set, airy enough to read from the throwing view (Rachel: the first sets were one
+Five to ten small friends per set, airy enough to read from the throwing view (Rachel: the first sets were one
 clump): about 1.5 card widths apart in a row, the row behind staggered into the gaps, rows 0.55 to 1 apart so a
 falling card still reaches the next, short ones in front. Never in a formation: the throwers (`snowman-bucket-hat`,
 the red-hat snowman) and the props that look like they are moving (`penguin-slide`, `skier`, now village decoration).

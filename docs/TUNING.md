@@ -62,7 +62,7 @@ Rachel worried everyone would just aim at the middle with full power. These chan
 | **How soft a mound is.** Extra slowing inside a mound (a full ball sinks `bigShare` times more). | `drag 15` · `bigShare 1.5` | `FEEL.roll.soft` |
 | **Mound shape.** Full softness inside `core` of its radius; how flat it squashes when a ball ploughs through. | `core 0.55` · `flatten 0.35` | `src/features/pins/content.ts` · `MOUND` |
 | **Special cut-outs.** Extra points for a star friend down, and for the rabbit left standing. | `+2` · `+2` | `SPECIALS` |
-| **The sets** and the round order (3 or 5 rounds). | 5 round sets | pins `ROUND_SETS` · game `GAME.match.rounds` |
+| **The sets** and the round order (3 or 5 rounds): the classic crowd every round; each set's `shift` (at most 0.3), `turn` (degrees) and where the star friend and the bunny stand. | 5 round sets | pins `ROUND_SETS` · game `GAME.match.rounds` |
 
 **Together mode** (`GAME.together` in `src/features/game/content.ts`): each thrower's half of the line (`slide`,
 `[-1.9, -0.45]` and `[0.45, 1.9]`) and their keys; `GAME.timing.secondGainAfter` (`0.75` s) between the two
@@ -87,7 +87,7 @@ the sway past the sweet spot), with the real roll and a headless copy of the pin
 
 Full power was the best power (or tied) in 4 of 5 sets, and straight at the middle was the best or near it in 3.
 
-**After** (round sets, sweet spot, mounds, star friend and rabbit):
+**First round sets** (2026-11-25, replaced the same day: off to the side, two groups, slanted row, picnic, village; sweet spot, mounds, star friend and rabbit):
 
 | Round set | Middle-full | Best shot | Best at full power | Best power |
 |---|---|---|---|---|
@@ -97,10 +97,28 @@ Full power was the best power (or tied) in 4 of 5 sets, and straight at the midd
 | 4 bunny's picnic | 3.3 | 6.8 | 4.8 | 0.35 |
 | 5 snowy village | 4.7 | 6.6 | 5.3 | 0.55 |
 
-Straight at the middle at full power is beaten in all 5 rounds (by 1.1 to 4.8 points), and full power is never the
-best power. Round 1 is the closest: a full-power throw a little off the middle still does well there, on purpose
-(the gentle first round). Limits: flat snow, no old grooves, no hit-stop; a few shots thrown in the browser matched
-the replay within about one card.
+Straight at the middle at full power was beaten in all 5 rounds (by 1.1 to 4.8 points). Rachel did not like those
+sets: she wants the classic bowling-pin crowd in the middle every round, only a little different each time.
+
+**Now** (the classic crowd every round: triangle, crowd of friends, ring, ten-pin triangle, village; small shifts and
+turns, the star friend and the bunny inside or just in front, small side mounds from round 4):
+
+| Round set | Middle-full | Best shot | Best at full power | Best power |
+|---|---|---|---|---|
+| 1 the triangle | 5.4 | 8.6 | 6.2 | 0.35 = 0.55 |
+| 2 crowd of friends (bunny in front) | 5.3 | 6.4 | 5.5 | 0.55 |
+| 3 ring (star on the left) | 4.4 | 5.7 | 5.2 | 0.7 = 0.85 |
+| 4 bigger triangle (ten pins, a mound) | 8.3 | 9.1 | 8.7 | 0.7 |
+| 5 little village (bunny, star, two mounds) | 6.7 | 8.8 | 7.3 | 0.55 |
+
+A straight throw at the middle now scores well (5.4 on average across the rounds, was 3.4), which Rachel accepts
+for the classic look. It is still never the best shot: a slightly angled throw at the sweet spot beats it in every
+round, by 0.9 (the ten-pin triangle) to 3.2 points (round 1), and full power is never the best power.
+Chains still happen (a quick grid of 108 throws per set, cards down that the ball never touched): 73% of throws at
+the triangle start a chain, 49% at the crowd, 22% at the ring (the ring was always the loosest, 16% in free play),
+82% at the ten-pin triangle and 64% at the village.
+Limits: flat snow, no old grooves, no hit-stop; a few shots thrown in the browser matched the replay within about
+one card.
 
 ## Also worth knowing
 

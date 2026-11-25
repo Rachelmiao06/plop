@@ -46,13 +46,13 @@ export const GAME = {
   /**
    * The match (docs/GAMEPLAY.md section 7c): choose 3 or 5 rounds before the first throw (the first is the
    * default). In each round every player throws once, then the next round brings a new set. `rounds` lists the
-   * set (pins `ROUND_SETS` id) of each round, in order: a little harder each time, and from round 3 a soft mound.
+   * set (pins `ROUND_SETS` id) of each round, in order: the classic bowling-pin crowd every round, only a little different each time (Rachel), small mounds from round 4.
    */
   match: {
     lengths: [3, 5] as const,
     rounds: {
-      3: ["round-corner", "round-split", "round-slant"],
-      5: ["round-corner", "round-split", "round-slant", "round-picnic", "round-village"],
+      3: ["round-triangle", "round-friends", "round-ring"],
+      5: ["round-triangle", "round-friends", "round-ring", "round-big-triangle", "round-village"],
     } as Record<3 | 5, readonly string[]>,
     /** Playing alone: the best total for each length is remembered on this device under this key. */
     bestKey: "plop.best",
