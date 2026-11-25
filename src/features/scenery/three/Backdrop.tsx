@@ -131,7 +131,8 @@ export function Backdrop({ center }: Props) {
     () =>
       new ShaderMaterial({
         side: BackSide,
-        transparent: true,
+        // Opaque, drawn before the snow, so the snow hidden behind it is never painted (cheaper than drawing over it).
+        transparent: false,
         depthWrite: true,
         toneMapped: false,
         uniforms: {
@@ -157,8 +158,10 @@ export function Backdrop({ center }: Props) {
           uniform float uOpacity;
           varying float vHeight;
           void main() {
+            // While the view rises the wall thins out in a fine paper-grain pattern instead of turning see-through.
+            if (uOpacity < 1.0 && fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) > uOpacity) discard;
             float t = smoothstep(uBand.x, uBand.y, vHeight - uFoot) * uBand.z;
-            gl_FragColor = vec4(mix(uPaper, uTint, t), uOpacity);
+            gl_FragColor = vec4(mix(uPaper, uTint, t), 1.0);
             #include <colorspace_fragment>
           }
         `,
