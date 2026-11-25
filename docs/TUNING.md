@@ -100,23 +100,22 @@ Full power was the best power (or tied) in 4 of 5 sets, and straight at the midd
 Straight at the middle at full power was beaten in all 5 rounds (by 1.1 to 4.8 points). Rachel did not like those
 sets: she wants the classic bowling-pin crowd in the middle every round, only a little different each time.
 
-**Now** (the classic crowd every round: triangle, crowd of friends, ring, ten-pin triangle, village; small shifts and
-turns, the star friend and the bunny inside or just in front, small side mounds from round 4):
+**Now** (the classic crowd every round with one small rule each: Strike! (triangle), Hit the star (crowd of
+friends), Let the bunny be (ring), Little mound (ten-pin triangle), Sleepy cat (village); small shifts and turns):
 
 | Round set | Middle-full | Best shot | Best at full power | Best power |
 |---|---|---|---|---|
-| 1 the triangle | 5.4 | 8.6 | 6.2 | 0.35 = 0.55 |
-| 2 crowd of friends (bunny in front) | 5.3 | 6.4 | 5.5 | 0.55 |
-| 3 ring (star on the left) | 4.4 | 5.7 | 5.2 | 0.7 = 0.85 |
-| 4 bigger triangle (ten pins, a mound) | 8.3 | 9.1 | 8.7 | 0.7 |
-| 5 little village (bunny, star, two mounds) | 6.7 | 8.8 | 7.3 | 0.55 |
+| 1 Strike! (triangle) | 4.8 | 6.3 | 5.5 | 0.7 |
+| 2 Hit the star (crowd of friends) | 6.1 | 6.9 | 6.6 | 0.7 |
+| 3 Let the bunny be (ring) | 4.9 | 6.8 | 5.0 | 0.55 |
+| 4 Little mound (ten-pin triangle) | 3.8 (the mound slows it) | 6.8 | 6.1 | 0.35 = 0.55 |
+| 5 Sleepy cat (village) | 7.2 | 9.0 | 8.1 | 0.55 |
 
-A straight throw at the middle now scores well (5.4 on average across the rounds, was 3.4), which Rachel accepts
-for the classic look. It is still never the best shot: a slightly angled throw at the sweet spot beats it in every
-round, by 0.9 (the ten-pin triangle) to 3.2 points (round 1), and full power is never the best power.
-Chains still happen (a quick grid of 108 throws per set, cards down that the ball never touched): 73% of throws at
-the triangle start a chain, 49% at the crowd, 22% at the ring (the ring was always the loosest, 16% in free play),
-82% at the ten-pin triangle and 64% at the village.
+A straight throw at the middle now scores fairly well (5.4 on average across the rounds, was 3.4 with the first round
+sets), which Rachel accepts for the classic look. It is still never the best shot: beaten in every round by 0.7
+(Hit the star) to 3.0 points (Little mound), and full power is never the best power.
+Chains still happen (a quick grid of 108 throws per set, cards down that the ball never touched): 78% of throws at
+Strike! start a chain, 44% at Hit the star, 41% at Let the bunny be, 64% at Little mound, 56% at Sleepy cat.
 Limits: flat snow, no old grooves, no hit-stop; a few shots thrown in the browser matched the replay within about
 one card.
 

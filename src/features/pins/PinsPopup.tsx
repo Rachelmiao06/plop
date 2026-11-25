@@ -167,12 +167,15 @@ export function PinsPopup({ pins, names }: { pins: Pins; names?: Record<string, 
   );
 }
 
-/** Small handwritten lines under the count for the special cut-outs: a star friend down, the bunny left alone. */
+/** Small handwritten lines under the count for the special cut-outs: a star friend down, the bunny or the sleepy cat left alone. */
 function SpecialNotes({ result }: { result: PinsResult }) {
   const notes: { src: string; text: string }[] = [];
   if (result.stars > 0) notes.push({ src: "/assets/effects/star.webp", text: TEXT.star(result.stars * SPECIALS.star.bonus) });
-  if (result.friend === "safe") notes.push({ src: "/assets/scenery/rabbit.webp", text: TEXT.friendSafe(SPECIALS.friend.bonus) });
-  if (result.friend === "bumped") notes.push({ src: "/assets/scenery/rabbit.webp", text: TEXT.friendBumped });
+  const who = result.friendProp ?? "rabbit";
+  const art = SPECIALS.friend.art[who] ?? SPECIALS.friend.art.rabbit!;
+  const words = TEXT.friend[who] ?? TEXT.friend.rabbit!;
+  if (result.friend === "safe") notes.push({ src: art, text: words.safe(SPECIALS.friend.bonus) });
+  if (result.friend === "bumped") notes.push({ src: art, text: words.bumped });
   if (!notes.length) return null;
   return (
     <div className="relative z-[1] mt-1 flex flex-col items-center gap-0.5">

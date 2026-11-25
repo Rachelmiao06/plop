@@ -62,8 +62,8 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - It leaves a groove and throws up snow dust all the way. It slows down in deep fresh snow and runs further on
   packed tracks, so earlier grooves become faster lanes. It stops by itself, or bursts into snow when it hits a
   big village prop.
-- **Soft snow mounds** (a small detail from round 4 of a match): Rachel's snow-mound cut-out stands on the lane
-  in front of the set, off to one side, never in front of the middle. Rolling through it slows the ball a lot; a quick light ball punches through, a slow heavy one gets stuck.
+- **Soft snow mounds** (round 4 of a match, "Little mound"): Rachel's snow-mound cut-out stands on the lane just
+  in front of one side of the crowd, never in front of the whole middle. Rolling through it slows the ball a lot; a quick light ball punches through, a slow heavy one gets stuck.
   The aim line shows where it would stop. It squashes flat with a puff as the ball ploughs through and stands
   up again for the next throw.
 
@@ -82,10 +82,10 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 
 - Free play (`/dev/pins`): a triangle (classic), a slanted row, a ring, a loose crowd of friends and a
   "little village" mixed set; the next set comes after a full clear, or by a small "next" button.
-- A match has its own **round sets**, one per round: the same classic crowd, a little different each round (section 7c).
+- A match has its own **round sets**, one per round: the same classic crowd, a little shifted, with one small rule each (section 7c).
 - 5 to 10 cut-outs per set (the ten-pin triangle of round 4 is the most), airy enough to read from the throwing view at desktop and phone size.
 - **Special cut-outs:** a *star friend* carries a little star doodle above its head and is worth 2 extra points
-  when it falls (one card inside the crowd). The white rabbit is a *friend* watching: it should be
+  when it falls (one card inside the crowd). The white rabbit (and in round 5 the sleeping cat on its bench) is a *friend* watching: it should be
   left alone. Knocked over it simply scores nothing; still standing after the throw, it gives 2 points ("bunny's
   still cosy"). Never taking points away. Each is explained once, with a tiny hand-drawn note, the first time it
   appears.
@@ -119,20 +119,24 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - **Before the first throw** a small hand-drawn card asks: 3 rounds or 5 (3 is the default), and "two friends"
   or "just me". "Let's roll!" starts.
 - **Each round** every player throws once at the same set (it pops back up between them), then the next round's
-  set hops in. "Round 2 / 3" and a few words about the set ("a crowd of friends, the bunny's watching") show as it arrives.
+  set hops in. "Round 2 / 3" and a few words about the set ("Let the bunny be") show as it arrives.
 - **The sets** (data: `ROUND_SETS` in `src/features/pins/content.ts`, round order `GAME.match.rounds` in
   `src/features/game/content.ts`). Rachel (2026-11-25): every round is the **classic bowling-pin crowd** standing
   in the middle of the lane, a group of her little characters arranged like bowling pins, and it only changes a
   little from round to round: the whole set shifts sideways (at most 0.3), turns a few degrees, swaps who stands
-  where, and carries one star friend or the bunny inside or just in front of the crowd. Never an empty middle,
-  never a few cards off to one side.
-  1. *The triangle:* 1, 2, 3, the front pin pointing at the thrower; the star friend at the back right.
-  2. *Crowd of friends:* a loose crowd 0.2 to the left; the bunny sits just in front, a little right of the middle.
-  3. *Ring:* six friends in a circle 0.25 to the right, turned 6°; the star friend on the left side.
-  4. *Bigger triangle* (5 rounds): real bowling's ten, 1, 2, 3, 4, the star friend in the middle; a little snow
-     mound in front of the right corner.
-  5. *Little village* (5 rounds): the mixed village set with the heavy bench and log at the back, the bunny just
-     in front, the star friend in the middle, two small mounds at the sides.
+  where. Without a crowd there is nothing to knock down, so the variety is **one small rule per round**, named in a
+  few words under the round number, and its result shows under "N down!" in a few hand-drawn words. Never an
+  empty middle, never a few cards off to one side.
+  1. *Strike!* The plain triangle, 1, 2, 3, the front pin pointing at the thrower. Just bowl.
+  2. *Hit the star:* the crowd of friends, 0.2 to the left, a star friend inside it a little right of the middle
+     (+2 when it falls).
+  3. *Let the bunny be:* the ring, 0.25 to the right and turned 6°, the bunny just in front between the front
+     pair (+2 if it stays up, nothing taken away if it is knocked).
+  4. *Little mound* (5 rounds): real bowling's ten, 1, 2, 3, 4, with a small soft mound just in front of its
+     right side, so a straight full-power ball brushes it and slows.
+  5. *Sleepy cat: don't wake it* (5 rounds): the little village with the bench and its sleeping cat beside the
+     front right (a friend like the bunny: "kitty's still asleep +2" or "oops, kitty woke up!"), and a star
+     friend at the back.
   A 3-round match plays 1 to 3.
 - **The aim:** a good straight throw at the middle may score well (Rachel prefers the classic look); variety
   comes from the sweet spot on the pull, the small shifts, where the star stands, the bunny and the mounds.
