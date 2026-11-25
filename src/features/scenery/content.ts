@@ -781,10 +781,15 @@ export const atmosphere = {
     /** Heaps of real snow along the backdrop's foot: spacing along the arc, half-width, half-depth, height (units). */
     spacing: 1.6,
     radiusX: 1.6,
-    radiusZ: 1.7,
+    radiusZ: 1.3,
     height: 0.11,
     /** Heaps sit this far in front of the paper hills. */
     inset: 0.45,
+    /**
+     * Only this middle share of the backdrop's arc gets a bank: the part the low view looks at. Each heap makes fine
+     * snow tiles, and a bank round the whole arc cost about 15 fps in the high view.
+     */
+    arcShare: 0.5,
     /** How uneven the row is: spacing and distance jitter (share of a step) and size variety (share of size). */
     jitter: 0.7,
     vary: 0.6,

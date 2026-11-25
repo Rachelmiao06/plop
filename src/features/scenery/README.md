@@ -219,7 +219,9 @@ effect on top is welcome. All of it is made in code; no drawing is changed and t
 - **Reduced motion:** no flicker, smoke rises three times slower.
 - **Snow bank at the backdrop foot** (`atmosphere.footBank`, `FootBank` in `three/Backdrop.tsx`, #51): a row of soft,
   uneven heaps of real snow just in front of the paper hills, so the low view has no hard line where the hills meet the
-  snow. Kept low and broad so it reads as a drift from the high view.
+  snow. Kept low and broad so it reads as a drift from the high view, and only along the middle half of the arc that
+  the low view looks at (`arcShare`): every heap makes fine snow tiles, and a bank round the whole arc cost about
+  15 fps in the high view.
 - Heaps that other features sample (the pins' physics ground) are made by `FootBank` and `IceBeds`, which `Village`
   renders outside any Suspense, so they exist before the pins sample the snow.
 - `ThickStandee` takes `children`: anything fixed to the drawing (in the art's own space, origin bottom centre),

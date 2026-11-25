@@ -117,7 +117,7 @@ export function FootBank({ center, reach = 0 }: Props) {
   const [cx, , cz] = center;
   useMemo(() => {
     const f = atmosphere.footBank;
-    const arc = backdrop.arc * DEG;
+    const arc = backdrop.arc * DEG * f.arcShare;
     const r = wallRadius(narrow, reach) - 0.05 - f.inset;
     const steps = Math.max(2, Math.round((r * arc) / f.spacing));
     // Uneven on purpose (size, spacing and distance vary, the same on every load), so seen from high up it reads
