@@ -47,7 +47,10 @@ spam and is never written anywhere.
 `content.ts` limits, look numbers and words · `rules.ts` checks and `maxScore` · `rateLimit.ts` ·
 `api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` · `SubmitScore.tsx` ·
 `Doodles.tsx` paper sheet, rank marks (pencil circle in butter / snow / blush, crown on #1), butter crayon highlight ·
-`boardStyles.ts` the small scoped stylesheet (row and note spring in) · `review/` screenshots.
+`boardStyles.ts` the small scoped stylesheet: rows and the note spring in; idle motion (the crown rocks and hops,
+the #1 circle wobbles, the title star twinkles, your snowman hops now and then, the "you're #2!" note bobs, your
+highlight scribbles in from the left and again when your score lands), all tuned in `BOARD.motion` and off with
+reduced motion · `review/` screenshots.
 
 ## Asked of other features
 

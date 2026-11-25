@@ -61,7 +61,7 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
           style={{ "--lb-note-in": `${BOARD.look.noteIn}s`, "--lb-note-over": BOARD.look.noteOvershoot } as CSSProperties}
           role="status"
         >
-          {TEXT.youAre(rank)}
+          <span className={lb.bob}>{TEXT.youAre(rank)}</span>
         </p>
       </PaperSheet>
     );

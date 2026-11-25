@@ -32,6 +32,8 @@ const lookFor = (name: string) =>
 
 export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoardProps) {
   const [state, setState] = useState<State>({ status: "loading" });
+  /** Counts scores landing for this group, so the viewer's highlight scribbles in again. */
+  const [landed, setLanded] = useState(0);
   const remembered = useSyncExternalStore(subscribeNickname, readNickname, () => "");
   const viewer = nameKey(me ?? remembered);
 
@@ -45,7 +47,11 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
     fetchBoard(group).then((answer) => {
       if (live) setState(answer.ok ? { status: "ready", scores: answer.value.scores.slice(0, limit) } : { status: "failed" });
     });
-    const off = onLanded((d) => d.group === group && load());
+    const off = onLanded((d) => {
+      if (d.group !== group) return;
+      setLanded((n) => n + 1);
+      load();
+    });
     return () => {
       live = false;
       off();
@@ -58,7 +64,9 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
   return (
     <PaperSheet seed={group.charCodeAt(0) + group.charCodeAt(7)} label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
       <div className="mb-2 flex items-center justify-center gap-1.5">
-        <StarDoodle size={20} />
+        <span className={lb.star}>
+          <StarDoodle size={20} />
+        </span>
         <h2 className="font-heading text-2xl leading-none font-bold text-ink-deep">{TEXT.title}</h2>
       </div>
 
@@ -79,9 +87,11 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
                 style={{ "--lb-i": i, "--lb-tilt": `${(i % 2 ? 1 : -1) * rowTilt}deg` } as CSSProperties}
                 aria-current={isMe ? "true" : undefined}
               >
-                {isMe && <CrayonHighlight />}
+                {isMe && <CrayonHighlight key={landed} />}
                 <RankMark rank={i + 1} />
-                <SnowmanFace look={lookFor(s.name)} size={face} />
+                <span className={isMe ? lb.hop : "inline-block"}>
+                  <SnowmanFace look={lookFor(s.name)} size={face} />
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-heading text-xl leading-tight">
                     {s.name}
@@ -107,7 +117,7 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
           style={{ "--lb-note-in": `${noteIn}s`, "--lb-note-over": noteOvershoot } as CSSProperties}
           role="status"
         >
-          {TEXT.youAre(mine + 1)}
+          <span className={lb.bob}>{TEXT.youAre(mine + 1)}</span>
         </p>
       )}
     </PaperSheet>

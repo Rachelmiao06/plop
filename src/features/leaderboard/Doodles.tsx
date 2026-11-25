@@ -7,7 +7,7 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { CrownDoodle, PaperFill, PencilFrame } from "@/features/hud/Doodles";
 import { pencilCircle } from "@/features/hud/pencil";
-import { boardCss } from "./boardStyles";
+import { boardCss, lb, motionVars } from "./boardStyles";
 import { BOARD } from "./content";
 
 const stroke = { stroke: "var(--ink)", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -18,7 +18,7 @@ export function PaperSheet({ seed, children, className = "", label }: { seed: nu
     <section
       aria-label={label}
       className={`relative isolate rounded-[calc(var(--radius)*1.4)] bg-paper/90 px-4 pt-3 pb-4 text-ink ${className}`}
-      style={{ boxShadow: "0 6px 18px -10px color-mix(in oklab, var(--snow-shadow) 90%, var(--ink))" }}
+      style={{ boxShadow: "0 6px 18px -10px color-mix(in oklab, var(--snow-shadow) 90%, var(--ink))", ...motionVars() }}
     >
       <style href="plop-leaderboard" precedence="default">
         {boardCss}
@@ -40,13 +40,15 @@ export function RankMark({ rank }: { rank: number }) {
   return (
     <span className="relative grid size-8 shrink-0 place-items-center" aria-label={`#${rank}`}>
       {fill && (
-        <svg viewBox="0 0 28 30" className="absolute inset-0 size-full overflow-visible" aria-hidden>
+        <svg viewBox="0 0 28 30" className={`absolute inset-0 size-full overflow-visible ${rank === 1 ? lb.podium : ""}`} aria-hidden>
           <path d={ring} fill={fill} {...stroke} />
         </svg>
       )}
       {rank === 1 && (
-        <span className="absolute -top-3.5 left-1/2 -ml-[9px] rotate-[-8deg]" aria-hidden>
-          <CrownDoodle size={18} />
+        <span className="absolute -top-3.5 left-1/2 -ml-[9px]" aria-hidden>
+          <span className={`block ${lb.crown}`}>
+            <CrownDoodle size={18} />
+          </span>
         </span>
       )}
       <span className="relative font-heading text-xl leading-none font-bold text-ink-deep tabular-nums">{rank}</span>
@@ -56,7 +58,8 @@ export function RankMark({ rank }: { rank: number }) {
 
 /**
  * A crayon highlighter scribbled across the viewer's own row: three loose back-and-forth strokes in `--butter`,
- * stretched to the row (the stroke keeps its weight).
+ * stretched to the row (the stroke keeps its weight). It is scribbled in from the left; give it a new `key` to
+ * scribble it again.
  */
 export function CrayonHighlight() {
   const { meWash, meWashOpacity } = BOARD.look;
@@ -65,7 +68,7 @@ export function CrayonHighlight() {
       viewBox="0 0 100 20"
       preserveAspectRatio="none"
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 -inset-y-0.5 -z-10 size-full overflow-visible"
+      className={`pointer-events-none absolute inset-x-0 -inset-y-0.5 -z-10 size-full overflow-visible ${lb.scribble}`}
       style={{ opacity: meWashOpacity } as CSSProperties}
     >
       {[

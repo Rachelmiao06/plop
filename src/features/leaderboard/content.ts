@@ -30,6 +30,31 @@ export const BOARD = {
     noteIn: 0.5,
     noteOvershoot: 0.12,
   },
+  /**
+   * Gentle idle motion (Rachel: cuter with a little movement). Seconds per loop, degrees, pixels. All of it stops
+   * when the device asks for reduced motion.
+   */
+  motion: {
+    /** The winner's crown rocks side to side and hops a little at the top of each rock. */
+    crownLoop: 2.8,
+    crownTilt: 9,
+    crownHop: 3,
+    /** The #1 circle wobbles slowly, like a sticker not quite stuck down. */
+    podiumLoop: 3.6,
+    podiumTilt: 4,
+    /** The title star twinkles: a small turn and a swell. */
+    starLoop: 3.4,
+    starTilt: 12,
+    starSwell: 0.14,
+    /** Your row's crayon highlight is scribbled in from the left when it appears (and when your score lands). */
+    scribbleIn: 0.7,
+    /** Your snowman does a tiny happy hop now and then. */
+    meHopLoop: 3.2,
+    meHop: 4,
+    /** The "you're #2!" note bobs softly once it has popped in. */
+    noteBobLoop: 2.6,
+    noteBob: 2.5,
+  },
 } as const;
 
 export const TEXT = {
