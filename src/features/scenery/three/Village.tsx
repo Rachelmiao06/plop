@@ -11,7 +11,7 @@ import { backdrop, propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
 import { Backdrop } from "./Backdrop";
 import { Flecks } from "./Flecks";
-import { ChimneySmoke, Tracks } from "./Life";
+import { ChimneySmoke, LampGlow, Tracks } from "./Life";
 import { useReducedMotion } from "./motion";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
@@ -109,6 +109,7 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
         </Mover>
       ))}
       <ChimneySmoke placed={withBases} />
+      <LampGlow placed={withBases} />
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
   );
