@@ -19,6 +19,11 @@ import { ScoreHud } from "@/features/hud";
 ```
 
 - Props only. It shows the numbers it is given and animates the changes; the game decides the scores.
+- A match adds `round={{ now, of }}` (a small "round 2 / 3" tag under the panel), `gain={{ id, player, points }}`
+  (the throw's points fly up into that total, which counts up when they land) and, playing alone,
+  `soloBest={n | null}` (the right side shows your best with a little crown).
+- `MatchStart` (the "3 or 5 rounds / two friends or just me" card) and `MatchEnd` (totals, crown, cheer, tie card,
+  "play again") in `Match.tsx`. The crown is a pencil stand-in in `Doodles.tsx` until Rachel draws one.
 - A burst (star and surprise lines) plays whenever `down` reaches `total`.
 - Put it inside a `relative` box that also holds `<SnowScene>`; it floats at the top and never covers the lane.
 - The corner toggles start the music after the first touch anywhere (if its switch is on). Music and the

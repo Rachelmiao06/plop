@@ -4,6 +4,25 @@ The whole game on the home page (issues #26 and #8): the snow in the throwing vi
 the pins and the score panel, with two players taking turns. See `docs/GAMEPLAY.md` sections 7 to 9.
 Owner: Rachel. Page: `/` (renders `<Game />`).
 
+## The match
+
+Before the first throw a small card asks "3 or 5 rounds" and "two friends or just me" (`MatchStart` from the hud).
+Each round every player throws once at the same set, then the next round's set comes (`GAME.match.rounds` lists
+them, the sets are the pins' `ROUND_SETS`). After the last round the end card (`MatchEnd`) shows the totals, a crown
+for the winner (or two for a tie) and "play again". Alone, the best total per length is kept in `localStorage`
+(`GAME.match.bestKey`; it works without it). `rules.ts` holds the match: `start`, `again`, `choose`, `setFor`,
+`lastOfRound`, `passTurn` (next player, next round, or over), and each throw's points (`pointsFor`: per card,
+full clear, and the pins' special bonus) flying into the total (`gain`).
+
+## Measuring the shots (`measure/`)
+
+`node src/features/game/measure/measure.mjs [rounds | old | set ids…]` throws a grid of shots (5 spots on the line,
+21 aims, 6 powers, each thrown 5 times with a little hand error, 3 times more past the sweet spot for its sway) at
+each set with a headless replay of the real roll and the pins' Rapier world (`sim.ts`), and prints the expected
+points of "full power, straight at the middle of the set" against the best shot. It reads every number from the
+features, so it follows any tuning. Flat snow, no hit-stop and no old grooves; a few shots thrown in the browser
+matched it within about one card. Numbers: `docs/TUNING.md`.
+
 ## The loop
 
 1. The active player's snowman stands on the line. The hint ("hold Space or drag the snowman back") shows
@@ -17,7 +36,8 @@ Owner: Rachel. Page: `/` (renders `<Game />`).
 
 A pull cannot start while the ball is rolling or the pins are settling or resetting. Escape or the
 "Put it down" button cancels a pull; a cancelled pull is not a throw, so the turn stays.
-One person alone simply keeps throwing: the snowmen alternate.
+In a match the turn note also says "Round 2 / 3" and what the set asks; the first time a star friend or the rabbit
+appears, a tiny note says what it is worth (`SpecialHint`).
 
 ## Files
 
@@ -33,7 +53,7 @@ One person alone simply keeps throwing: the snowmen alternate.
   held through "N down!") and **return** (a calm glide home when the
   pins pop back). Any drag, scroll or key during the chase or impact hands the view back; the next throw is filmed
   again. "Reduce motion" keeps only a gentle lean after the ball. Numbers: `GAME.camera` in `content.ts`.
-- `GameOverlay.tsx` the hint, the turn note and the cancel button. `gameStyles.ts` their small scoped stylesheet.
+- `GameOverlay.tsx` the hint, the special cut-outs' note, the turn / round note and the cancel button. `gameStyles.ts` their small scoped stylesheet.
 - `ThrowingView.tsx` the default camera view: the scenery's `throwingView` on wide screens, `GAME.phoneView` on a
   phone held upright (#46).
 - `Game.tsx` puts it all together, with the paper finish (`<PaperFinish />` from `@/features/look`) over the

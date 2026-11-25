@@ -46,6 +46,14 @@ snow scene's play view (see "Camera" below).
 - `game.burst(ballId)` poofs a ball into snow: it keeps rolling for `roll.burstTime` while it flattens and shrinks, with a puff (`LOOK.burst`), then `removed`. The pins call it once the ball is through them (#47).
 - Size only grows: by how much farther than before it is pulled, and less over packed snow (`ball.growthOnPacked`), so pulling back over your old groove grows it less. It reads the snow just ahead of the ball, because its own groove is under it.
 - At the pull limit it is `charged` and trembles; a little rubber-band give past the limit.
+- The sweet spot (`pull.sweet`, the match work): past `sweet.at` of the power the ball is heavy, its start speed
+  drops toward `speedAtFull`, and the aim sways up to `wobbleDegrees` either way (`thrower.wobble`). The aim line and
+  the release both use the swayed pull, so the ball still rolls the line you saw. `pastSweet`, `powerOf` and
+  `sweetPull` (roll.ts) are exported. The stage draws two pencil ticks on the pull line at the sweet spot
+  (`LOOK.sweetTick`); the ball sits beside that line, so it never covers them.
+- Soft snow: a `Ground` may have `softAt(x, z)` (0..1). The roll slows there by `roll.soft.drag` (more for a big
+  ball), not eased by `early`. `<BowlingStage softAt={…} />` adds it to the real snow (the game passes the current
+  set's mounds). `<BowlingStage pinRing={false} />` hides the dashed ring at the pin spot (the game's sets move).
 - Release shorter than `pull.cancelBelow` cancels (the ball crumbles).
 - Roll: start speed from size (small = quick, big = slow) times pull strength; it slows in fresh snow and runs further on packed tracks (`roll.dragOnPacked`); big balls plough on (`roll.dragBigShare`). Stops below `roll.stopSpeed`, rests `roll.restTime`, then is removed.
 - Who is throwing is just a name: `bowling.setThrower("two")` between throws. Turns are #26.

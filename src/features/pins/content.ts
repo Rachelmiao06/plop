@@ -391,20 +391,23 @@ export const FORMATIONS: Formation[] = [
   - a long slanted row with a soft mound in front of its middle (a slow heavy ball sticks in it),
   - a picnic: the white rabbit sits in front of a group and should be left alone,
   - a snowy village with two mounds, the rabbit and a star.
-  Same airy rules as above (checked by overlap.ts on /dev/pins). The game's round order is `GAME.match.rounds`.
+  Same airy rules as above (checked by overlap.ts on /dev/pins), and every card stays within about 1.9 of the
+  lane's middle (shift + dx + half its width), so a phone held upright shows the whole set.
+  The game's round order is `GAME.match.rounds`.
 */
 export const ROUND_SETS: Formation[] = [
   {
     id: "round-corner",
     label: "Off to the side",
     note: "they're standing off to the right",
-    shift: 1.05,
+    shift: 0.45,
+    // The triangle's places without its back-left card, so the set leans right; the star stands back right.
     pins: [
-      { prop: "penguin-bag", dx: -0.3, dz: 0.75 },
-      { prop: "girl-earmuffs", dx: -0.85, dz: 0.05, scale: 0.95 },
-      { prop: "snowman-newspaper", dx: 0.2, dz: 0.0, flip: true },
-      { prop: "pine-walking", dx: -0.4, dz: -0.8 },
-      { prop: "signpost-snowman", dx: 0.95, dz: -0.75, flip: true, scale: 0.9, kind: "star" },
+      { prop: "penguin-bag", dx: 0, dz: 0.7 },
+      { prop: "girl-earmuffs", dx: -0.55, dz: 0, scale: 0.95 },
+      { prop: "signpost-snowman", dx: 0.57, dz: 0, flip: true, scale: 0.9 },
+      { prop: "boy-snowman", dx: 0, dz: -0.8 },
+      { prop: "snowman-newspaper", dx: 1.13, dz: -0.75, flip: true, kind: "star" },
     ],
   },
   {
@@ -412,61 +415,61 @@ export const ROUND_SETS: Formation[] = [
     label: "Two little groups",
     note: "two groups, a gap in the middle",
     pins: [
-      { prop: "penguin-bag", dx: -1.25, dz: 0.55 },
-      { prop: "girl-earmuffs", dx: -1.75, dz: -0.2, scale: 0.95 },
-      { prop: "pine-walking", dx: -1.05, dz: -0.55, flip: true },
-      { prop: "penguin-bag", dx: 1.3, dz: 0.55, flip: true, scale: 0.95 },
-      { prop: "snowman-newspaper", dx: 1.8, dz: -0.25, flip: true },
-      { prop: "flag-blue", dx: 1.15, dz: -0.65, scale: 0.85, kind: "star" },
+      { prop: "penguin-bag", dx: -1.1, dz: 0.55 },
+      { prop: "girl-earmuffs", dx: -1.5, dz: -0.2, scale: 0.95 },
+      { prop: "pine-walking", dx: -0.92, dz: -0.6, flip: true },
+      { prop: "penguin-bag", dx: 1.15, dz: 0.55, flip: true, scale: 0.95 },
+      { prop: "snowman-newspaper", dx: 1.55, dz: -0.25, flip: true },
+      { prop: "flag-blue", dx: 0.95, dz: -0.85, scale: 0.85, kind: "star" },
     ],
   },
   {
     id: "round-slant",
     label: "Slanted row and a snow mound",
     note: "a soft snow mound in the way",
-    shift: -0.25,
-    mounds: [{ dx: 0.2, dz: 2.7, radius: 0.85 }],
+    shift: -0.1,
+    mounds: [{ dx: 0.1, dz: 2.7, radius: 0.85 }],
+    // Like the domino row: each card just overlaps the next sideways, so a card knocked back and to the right tips the next.
     pins: [
-      { prop: "penguin-bag", dx: -1.55, dz: 1.15 },
-      { prop: "girl-earmuffs", dx: -0.95, dz: 0.65 },
-      { prop: "snowman-newspaper", dx: -0.32, dz: 0.15, flip: true },
-      { prop: "pine-walking", dx: 0.3, dz: -0.35, flip: true },
-      { prop: "boy-snowman", dx: 0.98, dz: -0.85, flip: true },
-      { prop: "flag-blue", dx: 1.6, dz: -1.35, scale: 0.85, kind: "star" },
+      { prop: "penguin-bag", dx: -1.3, dz: 1.1 },
+      { prop: "girl-earmuffs", dx: -0.65, dz: 0.5 },
+      { prop: "snowman-newspaper", dx: 0, dz: -0.1, flip: true },
+      { prop: "pine-walking", dx: 0.65, dz: -0.7, flip: true },
+      { prop: "flag-blue", dx: 1.3, dz: -1.3, scale: 0.85, kind: "star" },
     ],
   },
   {
     id: "round-picnic",
     label: "Bunny's picnic",
     note: "let the bunny be",
-    shift: -0.45,
-    mounds: [{ dx: 1.75, dz: 2.4, radius: 0.75 }],
+    shift: -0.2,
+    mounds: [{ dx: 1.55, dz: 2.4, radius: 0.75 }],
     pins: [
       { prop: "rabbit", dx: 0.0, dz: 1.05, kind: "friend" },
-      { prop: "girl-earmuffs", dx: -0.75, dz: 0.3, scale: 0.95 },
-      { prop: "signpost-snowman", dx: 0.75, dz: 0.3, flip: true, scale: 0.9 },
-      { prop: "pine-walking", dx: -1.3, dz: -0.45 },
+      { prop: "pine-walking", dx: -0.72, dz: 0.3 },
+      { prop: "signpost-snowman", dx: 0.72, dz: 0.3, flip: true, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: -1.35, dz: -0.78, scale: 0.95 },
       { prop: "snowman-newspaper", dx: 0.0, dz: -0.5 },
-      { prop: "boy-snowman", dx: 1.35, dz: -0.5, flip: true, kind: "star" },
+      { prop: "boy-snowman", dx: 1.3, dz: -0.72, flip: true, kind: "star" },
     ],
   },
   {
     id: "round-village",
     label: "Snowy village",
     note: "mounds, a star and the bunny",
-    shift: 0.3,
+    shift: 0.25,
     mounds: [
-      { dx: -1.15, dz: 2.5, radius: 0.75 },
-      { dx: 1.05, dz: 2.9, radius: 0.7 },
+      { dx: -1.05, dz: 2.5, radius: 0.75 },
+      { dx: 1.0, dz: 2.9, radius: 0.7 },
     ],
     pins: [
       { prop: "penguin-bag", dx: -0.55, dz: 0.95 },
       { prop: "rabbit", dx: 0.5, dz: 1.0, kind: "friend" },
-      { prop: "signpost-snowman", dx: -1.25, dz: 0.3, scale: 0.9 },
+      { prop: "signpost-snowman", dx: -1.2, dz: 0.3, scale: 0.9 },
       { prop: "girl-earmuffs", dx: 0.0, dz: 0.25, flip: true, scale: 0.95 },
-      { prop: "pine-walking", dx: 1.2, dz: 0.2, flip: true },
+      { prop: "pine-walking", dx: 1.15, dz: 0.2, flip: true },
       { prop: "snowman-newspaper", dx: -0.6, dz: -0.6 },
-      { prop: "bench-snowmen", dx: 0.7, dz: -0.95, kind: "star" },
+      { prop: "bench-snowmen", dx: 0.65, dz: -0.95, kind: "star" },
     ],
   },
 ];

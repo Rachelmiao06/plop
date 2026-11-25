@@ -19,7 +19,10 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
   ball ROLLS through the snow, leaving a groove ──► cut-outs TOPPLE, knocking each other over
             │
             ▼
-  "7 down!" (all down: a little celebration) ──► cut-outs pop back up / next set ──► next turn
+  "7 down!" (all down: a little celebration) ──► cut-outs pop back up ──► next player
+            │
+            ▼ (both have thrown)
+  next ROUND: a new set hops in ──► … ──► after round 3 (or 5): the END CARD ──► play again
 ```
 
 ## 1. The scene
@@ -45,6 +48,10 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - The further you pull, the bigger the ball (it only grows while it rolls over fresh snow, so pulling back over
   your own old track grows it less). It never shrinks while held. At the limit it is full and trembles.
 - Sideways pull sets the aim angle. A dotted line on the snow shows where the ball will roll.
+- **The sweet spot** (2026-11-25, Rachel: everyone just pulled all the way): a little past the middle of the pull,
+  two small pencil ticks on the snow beside the ball mark it. Up to there the ball only grows stronger. Past it the
+  ball gets heavy: it starts slower, and the aim line starts to sway a little from side to side (the ball rolls
+  along the line as it is the moment you let go). So a well-judged medium pull can beat a maxed one. No meter.
 - Release with almost no pull = cancel.
 
 ## 4. The roll
@@ -55,6 +62,10 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - It leaves a groove and throws up snow dust all the way. It slows down in deep fresh snow and runs further on
   packed tracks, so earlier grooves become faster lanes. It stops by itself, or bursts into snow when it hits a
   big village prop.
+- **Soft snow mounds** (from round 3 of a match): Rachel's snow-mound cut-out stands on the lane in front of the
+  set. Rolling through it slows the ball a lot; a quick light ball punches through, a slow heavy one gets stuck.
+  The aim line shows where it would stop. It squashes flat with a puff as the ball ploughs through and stands
+  up again for the next throw.
 
 ## 5. Knocking down cut-outs
 
@@ -69,17 +80,23 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 
 ## 6. Formations
 
-- A few hand-made sets to start: a triangle (classic), a straight row, a ring, a loose crowd of friends
-  (snowmen, penguins, people), and a "little village" mixed set.
-- 6 to 12 cut-outs per set. The next set is chosen after each full clear, or by a small "next" button.
+- Free play (`/dev/pins`): a triangle (classic), a slanted row, a ring, a loose crowd of friends and a
+  "little village" mixed set; the next set comes after a full clear, or by a small "next" button.
+- A match has its own **round sets**, one per round, each asking a different shot (section 7c).
+- 5 to 8 cut-outs per set, airy enough to read from the throwing view at desktop and phone size.
+- **Special cut-outs:** a *star friend* carries a little star doodle above its head and is worth 2 extra points
+  when it falls (it stands where an angled shot gets it). The white rabbit is a *friend* watching: it should be
+  left alone. Knocked over it simply scores nothing; still standing after the throw, it gives 2 points ("bunny's
+  still cosy"). Never taking points away. Each is explained once, with a tiny hand-drawn note, the first time it
+  appears.
 
 ## 7. Two players, one device
 
 - Players take turns, one ball each, like bowling. The thrower swaps between the bucket snowman and the
   red-hat snowman.
 - There is a score (Rachel: hitting alone is not enough). Each cut-out knocked down is a point; a full clear
-  gives a small bonus. See section 7b for how it looks.
-- One person can simply keep throwing.
+  gives a small bonus; the special cut-outs add theirs (section 6). See section 7b for how it looks.
+- One person can play alone ("just me" on the start card): one throw a round, against their own best.
 - Later mode: both throwers on the line at once, aiming at the same crowd ("together" mode). Turns come first.
 
 ## 7b. Score display (first version; Rachel will design it properly later)
@@ -92,6 +109,30 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - Each player's total next to their snowman's little face (bucket snowman, red-hat snowman); the player whose turn
   it is glows softly. Points fly up into the bar from the fallen cut-outs.
 - Can be hidden with one tap. Colours and fonts from the tokens.
+- In a match: a small "round 2 / 3" tag hangs under the panel, and each throw's points (the player's round
+  total) fly up from the lane into their score, which counts up when they land. Playing alone, the right side
+  shows your best with a little crown.
+
+## 7c. The match (2026-11-25; Rachel changed her mind: draft 2 had endless turns and no winner screen)
+
+- **Before the first throw** a small hand-drawn card asks: 3 rounds or 5 (3 is the default), and "two friends"
+  or "just me". "Let's roll!" starts.
+- **Each round** every player throws once at the same set (it pops back up between them), then the next round's
+  set hops in. "Round 2 / 3" and a few words about the set ("two groups, a gap in the middle") show as it arrives.
+- **The sets** (data: `ROUND_SETS` in `src/features/pins/content.ts`, round order `GAME.match.rounds` in
+  `src/features/game/content.ts`), a little harder each round:
+  1. *Off to the side:* the set leans right, the star friend at the back right.
+  2. *Two little groups:* a gap in the middle that a ball down the middle rolls straight through.
+  3. *Slanted row and a snow mound:* a domino slant behind a soft mound (from here on, lane features).
+  4. *Bunny's picnic* (5 rounds): the rabbit sits in front of the group; a mound off to the right.
+  5. *Snowy village* (5 rounds): two mounds, the rabbit and a star.
+  A 3-round match plays 1 to 3.
+- **The aim:** "full power straight at the middle" should not be the best shot in most rounds. Measured with the
+  real roll and physics (`src/features/game/measure`, numbers in `docs/TUNING.md`).
+- **The end card:** both snowmen's faces with their totals, a crown doodle and "hooray!" for the winner and a kind
+  word for the other ("lovely rolling, Bucket"), or "A snowy tie! two crowns today". Alone: your total, and
+  "a new best!" (with the crown) or your best so far. A line names the best single roll of the match. "Play again"
+  restarts the same match; "3 or 5 rounds?" goes back to the start card. Never "you lose".
 
 ## 8. Controls
 

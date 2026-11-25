@@ -154,7 +154,7 @@ export const TEXT = {
   /** A new round: "Round 2 / 3" and what its set asks. */
   round: (now: number, of: number) => `Round ${now} / ${of}`,
   /** Shown once on the hint: the pencil tick behind the snowman. */
-  hintSweet: "the little pencil tick is the sweet spot",
+  hintSweet: "the little tick is the sweet spot",
   special: {
     star: "a star friend: +2 when it falls",
     friend: "let the bunny be: +2 if it stays up",

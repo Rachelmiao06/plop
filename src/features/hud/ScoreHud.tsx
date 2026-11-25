@@ -100,7 +100,7 @@ function PlayerScore({
     <div className={`relative flex shrink-0 items-center gap-1.5 ${side === "right" ? "flex-row-reverse" : ""}`}>
       {flying && (
         <span
-          key={flying.id}
+          key={`gain-${flying.id}`}
           aria-hidden
           className={`pointer-events-none absolute top-1 z-10 font-heading text-3xl font-bold text-ink-deep ${side === "left" ? "left-12" : "right-12"} ${styles.gain}`}
           style={
@@ -121,7 +121,7 @@ function PlayerScore({
         </div>
       </div>
       <span
-        key={total}
+        key={`total-${total}`}
         className={`inline-block min-w-[1.4ch] text-center font-heading text-3xl leading-none font-bold tabular-nums md:text-4xl ${
           active ? "text-ink-deep" : "text-ink"
         } ${total > 0 ? styles.pop : ""}`}

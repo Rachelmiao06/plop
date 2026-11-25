@@ -61,7 +61,7 @@ export function GameHint({ game }: { game: Game }) {
         <p className="font-heading text-2xl leading-tight font-bold sm:text-3xl">{coarse ? TEXT.hintTouch : TEXT.hint}</p>
         <Squiggle width={coarse ? 200 : 260} />
         {!coarse && <p className="mt-1 font-heading text-lg leading-tight">{TEXT.hintMore}</p>}
-        <p className="mt-0.5 font-heading text-lg leading-tight">{TEXT.hintSweet}</p>
+        <p className="mt-0.5 font-heading text-base leading-tight sm:text-lg">{TEXT.hintSweet}</p>
       </div>
     </div>
   );
@@ -92,7 +92,7 @@ export function SpecialHint({ game, pins }: { game: Game; pins: Pins }) {
 
   if (!showing.kinds.length || throws > showing.at) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[21%] flex justify-center px-4 md:top-[13%]" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-[42%] flex justify-center px-4 md:top-[15%]" aria-live="polite">
       <div
         className={`flex flex-col items-center gap-1 px-8 py-3 text-ink ${styles.wash} ${styles.note}`}
         // After the round note that shows in the same place.
@@ -121,7 +121,7 @@ export function TurnNote({ game, pins }: { game: Game; pins: Pins }) {
   void formation; // the note follows the round, not the set on the snow (it may still be hopping in)
   return (
     <div
-      className={`pointer-events-none absolute inset-x-0 flex justify-center px-4 ${newRound ? "top-[19%] md:top-[12%]" : "bottom-[8%]"}`}
+      className={`pointer-events-none absolute inset-x-0 flex justify-center px-4 ${newRound ? "top-[42%] md:top-[15%]" : "bottom-[8%]"}`}
       aria-live="polite"
     >
       <p

@@ -312,7 +312,7 @@ export const LOOK = {
    * snow (the line the ball is pulled along; the ball sits beside it, so it never covers them), `gap` apart, each `length` long and `width` wide, at the pull that reaches the sweet spot. Faint until the
    * ball is within `near` of it (in power), then full ink; past it they fade back to `faint`.
    */
-  sweetTick: { length: 0.4, width: 0.05, gap: 0.09, faint: 0.6, near: 0.08 },
+  sweetTick: { length: 0.5, width: 0.05, gap: 0.09, faint: 0.6, near: 0.08 },
 
   ball: {
     /** The --ink outline: width in scene units (the cut-outs' line is about 1.2% of their height), and how uneven. */

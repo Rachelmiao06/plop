@@ -51,6 +51,53 @@ so the whole longer lane and the hills fit).
 Also part of the throw's feel: the snowman rolls on its round bottom when it slides (`LOOK.thrower.roll`, `idleRoll`),
 and wind curls and extra spray trail a fast ball (`LOOK.speed`, now `from 5` to `full 12` units per second).
 
+## The match: sets, the sweet spot, mounds and the special cut-outs
+
+Rachel worried everyone would just aim at the middle with full power. These change which shot is best:
+
+| What you feel | Number(s) today | Where |
+|---|---|---|
+| **The sweet spot.** Past `at` of the power the ball is heavy: it starts at down to `speedAtFull` of its speed and the aim sways up to `wobbleDegrees` either way, `wobbleSpeed` times a second. Higher `speedAtFull` or less sway = full power is less of a gamble. | `at 0.62` · `speedAtFull 0.94` · `3.5`° · `1.15` /s | `src/features/bowling/content.ts` · `FEEL.pull.sweet` |
+| **The sweet-spot ticks** on the snow (two pencil ticks on the pull line). | `length 0.5`, `faint 0.6` | `LOOK.sweetTick` |
+| **How soft a mound is.** Extra slowing inside a mound (a full ball sinks `bigShare` times more). | `drag 15` · `bigShare 1.5` | `FEEL.roll.soft` |
+| **Mound shape.** Full softness inside `core` of its radius; how flat it squashes when a ball ploughs through. | `core 0.55` · `flatten 0.35` | `src/features/pins/content.ts` · `MOUND` |
+| **Special cut-outs.** Extra points for a star friend down, and for the rabbit left standing. | `+2` · `+2` | `SPECIALS` |
+| **The sets** and the round order (3 or 5 rounds). | 5 round sets | pins `ROUND_SETS` · game `GAME.match.rounds` |
+
+### Measured: is "full power, straight at the middle" still the best shot?
+
+`node src/features/game/measure/measure.mjs [rounds | old]` (see the game README). For every set it throws 630
+grid shots (5 spots on the line × 21 aims × 6 powers), each 5 times with a little hand error (and at 3 points of
+the sway past the sweet spot), with the real roll and a headless copy of the pins' physics, and averages the points.
+"Middle-full" = from the middle of the line, full pull, straight at the middle of the set.
+
+**Before** (old free-play sets, endless turns, no sweet spot; points = cards + 3 for a full clear):
+
+| Set | Middle-full | Best shot | Best at full power | Best power |
+|---|---|---|---|---|
+| triangle | 4.8 | 7.4 | 7.0 | 0.85 |
+| row | 3.4 | 8.0 | 8.0 | 0.7 = 1.0 |
+| ring | 4.2 | 5.0 | 5.0 | 0.55 = 1.0 |
+| friends | **5.4 (best)** | 5.4 | 5.4 | 1.0 |
+| village | 5.2 | 5.6 | 5.6 | 0.85 = 1.0 |
+
+Full power was the best power (or tied) in 4 of 5 sets, and straight at the middle was the best or near it in 3.
+
+**After** (round sets, sweet spot, mounds, star friend and rabbit):
+
+| Round set | Middle-full | Best shot | Best at full power | Best power |
+|---|---|---|---|---|
+| 1 off to the side | 6.9 | 8.0 | 7.7 | 0.35 / 0.55 |
+| 2 two little groups | 2.1 | 5.0 | 4.9 | 0.15 to 0.7 |
+| 3 slanted row and a mound | 0.0 (stuck in the mound) | 4.8 | 3.3 | 0.7 |
+| 4 bunny's picnic | 3.4 | 6.8 | 5.3 | 0.55 |
+| 5 snowy village | 4.7 | 6.6 | 5.3 | 0.55 |
+
+Straight at the middle at full power is beaten in all 5 rounds (by 1.1 to 4.8 points), and full power is never the
+best power. Round 1 is the closest: a full-power throw a little off the middle still does well there, on purpose
+(the gentle first round). Limits: flat snow, no old grooves, no hit-stop; a few shots thrown in the browser matched
+the replay within about one card.
+
 ## Also worth knowing
 
 - **Snow depth and how dark pressed snow gets:** `src/features/snow-scene/content.ts` (`ground.depth` 0.9, and the press colours).

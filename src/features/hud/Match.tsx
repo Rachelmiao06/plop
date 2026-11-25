@@ -44,7 +44,7 @@ function Pick({ picked, onPick, children, seed }: { picked: boolean; onPick: () 
       role="radio"
       aria-checked={picked}
       onClick={onPick}
-      className={`relative flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 font-heading text-xl leading-none transition-colors ${
+      className={`relative flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 font-heading text-lg leading-none whitespace-nowrap transition-colors sm:gap-2 sm:text-xl ${
         picked ? "bg-butter/60 font-bold text-ink-deep" : "bg-paper/50 text-ink"
       } ${styles.pick}`}
     >
@@ -73,7 +73,7 @@ export function MatchStart({ lengths, rounds: startRounds, players: startPlayers
       <div role="radiogroup" aria-label={t.start.rounds} className="mt-2 flex gap-2">
         {lengths.map((n, i) => (
           <Pick key={n} picked={rounds === n} onPick={() => setRounds(n)} seed={7 + i}>
-            <SnowballDots count={n} size={9} />
+            <SnowballDots count={n} size={n > 3 ? 7 : 9} />
             {t.start.roundsOption(n)}
           </Pick>
         ))}
