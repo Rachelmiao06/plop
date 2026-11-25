@@ -5,7 +5,8 @@ Run after scripts/slice_scenery.py, from the repo root:
     python3 scripts/trace_standees.py
 
 Reads   public/assets/scenery/<name>.webp for every prop cut from a doodle sheet
-        (sheets in art-source/scenery/sheets.json whose file starts with "doodle-" or "thrower-"),
+        (sheets in art-source/scenery/sheets.json whose file starts with "doodle-" or "thrower-",
+        plus the crayon props in EXTRA that stand in the frame),
         except decals listed in SKIP.
 Writes  src/features/scenery/outlines.json
             {name: {"w": px, "h": px, "shapes": [{"outer": [[x, y], ...], "holes": [[[x, y], ...], ...]}]}}
@@ -34,7 +35,9 @@ ART = ROOT / "public" / "assets" / "scenery"
 NORMALS = ART / "normals"
 OUTLINES = ROOT / "src" / "features" / "scenery" / "outlines.json"
 
-SKIP = {"wind-swirl"}   # decals are not standees
+SKIP = {"wind-swirl", "chimney-smoke"}   # decals are not standees
+# Crayon spares that stand in the frame (the near corners, until the near-edge framing sheet arrives).
+EXTRA = ["street-lamp", "fence"]
 ALPHA_CUT = 128         # alpha above this is inside the silhouette
 SIMPLIFY = 1.3          # max distance (px) a simplified outline may stray from the traced one
 MIN_AREA = 40           # pieces smaller than this many px are left out of the thick shape
@@ -49,7 +52,7 @@ def doodle_names() -> list[str]:
     for sheet in config["sheets"]:
         if sheet.get("target", "scenery") == "scenery" and sheet["file"].startswith(("doodle-", "thrower-")):
             names += [n for n in sheet["names"] if n not in SKIP]
-    return names
+    return names + [n for n in EXTRA if n not in names]
 
 
 def trace(alpha: np.ndarray) -> list[dict]:

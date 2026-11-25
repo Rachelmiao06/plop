@@ -63,6 +63,7 @@ export function Lights() {
         shadow-radius={l.shadowSoftness}
         shadow-bias={l.shadowBias}
         shadow-normalBias={l.shadowNormalBias}
+        shadow-intensity={content.shade.strength}
       >
         <orthographicCamera
           attach="shadow-camera"

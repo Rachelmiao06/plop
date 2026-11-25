@@ -9,7 +9,10 @@ import { useSnow } from "@/features/snow-scene";
 
 import { propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
+import { Backdrop } from "./Backdrop";
 import { Flecks } from "./Flecks";
+import { ChimneySmoke, Tracks } from "./Life";
+import { useReducedMotion } from "./motion";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
 import { PaperContext, type PaperColors } from "./treatment";
@@ -40,6 +43,10 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
         <Suspense fallback={null}>
           <Standees lane={lane} pivot={pivot} />
         </Suspense>
+        <Suspense fallback={null}>
+          <Backdrop center={throwingView(lane).lookAt} />
+        </Suspense>
+        <Tracks lane={lane} />
       </Flecks>
     </PaperContext>
   );
@@ -66,13 +73,18 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
   // (the taller wins), so running this twice is harmless.
   const bases = useMemo(() => {
     const m = village.mound;
+    // Grounded props first, so a lifted one (the bird on the stump) stands on the heap that is really there.
+    for (const p of placed) {
+      if (p.lift === 0) snow.heapSnow(p.x, p.z, p.width * m.widthShare, m.depth, m.height + m.heightPerUnit * p.height);
+    }
     return placed.map((p) => {
-      snow.heapSnow(p.x, p.z, (p.width * m.widthShare), m.depth, m.height + m.heightPerUnit * p.height);
       // The lowest snow along the base edge, so no corner floats over a drift.
       const half = p.width * 0.35;
-      return Math.min(snow.heightAt(p.x, p.z), snow.heightAt(p.x - half, p.z), snow.heightAt(p.x + half, p.z));
+      const ground = Math.min(snow.heightAt(p.x, p.z), snow.heightAt(p.x - half, p.z), snow.heightAt(p.x + half, p.z));
+      return ground + p.lift;
     });
   }, [placed, snow]);
+  const withBases = useMemo(() => placed.map((p, i) => ({ ...p, baseY: bases[i] })), [placed, bases]);
 
   return (
     <>
@@ -93,6 +105,7 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
         />
         </Mover>
       ))}
+      <ChimneySmoke placed={withBases} />
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
   );
@@ -100,16 +113,39 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
 
 /**
  * The small loop for props that look like they are moving (`village.movers`): the sliding penguin glides
- * a short way toward the lane and back, the skier sways on its feet. Anything else is passed through.
+ * a short way toward the lane and back, the skier sways on its feet; the rabbit gives two little hops now and
+ * then and the red bird bobs on its stump (`village.life`). Anything else is passed through. Every loop
+ * holds still when the device asks for reduced motion.
  */
 function Mover({ id, x, z, inward, children }: { id: PropId; x: number; z: number; inward: number; children: ReactNode }) {
   const loop = village.movers[id];
+  const hopper = id === "rabbit" || id === "bird-red";
+  const reduced = useReducedMotion();
   const root = useRef<Group>(null);
   const phase = x * 0.9 + z * 0.4;
   useFrame(({ clock }) => {
     const g = root.current;
-    if (!g || !loop) return;
+    if (!g) return;
+    if (reduced) {
+      g.position.set(0, 0, 0);
+      g.rotation.z = 0;
+      g.scale.set(1, 1, 1);
+      return;
+    }
     const t = clock.elapsedTime;
+    if (hopper) {
+      const life = id === "rabbit" ? village.life.rabbit : village.life.bird;
+      const hopTime = id === "rabbit" ? village.life.rabbit.hopTime : 0.22;
+      const since = (t + Math.abs(phase)) % life.every;
+      // Two quick hops (a happy little bounce), squashing a touch on each landing.
+      const k = since / hopTime;
+      const up = k < 2 ? Math.abs(Math.sin(k * Math.PI)) : 0;
+      g.position.y = up * life.hop;
+      const squash = k < 2 ? 0.06 * (1 - up) * Math.sin(k * Math.PI * 2) ** 2 : 0;
+      g.scale.set(1 + squash, 1 - squash, 1);
+      return;
+    }
+    if (!loop) return;
     if (loop.kind === "slide") {
       // 0 → 1 → 0 over the moving part of the loop, eased at both ends, then a rest.
       const u = (((t + phase) / loop.period) % 1) / (1 - loop.rest);
@@ -121,7 +157,7 @@ function Mover({ id, x, z, inward, children }: { id: PropId; x: number; z: numbe
       g.position.x = a * loop.step;
     }
   });
-  if (!loop) return <>{children}</>;
+  if (!loop && !hopper) return <>{children}</>;
   // The group pivots at the prop's feet, so the sway rocks it on the snow.
   return (
     <group position={[x, 0, z]}>
