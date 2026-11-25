@@ -6,8 +6,9 @@ Owner: Rachel. Page: `/` (renders `<Game />`).
 
 ## The match
 
-Before the first throw the hud's guided `StartFlow` asks, one card at a time, who is playing, (two) take turns or at
-the same time, the names, how long, and the first time on this device how to throw. `startChoice.ts` remembers the
+Before the first throw the hud's `StartFlow` asks on two cards how the two of you play (take turns or at the same
+time; "just me" is a small option on top), then the names, 3 or 5 rounds and "Let's roll!" (with a "how to throw"
+link, "New here?" the first time on this device). `startChoice.ts` remembers the
 choices (`GAME.start.choiceKey`) so a returning player gets "same as last time", marks "how to throw" as seen
 (`howToKey`) and estimates the minutes (`minutesFor`, `GAME.start.minutes`). The mode follows the cards live
 (`game.setMode`) so the scene shows one snowman or two; the score panel stays hidden until "Let's roll!", and the "?"

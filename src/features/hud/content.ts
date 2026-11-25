@@ -23,26 +23,22 @@ export const content = {
     toBeat: "to beat",
     gain: (points: number) => `+${points}`,
     /**
-     * The guided start (StartFlow.tsx): one question per card, Chinese first and English beneath. A first-timer reads
-     * who is playing, then (two only) how, the names, how long, and once per device how to throw.
+     * The start cards (StartFlow.tsx): English leads, Chinese beneath. Two cards: how you play ("just me" a small option
+     * on top), then names, rounds and "Let's roll!"; "how to throw" is a link.
      */
     start: {
       title: "Plop!",
       label: "Start a game",
       back: { zh: "返回", en: "back" },
       step: (n: number, of: number) => `step ${n} of ${of}`,
-      who: { zh: "谁来玩？", en: "Who's playing?" },
       solo: {
         zh: "就我自己",
         en: "Just me",
         line: { zh: "一个雪人，挑战自己的最高分", en: "one snowman, beat your own best" },
       },
-      friend: {
-        zh: "和朋友一起",
-        en: "With a friend",
-        line: { zh: "两个雪人，同一台设备", en: "two snowmen on one device" },
-      },
-      how: { zh: "你们怎么玩？", en: "How do you two play?" },
+      how: { zh: "你们俩怎么玩？", en: "How do you two play?" },
+      /** The small side option on top of the first card. */
+      soloSide: { zh: "一个人玩", en: "Just me" },
       turns: {
         zh: "轮流打",
         en: "Take turns",
@@ -63,11 +59,11 @@ export const content = {
       /** Shown inside an empty field: the snowman's cute default, used if it stays empty. */
       namePlaceholder: (fallback: string) => fallback,
       nameLabel: (fallback: string) => `${fallback}'s name`,
-      next: { zh: "下一步", en: "Next" },
-      length: { zh: "玩多久？", en: "How long?" },
+      length: { zh: "玩几局？", en: "How many rounds?" },
       rounds: (n: number) => ({ zh: `${n} 局`, en: `${n} rounds` }),
       minutes: (m: number) => ({ zh: `大约 ${m} 分钟`, en: `about ${m} min` }),
       howTo: { zh: "怎么滚雪球", en: "How to throw" },
+      howToFirst: { zh: "第一次玩？看看怎么滚", en: "New here? How to throw" },
       /** The how-to card's lines: [zh, en]; the first differs on a touch screen. */
       howLines: (touch: boolean) =>
         [

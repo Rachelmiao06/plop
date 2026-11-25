@@ -15,7 +15,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, 
 import { Button } from "@/components/ui/button";
 
 import { content, type SnowmanLook } from "./content";
-import { PencilFrame, SnowballDots, SnowmanFace } from "./Doodles";
+import { PencilFrame, SnowmanFace } from "./Doodles";
 import { styles } from "./hudStyles";
 import { Card, NameField } from "./Match";
 
@@ -24,7 +24,7 @@ const t = content.text.start;
 export type PlayMode = "turns" | "together";
 export type StartChoice = { players: 1 | 2; mode: PlayMode; rounds: number };
 type Words = { zh: string; en: string };
-type Step = "again" | "who" | "how" | "names" | "length" | "howto";
+type Step = "again" | "how" | "setup" | "howto";
 
 const coarseQuery = "(pointer: coarse)";
 const subscribeCoarse = (cb: () => void) => {
@@ -255,7 +255,7 @@ export type StartFlowProps = {
   initial: StartChoice;
   /** Last time's choices on this device: a returning player starts on "welcome back". */
   last?: StartChoice | null;
-  /** Show "how to throw" before the match (the first time on this device). */
+  /** First time on this device: the "how to throw" link says "New here?". */
   howTo: boolean;
   /** About how many minutes a match of this choice takes. */
   minutes: (choice: StartChoice) => number;
@@ -271,7 +271,37 @@ export type StartFlowProps = {
   onStart: (choice: StartChoice) => void;
 };
 
-/** Before the first throw: a short guided set of paper cards. */
+/** A small choice in a row of two (the rounds): a soft pill, outlined in pencil when picked. */
+function Pill({ picked, onPick, words, sub, seed }: { picked: boolean; onPick: () => void; words: Words; sub: Words; seed: number }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={picked}
+      onClick={onPick}
+      className={`relative flex-1 rounded-full px-2 py-1.5 leading-none transition-colors ${
+        picked ? "bg-butter/60" : "bg-paper/70 hover:bg-butter/25"
+      } ${styles.pick}`}
+    >
+      <PencilFrame seed={seed} radius={22} overshoot={picked ? 6 : 3} />
+      <span className={`relative block font-heading text-lg text-ink ${picked ? "font-bold" : ""}`}>
+        {words.en} <span className="font-normal">· {sub.en}</span>
+      </span>
+      <Zh className="relative mt-0.5 text-xs">
+        {words.zh} · {sub.zh}
+      </Zh>
+    </button>
+  );
+}
+
+/**
+ * Before the first throw: two paper cards (Rachel, 2026-11-25: five steps was too rigid for a simple game).
+ *
+ *   how (take turns / at the same time; "just me" is a small option on top) ─► names, 3 or 5 rounds, "Let's roll!"
+ *
+ * Playing with a friend is the main case, so it is what the first card asks; "how to throw" is a link on the
+ * second card (and the "?" during play). A returning player gets "welcome back" and one tap.
+ */
 export function StartFlow({
   lengths,
   initial,
@@ -289,12 +319,12 @@ export function StartFlow({
   const touch = useTouch();
   // An invite is a challenge: its own preselection ("just me") wins over last time's.
   const [choice, setChoice] = useState<StartChoice>(greeting ? initial : (last ?? initial));
-  const [step, setStep] = useState<Step>(last && !greeting ? "again" : "who");
+  const [step, setStep] = useState<Step>(last && !greeting ? "again" : "how");
   const [dir, setDir] = useState<1 | -1>(1);
   const two = choice.players === 2;
-  /** Something to preselect on "who": last time's pick, an invite's "just me", or a pick made going back. */
-  const [known, setKnown] = useState(!!last || !!greeting);
-  const path: Step[] = ["who", ...(two ? (["how"] as const) : []), "names", "length", ...(howTo ? (["howto"] as const) : [])];
+  /** Highlight last time's (or a going-back) pick on the first card; a first-timer sees none picked. */
+  const [known, setKnown] = useState(!!last);
+  const path: Step[] = ["how", "setup"];
   const at = path.indexOf(step);
 
   // The scene behind follows the picks: one snowman, or two side by side for "at the same time".
@@ -312,15 +342,15 @@ export function StartFlow({
     setDir(d);
     setStep(next);
   };
-  const forward = () => (at + 1 < path.length ? go(path[at + 1]) : start());
-  const back = () => (at > 0 ? go(path[at - 1], -1) : last && !greeting ? go("again", -1) : undefined);
   const start = (c: StartChoice = choice) => onStart({ ...c, mode: c.players === 2 ? c.mode : "turns" });
-  const pick = (patch: Partial<StartChoice>, next: Step) => {
+  const pick = (patch: Partial<StartChoice>) => {
     setKnown(true);
     setChoice((c) => ({ ...c, ...patch }));
-    go(next);
+    go("setup");
   };
-  const canBack = at > 0 || (step === "who" && !!last && !greeting);
+  const back = () =>
+    step === "howto" ? go("setup", -1) : step === "setup" ? go("how", -1) : last && !greeting ? go("again", -1) : undefined;
+  const canBack = step === "howto" || step === "setup" || (step === "how" && !!last && !greeting);
 
   let body: ReactNode;
   switch (step) {
@@ -353,7 +383,7 @@ export function StartFlow({
           <BigButton words={t.same} onClick={() => start(c)} />
           <button
             type="button"
-            onClick={() => go("who")}
+            onClick={() => go("how")}
             className="mt-2 font-heading text-lg text-ink underline decoration-wavy underline-offset-4"
           >
             {t.change.en} <span className="font-sans text-xs text-ink/85">{t.change.zh}</span>
@@ -362,50 +392,37 @@ export function StartFlow({
       );
       break;
     }
-    case "who":
+    case "how":
       body = (
         <>
           {greeting && (
-            <p className={`mb-2 font-heading text-2xl leading-tight font-bold text-berry-deep ${styles.greet}`}>
+            <p className={`mb-1 font-heading text-2xl leading-tight font-bold text-berry-deep ${styles.greet}`}>
               {greeting.en}
               <Zh className="text-sm">{greeting.zh}</Zh>
             </p>
           )}
-          <Title words={t.who} />
-          <div role="radiogroup" aria-label={t.who.en} className="mt-3 flex flex-col gap-2.5">
-            <Choice
-              picked={known && choice.players === 1}
-              onPick={() => pick({ players: 1 }, "names")}
-              picture={<Thrower look="bucket" height={70} />}
-              name={t.solo}
-              line={t.solo.line}
-              seed={13}
-            />
-            <Choice
-              picked={known && choice.players === 2}
-              onPick={() => pick({ players: 2 }, "how")}
-              picture={
-                <span className="flex items-end -space-x-3">
-                  <Thrower look="bucket" height={62} />
-                  <Thrower look="redHat" height={68} />
-                </span>
-              }
-              name={t.friend}
-              line={t.friend.line}
-              seed={17}
-            />
-          </div>
-        </>
-      );
-      break;
-    case "how":
-      body = (
-        <>
+          {/* Playing alone: a small side option on top, not a step of its own (an invite's challenge has it marked). */}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={(known || !!greeting) && !two}
+            onClick={() => pick({ players: 1 })}
+            className={`relative mx-auto mb-3 flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1.5 ${
+              (known || greeting) && !two ? "bg-butter/60" : "bg-paper/70 hover:bg-butter/25"
+            } ${styles.pick}`}
+          >
+            <PencilFrame seed={11} radius={18} overshoot={4} />
+            <span className="relative">
+              <SnowmanFace look="bucket" size={26} />
+            </span>
+            <span className="relative font-heading text-base leading-none text-ink">{t.soloSide.en} →</span>
+            <span className="relative font-sans text-xs text-ink/85">{t.soloSide.zh}</span>
+          </button>
           <Title words={t.how} />
           <div role="radiogroup" aria-label={t.how.en} className="mt-3 flex flex-col gap-2.5">
             <Choice
-              picked={choice.mode === "turns"}
-              onPick={() => pick({ mode: "turns" }, "names")}
+              picked={known && two && choice.mode === "turns"}
+              onPick={() => pick({ players: 2, mode: "turns" })}
               picture={
                 <span className="flex items-end">
                   <Thrower look="bucket" height={50} />
@@ -418,8 +435,8 @@ export function StartFlow({
               seed={19}
             />
             <Choice
-              picked={choice.mode === "together"}
-              onPick={() => pick({ mode: "together" }, "names")}
+              picked={known && two && choice.mode === "together"}
+              onPick={() => pick({ players: 2, mode: "together" })}
               picture={
                 <span className="flex items-end gap-1">
                   <Thrower look="bucket" height={54} />
@@ -441,21 +458,22 @@ export function StartFlow({
         </>
       );
       break;
-    case "names": {
+    case "setup": {
       const hint = two ? t.namesHint(fallbacks[0], fallbacks[1]) : t.nameHint(fallbacks[0]);
+      const link = howTo ? t.howToFirst : t.howTo;
       body = (
         <>
           <Title words={two ? t.names : t.name} />
-          <div className="mt-3 flex flex-col gap-2.5">
+          <div className={`mt-3 flex gap-2.5 ${two ? "flex-col sm:flex-row" : "flex-col"}`}>
             <NameField
               look="bucket"
               value={names[0]}
               fallback={fallbacks[0]}
               max={nameMax}
               seed={3}
-              size={44}
+              size={40}
               onChange={(v) => onNames([v, names[1]])}
-              onEnter={forward}
+              onEnter={() => start()}
             />
             {two && (
               <NameField
@@ -464,42 +482,40 @@ export function StartFlow({
                 fallback={fallbacks[1]}
                 max={nameMax}
                 seed={8}
-                size={44}
+                size={40}
                 onChange={(v) => onNames([names[0], v])}
-                onEnter={forward}
+                onEnter={() => start()}
               />
             )}
           </div>
-          <p className="mt-2 font-heading text-base leading-tight text-ink">
+          <p className="mt-1.5 font-heading text-sm leading-tight text-ink">
             {hint.en}
-            <Zh className="text-xs">{hint.zh}</Zh>
+            <Zh className="text-[11px]">{hint.zh}</Zh>
           </p>
-          <BigButton words={t.next} onClick={forward} />
-        </>
-      );
-      break;
-    }
-    case "length":
-      body = (
-        <>
-          <Title words={t.length} />
-          <div role="radiogroup" aria-label={t.length.en} className="mt-3 flex flex-col gap-2.5">
+          <div role="radiogroup" aria-label={t.length.en} className="mt-3 flex gap-2">
             {lengths.map((n, i) => (
-              <Choice
+              <Pill
                 key={n}
                 picked={choice.rounds === n}
                 onPick={() => setChoice((c) => ({ ...c, rounds: n }))}
-                picture={<SnowballDots count={n} size={n > 3 ? 11 : 14} />}
-                name={t.rounds(n)}
-                line={t.minutes(minutes({ ...choice, rounds: n }))}
+                words={t.rounds(n)}
+                sub={t.minutes(minutes({ ...choice, rounds: n }))}
                 seed={29 + i}
               />
             ))}
           </div>
-          <BigButton words={howTo ? t.next : t.go} onClick={forward} />
+          <BigButton words={t.go} onClick={() => start()} />
+          <button
+            type="button"
+            onClick={() => go("howto")}
+            className="mt-2 font-heading text-base text-ink underline decoration-wavy underline-offset-4"
+          >
+            {link.en} <span className="font-sans text-xs text-ink/85">{link.zh}</span>
+          </button>
         </>
       );
       break;
+    }
     case "howto":
       body = (
         <>
