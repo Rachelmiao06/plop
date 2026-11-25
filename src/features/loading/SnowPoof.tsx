@@ -22,6 +22,16 @@ function seeded(seed: number) {
   };
 }
 
+/** The same colour with no alpha, so a gradient fades to clear snow rather than through grey. */
+function clear(color: string) {
+  const hex = color.replace("#", "");
+  if (/^[0-9a-f]{6}$/i.test(hex)) {
+    const n = parseInt(hex, 16);
+    return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, 0)`;
+  }
+  return "rgba(255, 255, 255, 0)";
+}
+
 function token(name: string, fallback: string) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
@@ -83,7 +93,7 @@ export function SnowPoof({ at }: { at: { x: number; y: number } }) {
       const mistR = p.mist * (0.4 + 0.8 * mist);
       const grad = ctx.createRadialGradient(cx, cy - mistR * 0.15, 0, cx, cy - mistR * 0.15, mistR);
       grad.addColorStop(0, shade);
-      grad.addColorStop(1, "transparent");
+      grad.addColorStop(1, clear(shade));
       ctx.globalAlpha = Math.max(0, 0.55 * (1 - t) * Math.min(1, t * 8));
       ctx.fillStyle = grad;
       ctx.beginPath();

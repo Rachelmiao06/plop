@@ -1,23 +1,20 @@
 # invite
 
-The invite card at `/invite?g=<group>&from=<name>&score=<n>`: a Christmas-evening welcome a friend opens from a WeChat chat (or
+The invite card at `/invite?g=<group>&from=<name>&score=<n>`: a white-page welcome a friend opens from a WeChat chat (or
 any link). Mounted by `src/app/invite/page.tsx`; nothing in the game, snow scene or scenery is changed.
 
-1. The paper loading screen (from `@/features/loading`) shows Rachel's mouse-with-a-letter while the scene loads; its
-   snowball rolls through the snow strip and bursts.
-2. Behind it, the real snow scene and the village in the cosy evening (`setTimeOfDay(1)`): snowfall, the lamp, the
-   fairy lights, the Christmas tree, a very slow camera drift (`InviteBackdrop.tsx`). The scene's own corner buttons
-   and help line are hidden on this page.
-3. In front (`InviteCard.tsx`): the mouse hops in and an envelope drops. A tap opens it (flap folds back, the berry
-   seal pops, a soft bell `playTie` then a sparkle `playStarHit` from `src/lib/audio.ts`, only after the tap); with no
-   tap it opens by itself after `timing.autoOpen`, silently. The card says "**{name}** 邀请你来打一局雪仗 ❄️" (or
-   "有人邀请你来打一局雪仗 ❄️"), "TA 打了 {score} 分，你能赢吗？" when a score came along, and one big
-   "接受挑战 / Play" button to `/?g=<group>&from=<name>` (the game greets "{name} 在等你" and keeps the group for its
-   board). Under the message, when the link has a group, that group's board (`<GroupBoard>` from the leaderboard
-   feature, `INVITE.board.limit` rows, in `data-leaderboard-slot`).
-   Chinese first, English beneath in small text.
-4. The sender, arriving here from the share sheet inside WeChat, also sees the "tap ··· to send" note once
+1. The white loading screen (from `@/features/loading`, `noScene reveal`): Rachel's sliding penguin by the title and
+   the real-snow strip; "雪球滚过来啦…". The page is all white (`--snow-white`, Rachel 2026-11-25); there is no 3D scene,
+   mouse or envelope any more.
+2. At 100 % the snowball bursts into a real puff of snow and the card (`InviteCard.tsx`) pops out of it with a springy
+   bounce (`timing.cardIn`): "**{name}** 邀请你来打一局雪仗 ❄️" (or "有人邀请你来打一局雪仗 ❄️"), "TA 打了 {score}
+   分，你能赢吗？" when a score came along, the group's board when the link has a group (`<GroupBoard>`,
+   `INVITE.board.limit` rows, in `data-leaderboard-slot`), and one big "接受挑战 / Play" button to
+   `/?g=<group>&from=<name>` (the game greets "{name} 在等你" and keeps the group for its board). Chinese first,
+   English beneath in small text. A soft bell rings with the poof only if the visitor already tapped.
+3. The sender, arriving here from the share sheet inside WeChat, also sees the "tap ··· to send" note once
    (`SHARE.invite.sentKey` in sessionStorage).
+4. `invite_opened` goes to analytics with only whether a score and a group came along (never the name).
 
 ## The link
 
@@ -41,7 +38,7 @@ WeChat ignores Open Graph without an Official Account. It takes the page `<title
 ## Files
 
 - `content.ts` every word (zh / en), the art, timings, the camera views and drift. Tune here.
-- `link.ts` the link. `InviteBackdrop.tsx` the evening scene. `InviteCard.tsx` the envelope, card and button.
-- `review/` screenshots and the envelope sequence for the PR.
+- `link.ts` the link. `InviteCard.tsx` the card and button.
+- `review/` screenshots (the old envelope sequence is history; the white flow is in `src/features/loading/review/white/`).
 
-Reduce motion: no drift, no hops; the envelope still opens (instantly) and the bell still rings after a tap.
+Reduce motion: no poof and no bounce; the card simply appears.

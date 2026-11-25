@@ -108,3 +108,6 @@ and `<GroupBoard>` (`GAME.board.limit` rows), passed to `MatchEnd` as children.
   `gameStyles.ts` (`.plop-game-result .flex-col > p`).
 - **share:** the share index imports this feature (the invite sheet reads the names), so the game imports
   `getGroupId` from `@/features/share/group` directly to keep the import graph free of a cycle.
+
+Analytics (`track` from `src/lib/analytics.ts`, no names): `match_start` and `match_end` with the rounds, mode and
+how many played.
