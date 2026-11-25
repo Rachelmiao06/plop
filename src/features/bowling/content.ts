@@ -86,8 +86,13 @@ export const FEEL = {
     /** Ball radius when it first appears, and when fully grown (0.25 and 1.2 across). */
     radiusSmall: 0.125,
     radiusBig: 0.6,
-    /** Shape of growth: radius = small..big along size^curve. Below 1 = grows fast early. */
-    growthCurve: 0.85,
+    /**
+     * Shape of growth: radius = small..big along size^curve. Below 1 = grows fast early; above 1 = starts small and
+     * grows faster and faster the further you pull (Rachel: a light pull made the ball big at once, too easy; the
+     * ball should visibly roll bigger as you charge). At 1.8 a third of the pull gives about 0.18 radius, half 0.26,
+     * full 0.6 (was 0.85: 0.30, 0.39, 0.6). Only the ball's size; its speed and the roll are unchanged.
+     */
+    growthCurve: 1.8,
     /**
      * Growth needs fresh snow. On a fully packed track the ball grows only this share
      * as fast, so pulling back over your own old groove grows it less.

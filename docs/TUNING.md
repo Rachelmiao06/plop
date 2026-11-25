@@ -6,7 +6,7 @@ seconds, units per second.
 
 | # | What you feel | Number(s) today | Where |
 |---|---|---|---|
-| 1 | **How big the ball gets.** Smallest and biggest snowball (radius). Bigger = slower, heavier, wider path. | `0.125` → `0.6` | `src/features/bowling/content.ts` · `FEEL.ball.radiusSmall`, `radiusBig` |
+| 1 | **How big the ball gets.** Smallest and biggest snowball (radius), and how it grows along the pull (above 1 = small at first, growing faster and faster; Rachel: a light pull was already big, too easy). Bigger = slower, heavier, wider path. | `0.125` → `0.6` · curve `1.8` (was `0.85`) | `src/features/bowling/content.ts` · `FEEL.ball.radiusSmall`, `radiusBig`, `growthCurve` |
 | 2 | **How far you pull for a full ball.** Longer = more drag on a phone, more time to aim. Keyboard: Space fills at `pullSpeed` (about 1.5 s to full). | `1.6` units · `1.1` /s | `FEEL.pull.max` · `FEEL.keyboard.pullSpeed` |
 | 3 | **How fast the ball rolls.** Top speed of a small and of a full ball, and how much of it a weak pull gets. On the long lane (pins 8.6 from the line) a light ball reaches the pins in about 0.85 s, a full one in about 1 s. | `15.5` and `11.5` · `0.75` | `FEEL.roll.speedSmall`, `speedBig`, `weakPull` |
 | 4 | **How far it rolls.** Slowing in fresh snow (a full ball slows only `dragBigShare` as much), and how much less on an old groove. Every throw reaches the paper wall at the back (about 15 from the line) and bounces back (`FEEL.wall`, below). | `4.2` · `0.35` · `0.8` share | `FEEL.roll.dragFresh` · `dragBigShare` · `dragOnPacked` |
