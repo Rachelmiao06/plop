@@ -1,5 +1,4 @@
 // Public surface of the invite feature. Import from "@/features/invite" only.
-export { InviteBackdrop } from "./InviteBackdrop";
 export { InviteCard } from "./InviteCard";
 export { INVITE } from "./content";
 export {

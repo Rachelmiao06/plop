@@ -49,6 +49,13 @@ export type ScoreHudProps = {
   gain?: GainEvent | null;
   /** Playing alone: the right side shows this best total (null = no best yet) instead of a second player. */
   soloBest?: number | null;
+  /** Playing alone after a friend's invite: the right side shows their score to beat instead of your best. */
+  rival?: { name: string; score: number } | null;
+  /**
+   * The round's rule as a small chip beside the round tag: the special card's picture and two words, for the
+   * whole round. `label` is read out instead of the words.
+   */
+  rule?: { icon: string; words: string; label: string } | null;
 };
 
 /**
@@ -70,6 +77,17 @@ function useLandedTotal(total: number, gain: GainEvent | null | undefined, me: 0
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `shown` is read only to compare, not to re-run
   }, [total, gain, me]);
   return shown;
+}
+
+/** Playing alone after an invite: the inviter's score to beat, under their name. */
+function Rival({ name, score }: { name: string; score: number }) {
+  return (
+    <div className="flex max-w-24 shrink-0 flex-col items-center leading-none text-ink">
+      <span className="font-heading text-xs">{content.text.toBeat}</span>
+      <span className="max-w-full truncate font-heading text-base font-bold text-berry-deep">{name}</span>
+      <span className="font-heading text-2xl font-bold tabular-nums">{score}</span>
+    </div>
+  );
 }
 
 /** Playing alone: the right side keeps your best total, with a little crown. */
@@ -125,13 +143,19 @@ function PlayerScore({
           <SnowmanFace look={player.look} size={38} seed={side === "left" ? 3 : 8} />
         </div>
       </div>
-      <span
-        key={`total-${total}`}
-        className={`inline-block min-w-[1.4ch] text-center font-heading text-3xl leading-none font-bold tabular-nums md:text-4xl ${
-          active ? "text-ink-deep" : "text-ink"
-        } ${total > 0 ? styles.pop : ""}`}
-      >
-        {total}
+      {/* The player's name from the start card over their total, so everyone knows whose score is whose. */}
+      <span className="flex flex-col items-center">
+        <span aria-hidden className="max-w-[5.5rem] truncate font-heading text-sm leading-none text-ink md:max-w-[7rem] md:text-base">
+          {player.name}
+        </span>
+        <span
+          key={`total-${total}`}
+          className={`inline-block min-w-[1.4ch] text-center font-heading text-3xl leading-none font-bold tabular-nums md:text-4xl ${
+            active ? "text-ink-deep" : "text-ink"
+          } ${total > 0 ? styles.pop : ""}`}
+        >
+          {total}
+        </span>
       </span>
     </div>
   );
@@ -153,6 +177,8 @@ export function ScoreHud({
   round,
   gain,
   soloBest,
+  rival,
+  rule,
 }: ScoreHudProps) {
   const solo = soloBest !== undefined;
   const [hiddenState, setHiddenState] = useState(false);
@@ -208,10 +234,10 @@ export function ScoreHud({
                 </div>
                 <ProgressBar down={down} total={total} color={color} knock={knock} />
               </div>
-              {solo ? <SoloBest best={soloBest ?? null} /> : <PlayerScore player={players[1]} active={active !== 0} side="right" gain={gain} />}
+              {solo ? rival ? <Rival {...rival} /> : <SoloBest best={soloBest ?? null} /> : <PlayerScore player={players[1]} active={active !== 0} side="right" gain={gain} />}
             </div>
             {round && (
-              <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">
+              <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex items-center justify-center gap-2">
                 <span
                   key={round.now}
                   className={`relative rounded-full px-3 py-0.5 font-heading text-base leading-tight text-ink ${styles.glass} ${styles.tag}`}
@@ -221,6 +247,19 @@ export function ScoreHud({
                   <PencilFrame seed={round.now * 5 + 2} radius={11} overshoot={4} />
                   {t.round(round.now, round.of)}
                 </span>
+                {rule && (
+                  <span
+                    key={`${round.now}-${rule.words}`}
+                    className={`relative flex items-center gap-1 rounded-full py-0.5 pr-3 pl-1.5 font-heading text-base leading-tight font-bold text-ink-deep ${styles.glass} ${styles.chip}`}
+                    aria-label={rule.label}
+                  >
+                    <PaperFill seed={round.now + 44} />
+                    <PencilFrame seed={round.now * 7 + 5} radius={11} overshoot={4} />
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's cut-out as a tiny icon */}
+                    <img src={rule.icon} alt="" className="relative h-6 w-auto" />
+                    <span className="relative">{rule.words}</span>
+                  </span>
+                )}
               </div>
             )}
           </section>

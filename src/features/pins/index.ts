@@ -12,7 +12,8 @@ export {
   type Weight,
 } from "./content";
 export { countThrow, countedCards } from "./scoring";
-export { formationById, setCentre, softSnowFor } from "./layout";
+// `placeIn` and `moundsOf` (read only): where a set's special card and mounds stand, for the game's rule marker.
+export { formationById, moundsOf, placeIn, setCentre, softSnowFor } from "./layout";
 export {
   createPins,
   nextFormationId,

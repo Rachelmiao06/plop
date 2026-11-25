@@ -24,16 +24,17 @@ export const SHARE = {
 
   /** "Invite a friend": a little sheet that makes a link to the invite card (`/invite?from=<name>&score=<n>`). */
   invite: {
-    title: { zh: "邀请朋友来打雪仗", en: "invite a friend" },
-    name: { zh: "你的名字（可不填）", en: "your name (optional)" },
+    /** `{name}` is replaced: the name from the start card, or the snowman's default. Never sent empty. */
+    title: { zh: "邀请朋友，署名：{name}", en: "invite a friend, signed {name}" },
+    change: { zh: "改名字", en: "change" },
+    name: { zh: "你的名字", en: "your name" },
     /** `{score}` is replaced: the best total kept on this device after a match alone. */
     score: { zh: "附上我的最好成绩：{score} 分", en: "include my best score: {score}" },
     send: { zh: "发送邀请", en: "send invite" },
     plain: { zh: "只分享游戏", en: "just share the game" },
     close: "close",
-    /** What a share sheet says along with the link. `{name}` is replaced (or the no-name line is used). */
+    /** What a share sheet says along with the link. `{name}` is replaced (never empty). */
     text: "{name} 邀请你来打一局雪仗 ❄️",
-    textNoName: "来打一局雪仗吧 ❄️",
     copied: { zh: "邀请链接已复制！", en: "invite link copied!" },
     /** Inside WeChat: the link is copied, and the card page opens so "···" sends it as a proper card. */
     wechat: { zh: "链接已复制。点右上角 ··· 把卡片发给朋友", en: "link copied · tap ··· to send the card" },
@@ -41,8 +42,6 @@ export const SHARE = {
     sentKey: "plop.invite.sent",
     /** This device's invite group id (localStorage), see `group.ts`. */
     groupKey: "plop.group",
-    /** The last name typed, kept on this device only (localStorage), so it is there next time. */
-    nameKey: "plop.invite.name",
   },
 
   copied: "link copied!",

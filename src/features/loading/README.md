@@ -1,14 +1,18 @@
 # loading
 
-A calm paper screen over the page while the 3D scene and the art load: the "Plop!" title in Gaegu, one of Rachel's
-cut-outs gently bobbing (still for "reduce motion"), and the **snow strip**: a little trench of real lit snow where a
+A white screen (`--snow-white`, Rachel 2026-11-25) over the page while things load: the "Plop!" title in Gaegu with
+Rachel's little penguin sliding on its belly beside it (a slide-and-wobble loop, still for "reduce motion"), and the
+**snow strip**: a little trench of real lit snow where a
 snowball rolls left to right, growing as it rolls and pressing a groove behind it with a little spray. How far it has
-rolled is the progress (percentage beneath in the heading font). When the scene is ready the ball rolls to the end
-and bursts, and the paper screen clears outward from that point (a soft hole grows, Rachel's snow-puff doodle blooms
-there), then the screen leaves the page. Server-rendered, so it is the very first thing a visitor sees.
+rolled is the progress (percentage beneath in the heading font). When it is ready the ball rolls to the end
+and bursts into a real puff of snow (`SnowPoof.tsx`: powder and soft clumps shaded `--snow-shadow` under
+`--snow-white`, over a faint mist; numbers in `LOADING.burst.poof`), with a soft bell (`playTie`) only if the visitor
+has already tapped (a tap on the screen counts). Server-rendered, so it is the very first thing a visitor sees.
 
-Mounted in `src/app/page.tsx` next to `<Game />` and in `src/app/invite/page.tsx` (with `art`, `note` and `small` set
-to the mouse and the invite's words). The game itself is not touched.
+- The game (`src/app/page.tsx`): the white clears outward from the burst into the game.
+- The invite (`src/app/invite/page.tsx`, `noScene reveal`): no 3D scene to wait for, so it is ready once the page and
+  its fonts have loaded (at least `timing.minShowPage`); at the burst `useLoaded()` turns true, the words, penguin
+  and strip fade, the white stays and the invite card pops out of the puff.
 
 ## The snow strip
 
@@ -22,7 +26,8 @@ distance), so nothing is stored.
   line too, so there is always something before the script runs.
 - Reduce motion: the ball moves straight to the progress, no spray, no twinkle; the screen fades instead of the burst.
 - The canvas has `data-loading-strip`, so `useSceneReady` ignores it when it waits for the scene's canvas.
-- `useLoaded()` (from `loaded.ts`) turns true once the screen has gone: the invite card starts its entrance on it.
+- `useLoaded()` (from `loaded.ts`) turns true once the screen has gone (with `reveal`, at the burst): the invite card
+  pops in on it.
 
 ## When is the scene "ready"?
 
@@ -43,6 +48,7 @@ once its first full frame with all art is drawn, the screen fades at once. Not n
 - `content.ts` words, art, bob size and speed, every timing, the progress floor / ceiling / creep, the strip's size,
   ball sizes, roll speed and light, and the burst. Tune here.
 - `useSceneReady.ts` the readiness checks above; returns `progress` (never goes back) and `ready`.
-- `LoadingScreen.tsx` the screen and the clearing: token colours only (`bg-paper`, `text-ink`).
+- `LoadingScreen.tsx` the screen and the clearing: token colours only (`bg-snow-white`, `text-ink`). `SnowPoof.tsx`
+  the burst.
 - `SnowStrip.tsx`, `snowStripShader.ts` the strip (above). `loaded.ts` the "screen has gone" store.
 - `review/` screenshots for the PR and the repo README.

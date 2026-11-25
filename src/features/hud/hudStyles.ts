@@ -19,6 +19,9 @@ export const styles = {
   card: "plop-hud-card",
   crown: "plop-hud-crown",
   pick: "plop-hud-pick",
+  nameInput: "plop-hud-name",
+  greet: "plop-hud-greet",
+  chip: "plop-hud-chip",
 } as const;
 
 export const hudCss = `
@@ -254,6 +257,36 @@ export const hudCss = `
   transform: scale(0.94) rotate(-2deg);
 }
 
+/* The name field: no browser outline, a soft butter crayon wash while typing. */
+.plop-hud-name {
+  outline: none;
+  caret-color: var(--ink-deep);
+}
+.plop-hud-name:focus {
+  background: color-mix(in oklab, var(--butter) 45%, transparent);
+}
+
+/* "小美 在等你": a gentle wave hello. */
+.plop-hud-greet {
+  animation: plop-hud-greet 2.6s 0.6s ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+@keyframes plop-hud-greet {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  78% { transform: rotate(-3deg) translateY(-1px); }
+  86% { transform: rotate(2.5deg); }
+  93% { transform: rotate(-1deg); }
+}
+
+/* The round's rule chip beside the round tag: hops in with each new round, then sits still. */
+.plop-hud-chip {
+  animation: plop-hud-chip 620ms 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes plop-hud-chip {
+  from { opacity: 0; transform: translateY(-8px) scale(0.6) rotate(-8deg); }
+  to { opacity: 1; transform: none; }
+}
+
 /* A little wiggle on toggle buttons when pressed. */
 .plop-hud-toggle:active {
   transform: scale(0.9) rotate(-4deg);
@@ -273,7 +306,9 @@ export const hudCss = `
   .plop-hud-card,
   .plop-hud-crown,
   .plop-hud-pick,
-  .plop-hud-pick:active {
+  .plop-hud-pick:active,
+  .plop-hud-greet,
+  .plop-hud-chip {
     animation: none;
     transition: none;
     transform: none;

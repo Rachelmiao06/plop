@@ -11,13 +11,16 @@
  *
  * A `plop:ready` window event (if the game ever sends one) or `timing.maxWait` ends the wait at once.
  * Returns a progress value (0 to 1, never goes back) and `ready`.
+ *
+ * `scene: false` (a page with no 3D scene, the invite): step 1 is "the page and its fonts have loaded" instead, and
+ * the minimum is `timing.minShowPage`, so the snowball's roll still reads.
  */
 import { useProgress } from "@react-three/drei";
 import { useEffect, useState } from "react";
 
 import { LOADING } from "./content";
 
-export function useSceneReady() {
+export function useSceneReady(scene = true) {
   const { active, loaded, total } = useProgress();
   const [painted, setPainted] = useState(false);
   const [forced, setForced] = useState(false);
@@ -26,7 +29,9 @@ export function useSceneReady() {
   const [creep, setCreep] = useState(0);
   const [peak, setPeak] = useState(0);
 
-  const { minShow, settle, nothingToLoad, maxWait } = LOADING.timing;
+  const { settle, maxWait } = LOADING.timing;
+  const minShow = scene ? LOADING.timing.minShow : LOADING.timing.minShowPage;
+  const nothingToLoad = scene ? LOADING.timing.nothingToLoad : settle;
 
   // Minimum show time, hard fallback, the optional ready event, and the slow creep of the line.
   useEffect(() => {
@@ -46,6 +51,17 @@ export function useSceneReady() {
 
   // First frame: wait for a canvas, then two animation frames so it has really drawn.
   useEffect(() => {
+    if (!scene) {
+      // No scene: the page and its fonts have loaded.
+      let live = true;
+      const done = () => document.fonts.ready.then(() => live && setPainted(true));
+      if (document.readyState === "complete") done();
+      else window.addEventListener("load", done, { once: true });
+      return () => {
+        live = false;
+        window.removeEventListener("load", done);
+      };
+    }
     let raf = 0;
     const look = () => {
       // The scene's canvas, not the loading strip's own little one.
@@ -59,7 +75,7 @@ export function useSceneReady() {
     };
     raf = requestAnimationFrame(look);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [scene]);
 
   // Loading has gone quiet: everything that started has finished and nothing new began for `settle` ms.
   const quiet = !active && (total === 0 || loaded >= total);

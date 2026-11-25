@@ -6,7 +6,11 @@ Owner: Rachel. Page: `/` (renders `<Game />`).
 
 ## The match
 
-Before the first throw a small card asks "3 or 5 rounds" and "two friends or just me" (`MatchStart` from the hud).
+Before the first throw a small card asks the players' names, "3 or 5 rounds" and "two friends or just me"
+(`MatchStart` from the hud). The names live in `names.ts` (`readNames`, `saveNames`, `shownName`; remembered on this
+device under `GAME.names.key`, never empty when shown: a skipped name is the snowman's default) and are used for the
+panel, the turn note, "N down!", the end card, the board and the share sheet (exported for it). Arriving from an
+invite (`?from=&score=`) the card greets "小美 在等你" and picks "just me"; alone, the panel shows 小美's score to beat.
 Each round every player throws once at the same set, then the next round's set comes (`GAME.match.rounds` lists
 them, the sets are the pins' `ROUND_SETS`). After the last round the end card (`MatchEnd`) shows the totals, a crown
 for the winner (or two for a tie) and "play again". Alone, the best total per length is kept in `localStorage`
@@ -46,8 +50,23 @@ matched it within about one card. Numbers: `docs/TUNING.md`.
 
 A pull cannot start while the ball is rolling or the pins are settling or resetting. Escape or the
 "Put it down" button cancels a pull; a cancelled pull is not a throw, so the turn stays.
-In a match the turn note also says "Round 2 / 3" and what the set asks; the first time a star friend or the rabbit
-appears, a tiny note says what it is worth (`SpecialHint`).
+## Round rules (`RuleCard.tsx`, `RuleMarker.tsx`)
+
+- `RuleCard` when a round starts: "Round 2 / 3", the rule in big words (zh, then en), the special card's picture and
+  one plain line, "知道啦 · got it". Stays until a pull, a tap anywhere or a key. Words per round set: `TEXT.rules`;
+  the picture and bonus are read from the pins' round set (`ruleFor`).
+- `RuleMarker` inside the canvas: a hand-drawn pencil "don't" sign over a friend (bunny, sleepy cat), twinkles round a
+  star friend's star, an arrow over a mound, while the pins are ready. Positions from the pins' public `setCentre`,
+  `placeIn`, `moundsOf` (`placeIn` and `moundsOf` were added to the pins index as read-only exports). Feel numbers:
+  `GAME.rule`.
+- The chip beside the round tag (the hud's `rule` prop) and the bigger outcome under "N down!" (the pins' words, made
+  big by `.plop-game-result` in `gameStyles.ts`).
+
+## The group board
+
+When the page has a group (`getGroupId()` from `@/features/share/group`: the invite's `?g=`, or the one this device
+made when it sent an invite), the end card gets `<SubmitScore>` per player (the name from the start card filled in)
+and `<GroupBoard>` (`GAME.board.limit` rows), passed to `MatchEnd` as children.
 
 ## Files
 
@@ -63,7 +82,8 @@ appears, a tiny note says what it is worth (`SpecialHint`).
   held through "N down!") and **return** (a calm glide home when the
   pins pop back). Any drag, scroll or key during the chase or impact hands the view back; the next throw is filmed
   again. "Reduce motion" keeps only a gentle lean after the ball. Numbers: `GAME.camera` in `content.ts`.
-- `GameOverlay.tsx` the hint, the special cut-outs' note, the turn / round note and the cancel button. `gameStyles.ts` their small scoped stylesheet.
+- `GameOverlay.tsx` the hint, the "Red Hat's turn!" note and the cancel button. `gameStyles.ts` the game's small scoped stylesheet.
+- `RuleCard.tsx`, `RuleMarker.tsx` each round's rule card and scene marker. `names.ts` the players' names.
 - `ThrowingView.tsx` the default camera view: the scenery's `throwingView` on wide screens, `GAME.phoneView` on a
   phone held upright (#46).
 - `Game.tsx` puts it all together, with the paper finish (`<PaperFinish />` from `@/features/look`) over the
@@ -84,3 +104,10 @@ appears, a tiny note says what it is worth (`SpecialHint`).
   with CSS (`gameStyles.ts`). Wanted: remove the temporary hook, or `<SnowScene testControls={false}>`.
 - **snow-scene (camera):** done. The snow scene now has camera shots (`setSnowCameraShot`, `kickSnowCamera`), and
   the old `CameraFollow.tsx` workaround is gone.
+- **pins:** a size (or `notes`) prop on `<PinsPopup>` so the rule outcome can be drawn big without the scoped CSS in
+  `gameStyles.ts` (`.plop-game-result .flex-col > p`).
+- **share:** the share index imports this feature (the invite sheet reads the names), so the game imports
+  `getGroupId` from `@/features/share/group` directly to keep the import graph free of a cycle.
+
+Analytics (`track` from `src/lib/analytics.ts`, no names): `match_start` and `match_end` with the rounds, mode and
+how many played.
