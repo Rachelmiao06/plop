@@ -4,7 +4,8 @@ Writes to public/assets/characters/:
   face-<name>.png      six faces from art-source/characters/expressions-sheet.png (3 x 2 grid),
                        256 x 256, white strokes with ink darkness as alpha (tinted by a theme token)
   reference-*.jpg      small copies of the reference sheets for the /dev/characters page
-  matcap-<part>.jpg    "drawn matcap" spheres for snow, mint, red and blue (see below)
+  matcap-<part>.jpg    "drawn matcap" spheres for snow, mint, red and blue (see below), saved as
+                       grey brightness only: the colour on screen always comes from the theme tokens
 
 Matcaps come from one of two places:
   * default: clean crayon patches cut from the four-view sheets. The sheets have no whole,
@@ -37,6 +38,7 @@ INK_THRESHOLD = 200  # anything darker than this counts as a stroke when finding
 
 MATCAP_PARTS = ["snow", "mint", "red", "blue"]
 MATCAP_SIZE = 256
+MATCAP_MID = 200  # average grey of a matcap; must match MATCAP_MID in materials.ts
 # Clean crayon patches (left, top, right, bottom) in the four-view sheets.
 MATCAP_PATCHES = {
     "snow": ("bucket-four-views.png", (200, 300, 260, 360)),  # bucket snowman's cheek
@@ -97,7 +99,7 @@ def matcaps_from_patches() -> None:
         sheet_name, box = MATCAP_PATCHES[part]
         patch = clean_patch(Image.open(ART / sheet_name).convert("RGB").crop(box))
         # A plain enlargement: the crayon grain gets bigger but stays one continuous drawing.
-        save(patch.resize((MATCAP_SIZE, MATCAP_SIZE), Image.BICUBIC), OUT / f"matcap-{part}.jpg", quality=88)
+        save(to_brightness(patch.resize((MATCAP_SIZE, MATCAP_SIZE), Image.BICUBIC)), OUT / f"matcap-{part}.jpg", quality=88)
 
 
 def ring_width(gray: Image.Image, cx: int, cy: int, radius: int) -> int:
@@ -131,7 +133,16 @@ def matcaps_from_spheres(sheet_path: Path, order: list[str]) -> None:
         radius = min(right - left, bottom - top) // 2
         inner = radius - int(ring_width(gray, cx, cy, radius) * 1.3)
         crop = sheet.crop((cx - inner, cy - inner, cx + inner, cy + inner))
-        save(crop.resize((512, 512), Image.LANCZOS), OUT / f"matcap-{part}.jpg", quality=88)
+        save(to_brightness(crop.resize((512, 512), Image.LANCZOS)), OUT / f"matcap-{part}.jpg", quality=88)
+
+
+def to_brightness(image: Image.Image) -> Image.Image:
+    """Keep only her strokes and shading: grey, normalised so the average is MATCAP_MID.
+    The component multiplies this onto the exact token colour, so no art colour reaches the screen."""
+    gray = image.convert("L")
+    values = [gray.getpixel((x, y)) for y in range(gray.height) for x in range(gray.width)]
+    mean = sum(values) / len(values)
+    return gray.point(lambda v: max(0, min(255, round(v * MATCAP_MID / mean))))
 
 
 def save(image: Image.Image, target: Path, quality: int | None = None) -> None:

@@ -140,7 +140,8 @@ export const Snowman = forwardRef<SnowmanHandle, SnowmanProps>(function Snowman(
 
   // Drawn matcaps: load them once, then switch every fill material between the two styles.
   const matcaps = useTexture(MATCAPS.map(matcapTexture), (loaded) => {
-    for (const tex of loaded) tex.colorSpace = THREE.SRGBColorSpace;
+    // Grey brightness maps, read as plain numbers (colour comes from the tokens).
+    for (const tex of loaded) tex.colorSpace = THREE.NoColorSpace;
   });
   useEffect(() => {
     for (const [key, name] of Object.entries(MATCAP_FOR)) {

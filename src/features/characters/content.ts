@@ -9,22 +9,19 @@ export type FaceName = (typeof FACES)[number];
 
 export const faceTexture = (face: FaceName) => `/assets/characters/face-${face}.png`;
 
-/**
- * Theme tokens (CSS variables in globals.css) used for each part. Never hex here.
- * `lighten` mixes the token toward --paper, the way a light crayon layer lets paper show through.
- */
+/** Theme tokens (CSS variables in globals.css) used for each part. Exact token colours only, never hex here. */
 export const tokens = {
   snow: { token: "--paper" },
   snowShade: { token: "--snow-shadow" },
-  outline: { token: "--ink-deep" },
-  face: { token: "--ink-deep" },
-  bucket: { token: "--sky-blue", lighten: 0.22 },
-  mintScarf: { token: "--pine", lighten: 0.3 },
-  red: { token: "--berry", lighten: 0.08 },
+  outline: { token: "--ink" },
+  face: { token: "--ink" },
+  bucket: { token: "--sky-blue" },
+  mintScarf: { token: "--mint" },
+  red: { token: "--berry" },
   pompom: { token: "--paper" },
   handle: { token: "--paper" },
-  ribs: { token: "--ink-deep" },
-} satisfies Record<string, { token: string; lighten?: number }>;
+  ribs: { token: "--ink" },
+} satisfies Record<string, { token: string }>;
 
 /** The look of Rachel's sheets: flat crayon fills, almost no shading, a thick rough brown line. */
 export const look = {

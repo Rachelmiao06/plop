@@ -13,10 +13,8 @@ function readToken(name: string): THREE.Color {
   return new THREE.Color(value || "white");
 }
 
-function partColour(key: TokenKey, paper: THREE.Color): THREE.Color {
-  const entry: { token: string; lighten?: number } = tokens[key];
-  const colour = readToken(entry.token);
-  return entry.lighten ? colour.lerp(paper, entry.lighten) : colour;
+function partColour(key: TokenKey): THREE.Color {
+  return readToken(tokens[key].token);
 }
 
 /** Value noise shared by the fill and the outline. */
@@ -52,12 +50,15 @@ const fillVertex = /* glsl */ `
   }
 `;
 
+/** Average brightness the slicing script normalises each grey matcap to (200 / 255). */
+const MATCAP_MID = 200 / 255;
+
 // Two ways to colour a part, switchable at runtime:
 // - computed: the part's token colour, a barely-there pale-blue shade on the far side, diagonal
 //   coloured-pencil strokes and soft pressure blotches, stuck to the object so they never swim.
-// - drawn matcap: the colour is looked up from a hand-drawn sphere by the view-space normal, so the
-//   drawing's own strokes and shading appear on every part from every angle. A little of the light
-//   direction can be blended in so form still turns as the camera orbits.
+// - drawn matcap: brightness is looked up from a hand-drawn sphere by the view-space normal, so the
+//   drawing's own strokes and shading appear on every part from every angle, over the token colour.
+//   A little of the light direction can be blended in so form still turns as the camera orbits.
 // Either way an optional screen-space paper grain sits on top.
 const fillFragment = /* glsl */ `
   uniform sampler2D uMatcap;
@@ -86,8 +87,10 @@ const fillFragment = /* glsl */ `
       vec3 x = normalize(vec3(viewDir.z, 0.0, -viewDir.x));
       vec3 y = cross(viewDir, x);
       vec2 uv = vec2(dot(x, n), dot(y, n)) * 0.495 + 0.5;
-      vec3 drawn = texture2D(uMatcap, uv).rgb;
-      drawn *= mix(1.0, mix(0.86, 1.0, lit), uLightBlend);
+      // The matcap is grey: her strokes and shading as brightness, normalised so its average is
+      // MATCAP_MID. Multiplying keeps the part's exact token colour on average.
+      vec3 base = mix(uShade, uBase, mix(1.0, lit, uLightBlend));
+      vec3 drawn = base * (texture2D(uMatcap, uv).r / ${MATCAP_MID.toFixed(4)});
       drawn *= 1.0 - uPaperGrain * (noise(vec3(gl_FragCoord.xy * 0.7, 0.0)) - 0.5);
       gl_FragColor = vec4(drawn, 1.0);
       #include <colorspace_fragment>
@@ -209,7 +212,7 @@ function buildMaterials(): SnowmanMaterials {
   const shadeTint = readToken(tokens.snowShade.token);
   const made = {} as Record<TokenKey, THREE.ShaderMaterial>;
   for (const key of Object.keys(tokens) as TokenKey[]) {
-    const base = partColour(key, paper);
+    const base = partColour(key);
     const isWhite = WHITE_PARTS.includes(key);
     const shade = isWhite
       ? base.clone().lerp(shadeTint, look.snowShadeMix)
@@ -218,8 +221,8 @@ function buildMaterials(): SnowmanMaterials {
   }
   return {
     ...made,
-    outline: makeOutlineMaterial(partColour("outline", paper), paper),
-    faceColour: partColour("face", paper),
+    outline: makeOutlineMaterial(partColour("outline"), paper),
+    faceColour: partColour("face"),
   };
 }
 
