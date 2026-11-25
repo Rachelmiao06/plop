@@ -12,6 +12,14 @@ export const content = {
   tagline: "A cute snowy toy: pull back, roll a snowball, let go.",
 
   resetView: "Reset view",
+
+  // The round "Fresh snow" / "Reset view" buttons, in the score display's hand-drawn style (#49):
+  // size (px), the frosted-glass blur, and the pencil line (as in the HUD's content.pencil).
+  doodleButtons: {
+    size: 40,
+    blur: "14px",
+    pencil: { width: 1.7, wobble: 0.9, secondPass: 0.35, overshoot: 8 },
+  },
   lookHint: "Scroll or pinch to rise and dip. Swipe sideways or drag to turn.",
 
   // TEMPORARY: words for the press test hook. Remove with TempDragPress.
