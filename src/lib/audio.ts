@@ -1,7 +1,9 @@
 /**
  * Plop sound engine.
  *
- * Every sound is synthesized with the Web Audio API: no sound files, no packages.
+ * Snow rolling and landing are real recordings (public/assets/audio, see CREDITS.md
+ * there), cut into small slices and re-pitched live. The launch whoosh is synthesized.
+ * If a recording fails to load, a synthesized stand-in plays instead. No packages.
  * All inputs are 0..1 (0 = slowest / smallest / weakest, 1 = fastest / biggest / strongest).
  *
  *   unlockAudio()                  call inside a tap/click handler; nothing plays before this
@@ -15,10 +17,50 @@
  * silent no-op until audio has been unlocked.
  */
 
+/** The recordings the engine plays. */
+const FILES = {
+  crunch: "/assets/audio/snow-crunch.mp3",
+  thump: "/assets/audio/snow-thump.mp3",
+} as const;
+
 /** Feel numbers. Tune here; the logic below never hard-codes one. */
 export const SOUND = {
   /** Overall volume, 0..1. */
   master: 0.9,
+
+  /** Rolling snow, made of overlapping slices of the real footsteps-in-powder recording. */
+  roll: {
+    /** Slices per second at the slowest and fastest roll. */
+    rateSlow: 2.5,
+    rateFast: 13,
+    /** Slice length in seconds for the smallest and biggest ball. */
+    lengthSmall: 0.2,
+    lengthBig: 0.36,
+    /** Fade in and out of each slice, as a share of its length. Higher = smoother, fluffier. */
+    fade: 0.35,
+    /** Playback speed for the smallest and biggest ball. Below 1 = slower and deeper. */
+    speedSmall: 1.2,
+    speedBig: 0.62,
+    /** Random speed change per slice, so no two sound the same. */
+    speedSpread: 0.08,
+    /** Loudness at the slowest and fastest roll. */
+    gainSlow: 0.5,
+    gainFast: 1.0,
+  },
+
+  /** Landing, from the real snowball recording, with a soft synthesized boom underneath. */
+  land: {
+    /** Playback speed for the smallest and biggest ball. Below 1 = slower and deeper. */
+    speedSmall: 1.25,
+    speedBig: 0.7,
+    gainSmall: 0.8,
+    gainBig: 1.5,
+    /** How much of the synthesized boom to mix under the recording (0 = none). */
+    boom: 0.4,
+  },
+
+  // Everything below is synthesized: the whoosh always, crunch and thump only
+  // as stand-ins when a recording has not loaded.
 
   crunch: {
     /** Grains per second at the slowest and fastest roll. */
@@ -87,7 +129,12 @@ type Engine = {
   /** Muffled path for snow: grains and rolling hiss go through here. */
   soft: BiquadFilterNode;
   noise: AudioBuffer;
+  /** The footsteps recording and the moments in it where snow is actually crunching. */
+  roll: { buffer: AudioBuffer; loud: number[] } | null;
+  land: AudioBuffer | null;
 };
+
+let recordings: Promise<boolean> | null = null;
 
 let engine: Engine | null = null;
 
@@ -126,7 +173,52 @@ function build(): Engine | null {
   soft.Q.value = 0.5;
   soft.connect(out);
 
-  return { ctx, out, soft, noise };
+  return { ctx, out, soft, noise, roll: null, land: null };
+}
+
+/** Find the moments (in seconds) where the recording is loud, i.e. a foot is in the snow. */
+function loudMoments(buffer: AudioBuffer, sliceLength: number): number[] {
+  const data = buffer.getChannelData(0);
+  const win = Math.floor(buffer.sampleRate * 0.02);
+  const rms: number[] = [];
+  for (let i = 0; i + win <= data.length; i += win) {
+    let sum = 0;
+    for (let j = i; j < i + win; j++) sum += data[j] * data[j];
+    rms.push(Math.sqrt(sum / win));
+  }
+  const sorted = [...rms].sort((a, b) => a - b);
+  const threshold = sorted[Math.floor(sorted.length * 0.9)] * 0.3;
+  const lastStart = buffer.duration - sliceLength;
+  const moments: number[] = [];
+  rms.forEach((level, i) => {
+    const t = i * 0.02;
+    if (level > threshold && t < lastStart) moments.push(t);
+  });
+  return moments;
+}
+
+async function fetchSound(e: Engine, url: string): Promise<AudioBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  return e.ctx.decodeAudioData(await response.arrayBuffer());
+}
+
+async function loadRecordings(e: Engine): Promise<boolean> {
+  try {
+    const [roll, land] = await Promise.all([
+      fetchSound(e, FILES.crunch),
+      fetchSound(e, FILES.thump),
+    ]);
+    // Slices are read up to speedSmall times faster than real time.
+    const longest = SOUND.roll.lengthBig * (SOUND.roll.speedSmall + SOUND.roll.speedSpread);
+    const loud = loudMoments(roll, longest);
+    if (loud.length === 0) return false;
+    e.roll = { buffer: roll, loud };
+    e.land = land;
+    return true;
+  } catch {
+    return false; // the synthesized stand-ins keep working
+  }
 }
 
 /** The engine if audio has been unlocked, otherwise null. */
@@ -142,7 +234,10 @@ function live(): Engine | null {
  * Safe to call many times. Returns true once audio exists.
  */
 export function unlockAudio(): boolean {
-  if (!engine) engine = build();
+  if (!engine) {
+    engine = build();
+    if (engine) recordings = loadRecordings(engine);
+  }
   if (!engine) return false;
   if (engine.ctx.state !== "running") void engine.ctx.resume();
   return true;
@@ -151,6 +246,14 @@ export function unlockAudio(): boolean {
 /** True once unlockAudio has succeeded. */
 export function isAudioUnlocked(): boolean {
   return engine !== null;
+}
+
+/**
+ * Resolves true once the real recordings are loaded, false if they could not be
+ * (the synthesized stand-ins play instead). Call after audio is unlocked.
+ */
+export function whenRecordingsLoaded(): Promise<boolean> {
+  return recordings ?? Promise.resolve(false);
 }
 
 /**
@@ -196,6 +299,31 @@ function grain(e: Engine, at: number, size: number, level: number) {
   src.start(at, Math.random() * (e.noise.duration - 0.2), length + 0.02);
 }
 
+/** One soft-edged slice of the real snow recording, slowed down for a bigger ball. */
+function slice(e: Engine, at: number, size: number, speed: number) {
+  if (!e.roll) return;
+  const r = SOUND.roll;
+  const length = lerp(r.lengthSmall, r.lengthBig, size) * (0.8 + 0.4 * Math.random());
+  const rate =
+    lerp(r.speedSmall, r.speedBig, size) + (Math.random() * 2 - 1) * r.speedSpread;
+  const level = lerp(r.gainSlow, r.gainFast, speed) * (0.7 + 0.3 * Math.random());
+  const fade = length * r.fade;
+
+  const src = e.ctx.createBufferSource();
+  src.buffer = e.roll.buffer;
+  src.playbackRate.value = rate;
+
+  const env = e.ctx.createGain();
+  env.gain.setValueAtTime(0, at);
+  env.gain.linearRampToValueAtTime(level, at + fade);
+  env.gain.setValueAtTime(level, at + length - fade);
+  env.gain.linearRampToValueAtTime(0, at + length);
+
+  src.connect(env).connect(e.out);
+  const from = e.roll.loud[Math.floor(Math.random() * e.roll.loud.length)];
+  src.start(at, from, length * rate + 0.02);
+}
+
 // ---------------------------------------------------------------- crunch
 
 const LOOKAHEAD = 0.1; // seconds of grains scheduled ahead of time
@@ -213,17 +341,25 @@ function crunchTick() {
   if (!e) return;
   const c = SOUND.crunch;
   const now = e.ctx.currentTime;
-  const rate = lerp(c.rateSlow, c.rateFast, crunchSpeed);
+  const rate = e.roll
+    ? lerp(SOUND.roll.rateSlow, SOUND.roll.rateFast, crunchSpeed)
+    : lerp(c.rateSlow, c.rateFast, crunchSpeed);
 
   if (nextGrainAt < now) nextGrainAt = now;
   while (nextGrainAt < now + LOOKAHEAD) {
-    const level = c.gain * lerp(0.45, 1, crunchSpeed) * (0.35 + 0.65 * Math.random());
-    grain(e, nextGrainAt, crunchSize, level);
+    if (e.roll) {
+      slice(e, nextGrainAt, crunchSize, crunchSpeed);
+    } else {
+      const level = c.gain * lerp(0.45, 1, crunchSpeed) * (0.35 + 0.65 * Math.random());
+      grain(e, nextGrainAt, crunchSize, level);
+    }
     // Uneven gaps, so it sounds like snow and not like a motor.
     nextGrainAt += (0.3 + 1.4 * Math.random()) / rate;
   }
 
-  if (bed) {
+  // The synthesized hiss is only needed while the stand-in is playing.
+  if (bed && e.roll) bed.gain.gain.setTargetAtTime(0, now, 0.05);
+  else if (bed) {
     bed.band.frequency.setTargetAtTime(
       pitchLerp(c.pitchSmall, c.pitchBig, crunchSize) * 0.6,
       now,
@@ -319,7 +455,7 @@ export function playWhoosh(power: number) {
 
 // ---------------------------------------------------------------- thump
 
-/** Impact: a soft boom, a puff of snow, then bits scattering. Bigger ball = deeper, longer, louder. */
+/** Impact: the recorded snowball over a soft boom. Bigger ball = deeper, longer, louder. */
 export function playThump(size: number) {
   const e = live();
   if (!e) return;
@@ -341,13 +477,26 @@ export function playThump(size: number) {
   soften.frequency.value = 700;
   const boom = e.ctx.createGain();
   boom.gain.setValueAtTime(0, at);
-  boom.gain.linearRampToValueAtTime(level, at + 0.004);
+  boom.gain.linearRampToValueAtTime(e.land ? level * SOUND.land.boom : level, at + 0.004);
   boom.gain.exponentialRampToValueAtTime(0.0001, at + length);
   osc.connect(soften).connect(boom).connect(e.out);
   osc.start(at);
   osc.stop(at + length + 0.05);
 
-  // The puff: muffled noise that dies quickly.
+  // The real snowball, slowed down for a bigger ball.
+  if (e.land) {
+    const l = SOUND.land;
+    const hit = e.ctx.createBufferSource();
+    hit.buffer = e.land;
+    hit.playbackRate.value = lerp(l.speedSmall, l.speedBig, s);
+    const hitGain = e.ctx.createGain();
+    hitGain.gain.value = lerp(l.gainSmall, l.gainBig, s);
+    hit.connect(hitGain).connect(e.out);
+    hit.start(at);
+    return;
+  }
+
+  // Stand-in puff: muffled noise that dies quickly.
   const puffLength = length * 0.7;
   const src = e.ctx.createBufferSource();
   src.buffer = e.noise;

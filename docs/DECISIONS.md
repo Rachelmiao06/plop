@@ -10,3 +10,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · No scores, no online play in the first version. It is a toy; two people share one device.
 - 2026-11-24 · Realistic snow ground, AI-drawn half-3D layered characters. Art that an image model can make.
 - 2026-11-24 · Feel prototype with plain shapes comes before any art. The project succeeds or fails on feel.
+- 2026-11-24 · Snow rolling and landing sounds are real CC0 recordings from Freesound (`public/assets/audio/`, credits there), sliced and re-pitched by the engine; only the whoosh is synthesized. Pure synthesis sounded like scratching paper, not fluffy snow. This replaces issue #9's "no sound files".

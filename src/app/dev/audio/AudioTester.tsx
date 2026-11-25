@@ -11,6 +11,7 @@ import {
   stopCrunch,
   unlockAudio,
   unlockAudioOnFirstTouch,
+  whenRecordingsLoaded,
 } from "@/lib/audio";
 
 /** Timings of the "whole throw" demo, in milliseconds. */
@@ -54,10 +55,18 @@ export function AudioTester() {
   const [power, setPower] = useState(70);
   const [rolling, setRolling] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
+  const [source, setSource] = useState<"loading" | "recorded" | "synth">("loading");
   const demo = useRef<{ ramp: number; timers: number[] }>({ ramp: 0, timers: [] });
 
   // Sound switches on with the first touch anywhere on the page.
-  useEffect(() => unlockAudioOnFirstTouch(() => setSoundOn(true)), []);
+  useEffect(
+    () =>
+      unlockAudioOnFirstTouch(() => {
+        setSoundOn(true);
+        void whenRecordingsLoaded().then((ok) => setSource(ok ? "recorded" : "synth"));
+      }),
+    [],
+  );
 
   // While rolling, the crunch follows the sliders live.
   useEffect(() => {
@@ -134,6 +143,14 @@ export function AudioTester() {
             ? "Sound is on. On an iPhone, make sure the silent switch is off."
             : "Sound is off until your first tap."}
         </p>
+        {soundOn && (
+          <p className="text-sm text-muted-foreground">
+            {source === "recorded" && "Playing real snow recordings."}
+            {source === "synth" &&
+              "Recordings did not load, so you are hearing the synthesized stand-in."}
+            {source === "loading" && "Loading recordings…"}
+          </p>
+        )}
       </header>
 
       <section className="flex flex-col gap-4 rounded-xl border bg-card p-4 text-card-foreground">
