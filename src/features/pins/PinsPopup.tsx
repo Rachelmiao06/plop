@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { PINS, TEXT } from "./content";
 import type { Pins, PinsResult } from "./controller";
+import { playPop } from "./fwump";
 
 /** Doodles around the words: file, size (rem), where (percent of the pop-up box), turn (degrees), delay (s). */
 type Doodle = { src: string; size: number; x: number; y: number; turn: number; delay: number };
@@ -26,13 +27,23 @@ const FULL_CLEAR_DOODLES: Doodle[] = [
   { src: "/assets/effects/music-notes.webp", size: 2.8, x: -14, y: 64, turn: -12, delay: 0.28 },
 ];
 
+/**
+ * Squash-and-stretch bounce in: it shoots up thin and tall, lands squashed wide, springs back a little
+ * taller, then settles. Pivot at the bottom, like a ball landing. `--sq` is how far it squashes
+ * (PINS.popup.squash); the timing is set inline from PINS.popup.
+ */
 const STYLE = `
 @keyframes pins-pop {
-  0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
-  45% { transform: scale(1.14) rotate(2deg); opacity: 1; }
-  65% { transform: scale(0.95) rotate(-2.5deg); }
-  82% { transform: scale(1.03) rotate(-1deg); }
-  100% { transform: scale(1) rotate(-2deg); opacity: 1; }
+  0% { transform: scale(calc(0.4 - var(--sq)), calc(0.4 + var(--sq))) rotate(-8deg); opacity: 0; }
+  28% { transform: scale(calc(1 - var(--sq) * 0.9), calc(1 + var(--sq) * 1.2)) rotate(2deg); opacity: 1; }
+  48% { transform: scale(calc(1 + var(--sq)), calc(1 - var(--sq))) rotate(-2.5deg); }
+  66% { transform: scale(calc(1 - var(--sq) * 0.35), calc(1 + var(--sq) * 0.4)) rotate(-1deg); }
+  82% { transform: scale(calc(1 + var(--sq) * 0.12), calc(1 - var(--sq) * 0.12)) rotate(-2deg); }
+  100% { transform: scale(1, 1) rotate(-2deg); opacity: 1; }
+}
+@keyframes pins-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; transform: rotate(-2deg); }
 }
 @keyframes pins-doodle {
   0% { transform: translate(-50%, -50%) scale(0) rotate(var(--turn)); opacity: 0; }
@@ -45,6 +56,15 @@ const STYLE = `
 }
 @keyframes pins-out {
   to { transform: scale(0.85) rotate(-2deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pins-pop-in { animation-name: pins-fade-in !important; animation-timing-function: ease-out !important; }
+  .pins-pop-in img, .pins-pop-in p { animation: none !important; }
+  .pins-pop-out { animation-name: pins-fade-out !important; }
+}
+@keyframes pins-fade-out {
+  from { transform: rotate(-2deg); }
+  to { opacity: 0; transform: rotate(-2deg); }
 }
 `;
 
@@ -60,6 +80,7 @@ export function PinsPopup({ pins }: { pins: Pins }) {
       clearTimeout(leaveTimer);
       clearTimeout(hideTimer);
       const mine = ++id;
+      playPop(e.result.fullClear);
       setShown({ id: mine, result: e.result, leaving: false });
       const stay = (e.result.fullClear ? PINS.popup.showForFullClear : PINS.popup.showFor) * 1000;
       leaveTimer = setTimeout(() => setShown((s) => (s && s.id === mine ? { ...s, leaving: true } : s)), stay);
@@ -83,8 +104,16 @@ export function PinsPopup({ pins }: { pins: Pins }) {
       <style>{STYLE}</style>
       <div
         key={shown.id}
-        className="relative"
-        style={{ animation: leaving ? "pins-out 0.3s ease-in forwards" : "pins-pop 0.55s cubic-bezier(.2,.9,.3,1.2) both" }}
+        className={`relative ${leaving ? "pins-pop-out" : "pins-pop-in"}`}
+        style={
+          {
+            transformOrigin: "50% 85%",
+            "--sq": big ? PINS.popup.squashFullClear : PINS.popup.squash,
+            animation: leaving
+              ? "pins-out 0.3s ease-in forwards"
+              : `pins-pop ${big ? PINS.popup.bounceInFullClear : PINS.popup.bounceIn}s cubic-bezier(.3,.7,.4,1) both`,
+          } as React.CSSProperties
+        }
       >
         {doodles.map((d, i) => (
           // eslint-disable-next-line @next/next/no-img-element -- small decorative doodles, no layout shift to optimise

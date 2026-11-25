@@ -171,7 +171,39 @@ export const PINS = {
     /** Seconds it stays up (a full clear stays a little longer). */
     showFor: 1.8,
     showForFullClear: 2.4,
+    /** Seconds it takes to bounce in: stretch up, squash wide, settle (a full clear bounces longer and bigger). */
+    bounceIn: 0.6,
+    bounceInFullClear: 0.8,
+    /** How far it stretches and squashes on the way in (share of its size), and on a full clear. */
+    squash: 0.16,
+    squashFullClear: 0.24,
+    /** The little "pop" sound under it: loudness, and the notes of the full-clear chime (Hz). */
+    popVolume: 0.22,
+    chime: [784, 988, 1175, 1568],
+    chimeStep: 0.09,
   },
+
+  /** A card squashes a little when it flops into the snow, then springs back (drawing only). */
+  flop: {
+    /** Squash at the hardest landing (share of the card's length); a soft lay-down squashes less. */
+    squash: 0.12,
+    stiffness: 260,
+    damping: 11,
+  },
+
+  /**
+   * Hit-stop: when the ball meets the first card of a throw, time runs slow for a moment (the ball, the
+   * thrower and the physics), then eases back. `slowest` is the share of normal speed right at the hit.
+   */
+  hitStop: {
+    seconds: 0.14,
+    slowest: 0.12,
+    /** The impact thump under it: a share of the ball's size on the thump sound's scale. */
+    thump: 0.5,
+  },
+
+  /** With "reduce motion" on: the card squash keeps this share and the pop-up only fades (vibration and sound stay). */
+  reducedMotion: 0.3,
 } as const;
 
 export type PinsFeel = typeof PINS;

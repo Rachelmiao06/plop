@@ -25,6 +25,9 @@ import {
 } from "@react-three/rapier";
 import { Euler, Quaternion, SRGBColorSpace, Vector3, type Group, type Texture } from "three";
 
+import { playThump } from "@/lib/audio";
+import { haptic } from "@/lib/haptics";
+
 import type { BowlEvent, Bowling } from "@/features/bowling";
 import { propSrc } from "@/features/scenery";
 import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
@@ -44,7 +47,21 @@ const DEG = Math.PI / 180;
 
 type Pose = { p: Vector3; q: Quaternion };
 type Anim = { kind: "reset" | "leave" | "arrive"; start: number; duration: number; from: Pose; to: Pose };
-type PinRuntime = { down: boolean; landed: boolean; anim: Anim | null; boingAt: number; hidden: boolean };
+type PinRuntime = {
+  down: boolean;
+  landed: boolean;
+  anim: Anim | null;
+  boingAt: number;
+  hidden: boolean;
+  /** The flop squash spring (drawing only): amount and its speed. */
+  squash: { q: number; v: number };
+};
+
+const MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+/** Share of squash to keep: all of it, or `PINS.reducedMotion` when the device asks for less motion. */
+function motionShare(): number {
+  return typeof window !== "undefined" && window.matchMedia?.(MOTION_QUERY).matches ? PINS.reducedMotion : 1;
+}
 
 export function PinsStage({ pins }: { pins: Pins }) {
   const debug = useSyncExternalStore(
@@ -52,10 +69,18 @@ export function PinsStage({ pins }: { pins: Pins }) {
     () => pins.getState().debug,
     () => false,
   );
+  // During a hit-stop the physics is paused and stepped by hand with slowed time (see PinsWorld).
+  const [slowed, setSlowed] = useState(false);
   return (
     <Suspense fallback={null}>
-      <Physics gravity={[0, PINS.world.gravity, 0]} timeStep={1 / PINS.world.stepsPerSecond} debug={debug} colliders={false}>
-        <PinsWorld pins={pins} />
+      <Physics
+        gravity={[0, PINS.world.gravity, 0]}
+        timeStep={1 / PINS.world.stepsPerSecond}
+        debug={debug}
+        colliders={false}
+        paused={slowed}
+      >
+        <PinsWorld pins={pins} setSlowed={setSlowed} />
       </Physics>
     </Suspense>
   );
@@ -107,9 +132,9 @@ const homePose = (s: PinSpec): Pose => ({
   q: new Quaternion().setFromEuler(new Euler(0, s.home.yaw, 0)),
 });
 
-const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
+const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; setSlowed: (slowed: boolean) => void }) {
   const snow = useSnow();
-  const { rapier, world } = useRapier();
+  const { rapier, world, step: stepPhysics, isPaused } = useRapier();
   const [ground] = useState(() => sampleGround(snow.heightAt));
   const [paper] = useState(readPaper);
   const textures = usePinTextures();
@@ -149,11 +174,22 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     /** Ball id → the height it came to rest at. A resting ball stays put even when landing cards dent the snow under it. */
     restY: new Map<number, number>(),
     groundChecked: false,
+    /** The ball has met a card in this throw (the hit-stop plays once per throw). */
+    hitThisThrow: false,
+    /** A hit-stop is slowing the physics (it is paused and stepped by hand). */
+    slowing: false,
   });
 
   // A new set: fresh per-pin state (hidden if it is about to hop in).
   useEffect(() => {
-    runtime.current = specs.map(() => ({ down: false, landed: false, anim: null, boingAt: -10, hidden: entry.arrive }));
+    runtime.current = specs.map(() => ({
+      down: false,
+      landed: false,
+      anim: null,
+      boingAt: -10,
+      hidden: entry.arrive,
+      squash: { q: 0, v: 0 },
+    }));
     runtimeFor.current = entry.id;
     if (!entry.arrive) pins.emit({ type: "ready", formation: entry.id, total: specs.length });
   }, [specs, entry, pins]);
@@ -197,6 +233,7 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     f.stoppedAt = f.activeBalls.size ? null : f.clock;
     f.settledFor = 0;
     f.pendingThrow = false;
+    f.hitThisThrow = false;
     clearCounts(runtime.current);
     pins.emit({ type: "knocked", down: 0, total: specs.length });
     setPhase("throw");
@@ -272,6 +309,9 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     f.fullClear = fullClear;
     f.throwBalls.clear();
     pins.emit({ type: "result", result: { down, total, fullClear } });
+    // The pop-up's beat you feel: a celebration on a full clear, a small double tap otherwise.
+    if (fullClear) haptic("fullClear");
+    else if (down > 0) haptic("down");
     setPhase("result");
   };
 
@@ -306,6 +346,18 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
   const handlers = useMemo(
     () =>
       specs.map((s, i) => (e: CollisionEnterPayload) => {
+        const f = flow.current;
+        // The ball meets the first card of the throw: a hit-stop, a thump and a bump you feel.
+        if (e.other.rigidBodyObject?.name === "ball" && f.phase === "throw" && !f.hitThisThrow) {
+          const ball = f.game?.balls.find((b) => b.rolling);
+          if (!ball || !f.game) return;
+          f.hitThisThrow = true;
+          const h = PINS.hitStop;
+          f.game.hitStop(h.seconds, h.slowest);
+          playThump(ball.plan.size * h.thump);
+          haptic("hit", ball.plan.size);
+          return;
+        }
         if (e.other.rigidBodyObject?.name !== "snow") return;
         const rt = runtime.current[i];
         const b = e.target.rigidBody;
@@ -328,6 +380,9 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
         const speed = Math.hypot(v.x, v.y, v.z) + Math.hypot(w.x, w.y, w.z) * length * 0.5;
         const strength = clamp01((speed - l.softSpeed) / (l.hardSpeed - l.softSpeed));
         playFwump(strength, clamp01((s.height * s.width - 0.15) / 0.8));
+        haptic("flop", strength);
+        // A little squash on landing, harder for a harder flop.
+        rt.squash.v += PINS.flop.squash * (0.4 + 0.6 * strength) * 24;
       }),
     [specs, snow],
   );
@@ -430,7 +485,15 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
 
   useFrame((_, delta) => {
     const f = flow.current;
-    const dt = Math.min(delta, 0.1);
+    // Hit-stop: while the bowling game runs slow, pause the physics and step it by hand with slowed time.
+    const scale = f.game?.timeScale ?? 1;
+    const slowing = scale < 1;
+    if (slowing !== f.slowing) {
+      f.slowing = slowing;
+      setSlowed(slowing);
+    }
+    if (isPaused) stepPhysics(Math.min(delta, 0.1) * scale);
+    const dt = Math.min(delta, 0.1) * scale;
     f.clock += dt;
 
     // Follow whichever bowling game is running.
@@ -486,6 +549,8 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
     // Animations (kinematic) and the boing on landing upright (drawing only).
     const r = PINS.reset;
     const n = PINS.nextSet;
+    const fl = PINS.flop;
+    const motion = motionShare();
     let animating = false;
     specs.forEach((s, i) => {
       const b = bodies.current[i];
@@ -534,14 +599,24 @@ const PinsWorld = memo(function PinsWorld({ pins }: { pins: Pins }) {
           }
         }
       }
+      // The flop squash: a quick spring along the card's length (it lies in the snow, so this reads as a squish).
+      const sq = rt.squash;
+      sq.v += (-sq.q * fl.stiffness - sq.v * fl.damping) * dt;
+      sq.q += sq.v * dt;
+      if (Math.abs(sq.q) < 1e-4 && Math.abs(sq.v) < 1e-3) sq.q = sq.v = 0;
+      const flop = Math.max(-0.3, Math.min(0.3, sq.q)) * motion;
+
       const since = f.clock - rt.boingAt;
       if (since >= 0 && since < 1.6) {
         const fade = Math.exp(-r.boingDecay * since);
         const wave = since * r.boingFrequency * Math.PI * 2;
-        visual.rotation.z = Math.sin(wave) * r.boingDegrees * DEG * fade;
-        const squash = r.boingSquash * fade * Math.cos(wave * 2);
+        visual.rotation.z = Math.sin(wave) * r.boingDegrees * DEG * fade * motion;
+        const squash = r.boingSquash * fade * Math.cos(wave * 2) * motion + flop;
         visual.scale.set(1 + squash * 0.5, 1 - squash, 1);
-      } else if (visual.rotation.z !== 0) {
+      } else if (flop !== 0) {
+        visual.rotation.z = 0;
+        visual.scale.set(1 + flop * 0.5, 1 - flop, 1);
+      } else if (visual.rotation.z !== 0 || visual.scale.y !== 1) {
         visual.rotation.z = 0;
         visual.scale.set(1, 1, 1);
       }

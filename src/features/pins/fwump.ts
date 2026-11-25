@@ -97,3 +97,32 @@ export function playFwump(strength: number, size: number): void {
   thump.start(now);
   thump.stop(now + length + 0.05);
 }
+
+/**
+ * The soft "pop" under the "N down!" bounce: a short rounded blip that rises a little, like a cork.
+ * A full clear gets a tiny rising chime instead (`PINS.popup.chime`). Same switch and unlock as the flop.
+ */
+export function playPop(fullClear: boolean): void {
+  if (!ctx || !master || !getAudioSettings().effects) return;
+  if (ctx.state !== "running") void ctx.resume();
+  const p = PINS.popup;
+  const now = ctx.currentTime;
+  const blip = (at: number, from: number, to: number, length: number, level: number) => {
+    const osc = ctx!.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(from, at);
+    osc.frequency.exponentialRampToValueAtTime(to, at + length * 0.6);
+    const env = ctx!.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(level, at + 0.012);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + length);
+    osc.connect(env).connect(master!);
+    osc.start(at);
+    osc.stop(at + length + 0.05);
+  };
+  if (!fullClear) {
+    blip(now, 330, 620, 0.16, p.popVolume);
+    return;
+  }
+  p.chime.forEach((hz, i) => blip(now + i * p.chimeStep, hz * 0.96, hz, 0.32, p.popVolume * 0.8));
+}
