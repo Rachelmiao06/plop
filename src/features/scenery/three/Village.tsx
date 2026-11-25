@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useThree } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
-import { SRGBColorSpace, Vector3, type Texture } from "three";
+import { SRGBColorSpace, Vector3, type Group, type Texture } from "three";
 
 import { useSnow } from "@/features/snow-scene";
 
-import { propSrc, village } from "../content";
+import { propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
 import { Flecks } from "./Flecks";
 import { hasOutline } from "./standeeGeometry";
@@ -77,6 +77,7 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
   return (
     <>
       {placed.map((p, i) => (
+        <Mover key={p.key} id={p.id} x={p.x} z={p.z} inward={p.x < lane.pinSpot.x ? 1 : -1}>
         <ThickStandee
           key={p.key}
           id={p.id}
@@ -90,9 +91,44 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
           baseY={bases[i]}
           mound={false}
         />
+        </Mover>
       ))}
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
+  );
+}
+
+/**
+ * The small loop for props that look like they are moving (`village.movers`): the sliding penguin glides
+ * a short way toward the lane and back, the skier sways on its feet. Anything else is passed through.
+ */
+function Mover({ id, x, z, inward, children }: { id: PropId; x: number; z: number; inward: number; children: ReactNode }) {
+  const loop = village.movers[id];
+  const root = useRef<Group>(null);
+  const phase = x * 0.9 + z * 0.4;
+  useFrame(({ clock }) => {
+    const g = root.current;
+    if (!g || !loop) return;
+    const t = clock.elapsedTime;
+    if (loop.kind === "slide") {
+      // 0 → 1 → 0 over the moving part of the loop, eased at both ends, then a rest.
+      const u = (((t + phase) / loop.period) % 1) / (1 - loop.rest);
+      const out = u < 1 ? (1 - Math.cos(u * Math.PI * 2)) / 2 : 0;
+      g.position.x = inward * loop.distance * out;
+    } else {
+      const a = Math.sin((t + phase) * loop.speed * Math.PI * 2);
+      g.rotation.z = (a * loop.angle * Math.PI) / 180;
+      g.position.x = a * loop.step;
+    }
+  });
+  if (!loop) return <>{children}</>;
+  // The group pivots at the prop's feet, so the sway rocks it on the snow.
+  return (
+    <group position={[x, 0, z]}>
+      <group ref={root}>
+        <group position={[-x, 0, -z]}>{children}</group>
+      </group>
+    </group>
   );
 }
 

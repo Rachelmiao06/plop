@@ -11,6 +11,7 @@ import { throwingView, Village } from "@/features/scenery";
 import { SnowCameraView, SnowScene } from "@/features/snow-scene";
 
 import { createPins } from "./controller";
+import { OverlapCheck } from "./OverlapCheck";
 import { PinsPanel } from "./PinsPanel";
 import { PinsPopup } from "./PinsPopup";
 import { PinsStage } from "./PinsStage";
@@ -24,6 +25,7 @@ export function PinsPlayground() {
         <Village lane={FEEL.lane} />
         <BowlingStage />
         <PinsStage pins={pins} />
+        <OverlapCheck />
       </SnowScene>
       <BowlingHint />
       <PinsPopup pins={pins} />
