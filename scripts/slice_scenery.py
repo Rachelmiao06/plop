@@ -96,6 +96,13 @@ def remove_background(rgb: np.ndarray, sheet: dict) -> tuple[np.ndarray, np.ndar
     # 1. Thicken the ink so small gaps in thin outlines are closed.
     gap = int(sheet.get("close_gap", CLOSE_GAP))
     walls = ndi.binary_dilation(dist > INK, structure=disk(gap)) if gap > 0 else dist > INK
+    # Hand-listed lines that close a drawing left open at its ends (the panorama's hills), so the
+    # paper inside stays solid. Only the fill sees them; nothing is drawn on the art.
+    for x0, y0, x1, y1 in sheet.get("seal", []):
+        steps = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+        for t in np.linspace(0.0, 1.0, steps):
+            yy0, xx0 = round(y0 + (y1 - y0) * t), round(x0 + (x1 - x0) * t)
+            walls[max(yy0 - 1, 0) : yy0 + 2, max(xx0 - 1, 0) : xx0 + 2] = True
 
     # 2. Flood the paper from the border, around the thickened lines.
     open_paper = paperlike & ~walls
@@ -205,8 +212,9 @@ def cut_sheet(sheet: dict) -> dict[str, Image.Image]:
         canvas = Image.new("RGBA", (crop.width + 2 * MARGIN, crop.height + MARGIN), (0, 0, 0, 0))
         canvas.paste(crop, (MARGIN, MARGIN))
 
-        if max(canvas.size) > MAX_SIDE:
-            scale = MAX_SIDE / max(canvas.size)
+        max_side = int(sheet.get("max_side", MAX_SIDE))
+        if max(canvas.size) > max_side:
+            scale = max_side / max(canvas.size)
             size = (round(canvas.width * scale), round(canvas.height * scale))
             # Premultiplied resize so no paper colour bleeds into the edge.
             canvas = canvas.convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")

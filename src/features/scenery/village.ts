@@ -35,6 +35,8 @@ export type VillageProp = {
   height: number;
   width: number;
   side: Placement["side"];
+  /** Height above the snow it stands at (0 = in the snow). */
+  lift: number;
 };
 
 /**
@@ -59,6 +61,7 @@ export function villageLayout(lane: GameLane = drawnGameLane): VillageProp[] {
       height: propSettings(p.prop)!.height * scale,
       width: propWidth(p.prop) * scale,
       side: p.side,
+      lift: p.lift ?? 0,
     };
   });
 }
@@ -130,4 +133,13 @@ export function villageProblems(
     }
   }
   return problems;
+}
+
+/** Drawn lane coordinates (layout space) to the game's lane, the same fit as `villageLayout`. */
+export function fitPoint(x: number, z: number, lane: GameLane = drawnGameLane): [number, number] {
+  const drawn = drawnGameLane;
+  const k = (lane.lineZ - lane.pinSpot.z) / (drawn.lineZ - drawn.pinSpot.z);
+  const shift = Math.max(lane.halfWidth - drawn.halfWidth, 0) + village.sideMargin;
+  const out = Math.abs(x) > drawnLane.clear.maxX ? Math.sign(x) * shift : 0;
+  return [x + out + (lane.pinSpot.x - drawn.pinSpot.x), lane.lineZ + (z - drawn.lineZ) * k];
 }

@@ -4,21 +4,8 @@
 
 // Design tokens from src/app/globals.css (same names there, with dashes).
 const tokens = {
-  paper: "#fffdf8", // --paper
   snowShadow: "#cfe1f2", // --snow-shadow
-  skyBlue: "#8db7e2", // --sky-blue
 } as const;
-
-/** An even blend of two token colours (share 0 = a, 1 = b), as a hex colour. */
-function mixTokens(a: string, b: string, share: number): string {
-  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
-  const out = [0, 1, 2].map((i) =>
-    Math.round(channel(a, i) * (1 - share) + channel(b, i) * share)
-      .toString(16)
-      .padStart(2, "0"),
-  );
-  return `#${out.join("")}`;
-}
 
 export const content = {
   title: "Plop!",
@@ -115,9 +102,6 @@ export const content = {
     rimSoften: 0.35,
     // Depth at which pressed snow reaches its full darker, bluer tint.
     fullTintDepth: 0.6,
-    // How quickly a shallow press already shows blue (1 = in step with depth,
-    // below 1 = shallow grooves tint sooner, so they read on paper-white snow).
-    tintCurve: 0.55,
     // Within this height of hard ground, the hard-ground colour shows through.
     hardGroundBlend: 0.05,
     // Ploughing: how much more snow piles ahead of a moving ball than beside
@@ -172,49 +156,40 @@ export const content = {
     clumpSettle: 0.7,
   },
 
-  // Every colour is a design token from src/app/globals.css, copied here with
-  // its name (or an even mix of two tokens), so the snow is painted in the same
-  // paper colours as Rachel's cut-outs. Change the token there and here together.
+  // The snow's own look: lit, real snow (restored from before the paper-tone
+  // pass, #36, at Rachel's request). The cut-outs are not affected: they are
+  // drawn in their own unlit paper shaders with token colours and skip tone
+  // mapping, so they look exactly the same on this snow.
   colors: {
-    // Untouched snow: exactly the paper the cut-outs are drawn on.
-    snow: tokens.paper,
-    // Pressed snow turns pale blue, deeper presses bluer (darker the deeper),
-    // and right at the bottom the hard ground shows through.
-    snowPressed: mixTokens(tokens.snowShadow, tokens.skyBlue, 0.35),
-    hardGround: tokens.skyBlue,
-    // The lights. Only the bowling card and ball are lit by their colour; the
-    // snow takes only "how much light" from them and paints the rest in tokens.
-    sun: tokens.paper,
-    skyFill: tokens.snowShadow,
-    groundBounce: tokens.paper,
-    sparkle: tokens.paper,
+    // Not pure white: leaves headroom for sun highlights and sparkles.
+    snow: "#dfe7f2",
+    snowPressed: "#8fabd6",
+    // Shows where the snow is pressed right down to the ground.
+    hardGround: "#6f86ad",
+    sun: "#ffe2bd",
+    // The sky's fill light: it is what colours the shade and the shadows.
+    // A clear pale sky blue (not the old blue-violet), so shade reads cool
+    // and deep without a lilac cast (#38).
+    skyFill: "#a9cdf5",
+    groundBounce: "#dfe6f5",
+    sparkle: "#fff6e6",
     // The soft sky the far snow melts into: top and bottom of the screen.
-    // Warm paper with the faintest pale-blue wash at the top.
-    fogTop: mixTokens(tokens.paper, tokens.snowShadow, 0.35),
-    fogBottom: tokens.paper,
-    snowflake: tokens.paper,
-    snowDust: tokens.paper,
+    fogTop: "#cfdcf0",
+    fogBottom: "#e3eaf5",
+    snowflake: "#ffffff",
+    snowDust: "#ffffff",
     // TEMPORARY: stand-in blocks shown with ?guides in the address.
     tempGuide: "#e58a6b",
   },
 
-  // How shade and shadows are painted on the snow: a flat pale-blue wash, like
-  // a watercolour shadow on paper, instead of a darker render of lit snow.
-  // Cast shadows and slopes facing away from the sun get the same wash.
-  // `@/features/snow-scene` exports these as `snowShadow`, so a feature that
-  // paints its own shadows can match them.
+  // Cast shadows on the snow. `strength` is how much of the sun a shadow takes
+  // away (1 = all of it, as before #36; lower = paler, the sky fill shows
+  // through). A little under 1 so the cut-outs' shadows read soft next to
+  // paper. `color` is the design token for features that paint their own
+  // shadows (exported as `snowShadow`). Set here, nowhere else.
   shade: {
-    // The wash colour at full strength.
     color: tokens.snowShadow,
-    // How much of that colour shows in full shade (1 = exactly the colour,
-    // 0 = no shade at all, the snow stays flat paper).
-    strength: 0.9,
-    // Light (as a share of flat sunlit snow) above which the snow stays plain
-    // paper. A little under 1 so tiny bumps on lit snow never tint it.
-    litFrom: 0.93,
-    // Shapes the wash between lit and full shade: 1 = even, above 1 = a
-    // softer, paler start so gentle slopes stay paper-like.
-    curve: 1.2,
+    strength: 0.8,
   },
 
   light: {
@@ -224,14 +199,10 @@ export const content = {
     sunAzimuth: 128,
     sunStrength: 5,
     skyStrength: 1.7,
-    // Tone mapping (Neutral) and exposure apply to lit things such as the
-    // bowling card and ball only. The snow is painted in token colours and
-    // skips tone mapping, because tone mapping greys paper white (1.0 comes
-    // out about 0.88), the same as the cut-outs, which skip it too.
     exposure: 1.0,
     // Shadows: sharpness and softness.
     shadowMapSize: 2048,
-    shadowSoftness: 8,
+    shadowSoftness: 5,
     shadowArea: 16,
     shadowBias: -0.0004,
     shadowNormalBias: 0.05,
@@ -246,9 +217,9 @@ export const content = {
     // Sparkles: size of one glint, how many light up, how fast they flicker
     // as the view shifts, and how bright they get.
     sparkleCell: 0.02,
-    sparkleAmount: 0.012,
+    sparkleAmount: 0.022,
     sparkleSensitivity: 900,
-    sparkleStrength: 0.9,
+    sparkleStrength: 2.2,
   },
 
   camera: {
@@ -353,7 +324,7 @@ export const content = {
     fallSpeed: 0.55,
     drift: 0.25,
     size: 0.05,
-    opacity: 0.7,
+    opacity: 0.85,
   },
 
   // Fresh snowfall: the snow falls harder for a moment and every dent

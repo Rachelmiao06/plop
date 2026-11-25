@@ -195,8 +195,6 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
     roughness: s.roughness,
     metalness: 0,
     dithering: true,
-    // Painted in token colours below; tone mapping would grey the paper white.
-    toneMapped: false,
   });
   if (plain) material.defines = { SNOW_PLAIN: "" };
   material.customProgramCacheKey = () => (plain ? "snow-plain" : "snow-tile");
@@ -234,18 +232,6 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
         value: new Vector4(content.haze.start, content.haze.end, 0, content.ground.centerZ),
       },
       uSparkleColor: { value: new Color(content.colors.sparkle) },
-      uShadeColor: { value: new Color(content.shade.color) },
-      // the wash is the shade colour's share of paper, so it tints any snow colour alike
-      uPaper: { value: new Color(content.colors.snow) },
-      // where plain paper ends, strength of the wash, its curve; how soon pressed snow tints
-      uShade: {
-        value: new Vector4(
-          content.shade.litFrom,
-          content.shade.strength,
-          content.shade.curve,
-          content.press.tintCurve,
-        ),
-      },
       // scale, strength, tint
       uGrain: { value: new Vector4(s.grainScale, s.grainStrength, s.grainTint, 0) },
       // glint size, share lit, flicker speed, brightness
@@ -281,10 +267,6 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
         uniform vec3 uSnowPressed;
         uniform vec3 uHardGround;
         uniform vec3 uSparkleColor;
-        uniform vec3 uShadeColor;
-        uniform vec3 uPaper;
-        uniform vec4 uShade;
-        float snowLum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
         uniform vec3 uFogTop;
         uniform vec3 uFogBottom;
         uniform vec2 uResolution;
@@ -329,9 +311,7 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
         float grainValue = snowNoise(grainP) * 0.65 + snowNoise(grainP * 2.3 + 7.1) * 0.35;
         // Pressed snow: darker and bluer the deeper it goes; at the very
         // bottom the hard ground shows through.
-        // Shallow presses tint sooner (uShade.w), but the very edge fades in
-        // softly, so the grid never shows as a stepped line round a groove.
-        float packed = pow(clamp(vPressed, 0.0, 1.0), uShade.w) * smoothstep(0.0, 0.12, vPressed);
+        float packed = min(vPressed, 1.0);
         float hardGround = clamp(vPressed - 1.0, 0.0, 1.0);
         diffuseColor.rgb = mix(diffuseColor.rgb, uSnowPressed, packed);
         diffuseColor.rgb = mix(diffuseColor.rgb, uHardGround, hardGround);
@@ -383,30 +363,6 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
       .replace(
         "#include <opaque_fragment>",
         /* glsl */ `
-        // Paint, do not render: the lights only say how much light falls here
-        // (1 = flat snow in full sun). The snow is then painted in its own
-        // colour (paper, or the pale blue of pressed snow), with a flat pale
-        // wash of the shade colour where light is missing, like a watercolour
-        // shadow on paper. Cast shadows and slopes turned from the sun get the
-        // same wash; deeper pressed snow starts bluer, so it still reads darker.
-        float snowSunFlat = 0.0;
-        float snowSkyFlat = 0.0;
-        vec3 snowUp = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-        #if NUM_DIR_LIGHTS > 0
-          snowSunFlat = max(dot(snowUp, directionalLights[0].direction), 0.0) * snowLum(directionalLights[0].color);
-        #endif
-        #if NUM_HEMI_LIGHTS > 0
-          snowSkyFlat = snowLum(hemisphereLights[0].skyColor);
-        #endif
-        float snowLitFlat = max(snowSunFlat + snowSkyFlat, 1e-4);
-        float snowLight = snowLum(reflectedLight.directDiffuse + reflectedLight.indirectDiffuse) * PI
-          / max(snowLum(diffuseColor.rgb), 1e-4) / snowLitFlat;
-        // Flat snow in a cast shadow (sky light only) is full shade.
-        float snowShadeFloor = snowSkyFlat / snowLitFlat;
-        float snowShade = clamp((uShade.x - snowLight) / max(uShade.x - snowShadeFloor, 1e-3), 0.0, 1.0);
-        snowShade = pow(snowShade, uShade.z) * uShade.y;
-        vec3 snowWash = mix(vec3(1.0), uShadeColor / max(uPaper, vec3(1e-3)), snowShade);
-        outgoingLight = diffuseColor.rgb * snowWash;
         // Sparkles: a few tiny crystals, each facing its own way, that flash
         // when the view lines up with them. Only where the sun reaches.
         vec2 sparkleP = vSnowPos.xz / uSparkle.x;

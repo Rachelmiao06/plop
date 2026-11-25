@@ -150,8 +150,8 @@ Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.
   The stand-in paper mound of the test page is off here (`ThickStandee mound={false}`).
 - **Look:** the thick standee renderer from `three/` unchanged: art exactly as drawn, paper edge with an uneven ink
   line, the half-turn toward the camera around the throwing view's look-at point, gentle sway on the trees.
-  Shadows are the snow scene's real sun shadows, painted by the snow itself as a pale-blue `--snow-shadow` wash
-  (strength set once in the snow scene's `content.shade`, exported as `snowShadow`); the village no longer changes them.
+  Shadows are the snow scene's real sun shadows on its lit snow (strength set once in the snow scene's
+  `content.shade`, exported as `snowShadow`); the village never changes them.
 - **Clear lane and sight line:** `villageProblems(lane, cameraPosition?)` lists any prop in the roll lane (the slide
   width plus the drawn margin, from in front of the line to past the pins) or standing taller than the line of sight
   from the camera to the pins. In development the page logs the result once the camera has settled.
@@ -161,3 +161,32 @@ Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.
 
 Files: `village.ts` (fitting, blockers, checks, throwing view; no drawing), `three/Village.tsx` (the component),
 `index.ts` (what other features import). Screenshots: `review/village-*.webp`.
+
+## A complete picture from the throwing view (#38)
+
+The throwing view looks about 13° below the horizon at the top of the screen, so the real horizon never shows and
+the snow used to run on, empty, behind the village. Now the scene is built in layers like a paper theatre:
+
+- **Sky and far hills (`three/Backdrop.tsx`, `backdrop` in `content.ts`):** a curved paper wall stands just behind the
+  village (radius 9.6 round the throwing view's look-at point, 220° of arc), `--paper` blending toward `--snow-shadow`
+  higher up. Rachel's far panorama (`far-hills`, cut along the hill line) is repeated along its foot, a little hazed
+  toward `--snow-shadow`. The sun, three clouds and a flying bird (`sky-*`) are flat doodles on the wall; the clouds drift a
+  few degrees, the bird crosses every minute. The wall is opaque (drawn before the snow, so the snow behind it costs
+  nothing) and thins out in a fine paper-grain pattern between 38° and 50° of camera height, so the high view is all
+  snow as before. On a phone held upright it comes a little closer and the hills grow (`backdrop.portrait`) so they
+  show under the score panel. No change to the snow scene was needed.
+- **Village:** the red cottage, cocoa stall and fairy lights join the home cluster and the far end; the snowman family
+  watches from the lane's edge by the igloo; chimney smoke (Rachel's puff doodle) rises from both cottages
+  (`ChimneySmoke` in `three/Life.tsx`, chimney spots in `village.chimneys`).
+- **Middle:** frozen pond by the sliding penguin, a snowy stump with the red bird on it (`lift`), the rabbit by the
+  bush, a snowball pile near the line. The calm snow behind the pins is unchanged.
+- **Near corners:** the street lamp, a short pine and a bush at the left, the fence and a bush at the right (desktop
+  only; a phone held upright is too narrow to see them). The lamp and fence are the crayon set's until the near-edge
+  framing sheet arrives; `scripts/trace_standees.py` traces them via `EXTRA`.
+- **Life:** penguin slide, skier sway, rabbit and bird hops, smoke, drifting clouds and bird. All hold still when the
+  device asks for reduced motion (`three/motion.ts`).
+- **Tracks:** a few faint boot prints, rabbit hops and a sled track pressed at start with the snow's own `pressGroove`
+  (`village.tracks`, `Tracks` in `three/Life.tsx`); a fresh snowfall fills them like any dent.
+
+The panorama is cut by the slicer with two new per-sheet options: `seal` (lines that close the hills' open ends for the
+background fill only) and `max_side` (keeps its full 2126 px width). Screenshots: `review/scene-38-*.webp`.

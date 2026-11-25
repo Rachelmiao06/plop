@@ -1,5 +1,5 @@
 {
-  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60), erase ([{box}] paint over drawn blue ground shadows), target (\"effects\" = source in art-source/effects/, output public/assets/effects/). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
+  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60), erase ([{box}] paint over drawn blue ground shadows), seal ([[x0, y0, x1, y1]] lines that close a drawing left open at its ends, seen only by the background fill), max_side (px, default 512; the far panorama keeps its full width), target (\"effects\" = source in art-source/effects/, output public/assets/effects/). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
   "sheets": [
     {
       "file": "doodle-1-friends-tree.png",
@@ -195,6 +195,67 @@
         "penguin-standing",
         "penguin-sliding",
         "mailbox"
+      ]
+    },
+    {
+      "file": "doodle-6-cottage-cocoa-lights-family.png",
+      "grid": "2x2",
+      "names": [
+        "cottage-red",
+        "cocoa-stall",
+        "fairy-lights",
+        "snowman-family"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-7-pond-stump-snowballs-bird-smoke-rabbit.png",
+      "grid": "3x2",
+      "names": [
+        "pond-frozen",
+        "stump-snow",
+        "snowballs",
+        "bird-red",
+        "chimney-smoke",
+        "rabbit"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "sky-1-sun-clouds-bird-moon.png",
+      "grid": "3x2",
+      "names": [
+        "sky-sun",
+        "sky-cloud",
+        "sky-cloud-curl",
+        "sky-cloud-smile",
+        "sky-bird",
+        "sky-moon"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "far-1-panorama.png",
+      "grid": "1x1",
+      "names": [
+        "far-hills"
+      ],
+      "min_piece": 15,
+      "close_gap": 6,
+      "max_side": 2200,
+      "seal": [
+        [
+          36,
+          560,
+          36,
+          620
+        ],
+        [
+          2150,
+          550,
+          2150,
+          620
+        ]
       ]
     }
   ]

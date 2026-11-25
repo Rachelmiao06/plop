@@ -106,8 +106,6 @@ class SpraySim {
         emissive: content.colors.snow,
         emissiveIntensity: s.clumpGlow,
         roughness: 0.9,
-        // Paper white like the snow they came from, not greyed by tone mapping.
-        toneMapped: false,
       }),
       s.clumpCount,
     );
