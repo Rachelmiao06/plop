@@ -554,16 +554,6 @@ export const village = {
 
   /** Chimney smoke rising from the cottages: where the chimney is on the drawing (share of width, from the left). */
   chimneys: { "cottage-blue": 0.76, "cottage-red": 0.7 } as Partial<Record<PropId, number>>,
-  smoke: {
-    /** Seconds for one puff to rise and fade; two puffs per chimney, half a loop apart. */
-    period: 5.5,
-    /** How far it rises in that time (scene units) and how much it grows. */
-    rise: 0.45,
-    grow: 0.5,
-    /** Most opacity at the middle of its rise. */
-    opacity: 0.85,
-  },
-
   /** Small life loops (`motion: "loop"` props). All stop when the device asks for reduced motion. */
   life: {
     /** The rabbit gives two little hops in place every `every` seconds. */
@@ -631,7 +621,7 @@ export const backdrop = {
    * its own mirror image. A version Rachel draws to tile would be best.
    */
   hillsCrop: [10 / 2126, 2116 / 2126] as [number, number],
-  hillsSink: 0.12,
+  hillsSink: 0.2,
   /** The far hills fade this much toward `--snow-shadow` (distance haze), so they sit behind the village on the lit snow. */
   haze: 0.3,
   /** Fade the whole backdrop out between these camera heights (degrees above the snow). */
@@ -648,4 +638,147 @@ export const backdrop = {
     { prop: "sky-cloud-curl", angle: 38, y: 1.6, drift: 3, period: 80 },
   ] as { prop: PropId; angle: number; y: number; drift: number; period: number }[],
   bird: { prop: "sky-bird" as PropId, y: 1.25, bob: 0.06, crossSeconds: 48, restSeconds: 10, fromAngle: -55, toAngle: 55 },
+};
+
+/* ------------------------------------------------------------------ */
+/* Real light, smoke and ice on the paper village (Rachel, 2026-11-25)  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A little real-world effect on top of the paper drawings: the lamp, the lit window and the fairy lights glow
+ * and light the real snow, real smoke drifts from the chimneys, and clear ice hangs from the eaves and lies by
+ * the igloo and the pond. All of it is made in code (no new art). Positions on a drawing are shares of its width
+ * (from the left) and height (from the bottom), like `village.chimneys`. Colours are tokens only: `--butter`
+ * for warm light, `--paper` / `--snow-shadow` / `--sky-blue` for smoke and ice.
+ */
+export const atmosphere = {
+  /**
+   * Warm lights. Each has a halo (a soft glow sprite that faces the camera, drawn additively, never tone mapped)
+   * and an optional real point light that warms the lit snow around it (the cut-outs stay unlit, as drawn).
+   * `light`: intensity (candela; the sun is 5), reach (units; 0 = no limit), height above the bulb.
+   * `halo`: size (units across), strength (0 to 1), and a gentle flicker (share of strength, speed in Hz).
+   */
+  lights: [
+    {
+      prop: "street-lamp" as PropId,
+      at: [[0.5, 0.61]] as [number, number][],
+      light: { intensity: 2.6, distance: 3.6 },
+      halo: { size: 0.95, strength: 0.6, flicker: 0.07, speed: 1.3 },
+    },
+    {
+      // The red cottage's yellow window: four panes, one glow.
+      prop: "cottage-red" as PropId,
+      at: [[0.615, 0.355]] as [number, number][],
+      light: { intensity: 0.35, distance: 2.2 },
+      halo: { size: 0.7, strength: 0.32, flicker: 0.03, speed: 0.7 },
+    },
+    {
+      // Five bulbs on the string; one shared, faint light for the snow under them.
+      prop: "fairy-lights" as PropId,
+      at: [
+        [0.172, 0.61],
+        [0.332, 0.509],
+        [0.502, 0.459],
+        [0.677, 0.513],
+        [0.836, 0.615],
+      ] as [number, number][],
+      light: { intensity: 0.3, distance: 2 },
+      halo: { size: 0.24, strength: 0.34, flicker: 0.12, speed: 2.1 },
+    },
+  ],
+  /** Point lights sit this far in front of the drawing (units), so the pool falls on the snow before it. */
+  lightForward: 0.25,
+  /** How warm the light is: `--butter` mixed this much toward `--paper` (0 = pure butter). */
+  warmSoftening: 0.15,
+
+  /**
+   * Chimney smoke: soft puffs that rise, drift sideways in a gentle wind, grow and fade. Camera-facing sprites,
+   * `--paper` with a faint `--snow-shadow` shade on their lower side and an optional hint of the `--ink` outline.
+   * It replaces Rachel's drawn smoke doodle (`chimney-smoke`, kept as a spare): next to the paper houses the real
+   * puffs read more natural than a flat doodle that grows.
+   */
+  smoke: {
+    puffsPerChimney: 6,
+    /** Seconds for one puff from the chimney to gone (reduced motion: `reducedSlowdown` times slower). */
+    life: 6.5,
+    reducedSlowdown: 3,
+    /** How high it rises and how far the wind carries it sideways (units) over its life. */
+    rise: 1.05,
+    wind: 0.55,
+    /** Little side-to-side wander (units) and its speed. */
+    wander: 0.06,
+    wanderSpeed: 0.6,
+    /** Size at the chimney and at the end of its life (units across). */
+    sizeFrom: 0.16,
+    sizeTo: 0.62,
+    /** Most opacity, reached early, then a long fade. */
+    opacity: 0.72,
+    /**
+     * The whole puff takes `tint` of `--snow-shadow` (paper-white smoke would vanish against the paper sky), its
+     * lower side `shade`; the ink outline's strength (0 = none).
+     */
+    tint: 0.45,
+    shade: 0.75,
+    outline: 0.0,
+  },
+
+  /**
+   * Clear ice: translucent, slightly blue, with sharp highlights and a bright fresnel edge, faked cheaply (no
+   * screen-space transmission): a tint that deepens with thickness, a sky reflection at grazing angles, a sun
+   * glint, and tiny sparkles that flash as the view moves.
+   */
+  ice: {
+    /** How see-through the middle is (0 = clear, 1 = solid tint) and how bright the grazing edge gets. */
+    body: 0.45,
+    edge: 0.85,
+    /** Sun glint: sharpness (higher = smaller) and brightness. Sparkles: how many facets flash and how bright. */
+    glintSharpness: 90,
+    glint: 1.6,
+    sparkle: 0.18,
+    sparkleBright: 1.4,
+    /** Icicles along an eave: drawing-share line [x0, y0] -> [x1, y1] and how many hang from it. */
+    icicles: [
+      { prop: "igloo-friends" as PropId, from: [0.2, 0.545], to: [0.43, 0.545], count: 5 },
+      { prop: "igloo-friends" as PropId, from: [0.55, 0.51], to: [0.71, 0.51], count: 4 },
+      { prop: "igloo-friends" as PropId, from: [0.12, 0.6], to: [0.17, 0.66], count: 2 },
+      { prop: "igloo-friends" as PropId, from: [0.83, 0.58], to: [0.88, 0.5], count: 2 },
+      { prop: "cottage-red" as PropId, from: [0.2, 0.47], to: [0.55, 0.49], count: 6 },
+      { prop: "cottage-blue" as PropId, from: [0.22, 0.37], to: [0.4, 0.53], count: 4 },
+      { prop: "cottage-blue" as PropId, from: [0.68, 0.45], to: [0.82, 0.37], count: 3 },
+      { prop: "street-lamp" as PropId, from: [0.16, 0.68], to: [0.86, 0.68], count: 3 },
+    ],
+    /** Icicle length (units, a random share between) and width at the top. */
+    icicleLength: [0.07, 0.19] as [number, number],
+    icicleWidth: 0.028,
+    /**
+     * Ice chunks lying in the snow, in drawn lane coordinates like the layout (x, z), with a size (units across)
+     * and a turn. Each sits a little sunk in a small heap of real snow with a dab of snow on top.
+     */
+    chunks: [
+      { x: -2.85, z: -3.35, size: 0.3, turn: 20 },
+      { x: -2.6, z: -3.9, size: 0.19, turn: 75 },
+      { x: -4.4, z: -3.45, size: 0.24, turn: 140 },
+      { x: -3.0, z: -4.3, size: 0.14, turn: 200 },
+      { x: 2.8, z: -5.3, size: 0.28, turn: 40 },
+      { x: 3.05, z: -4.95, size: 0.15, turn: 110 },
+      { x: 4.55, z: -5.35, size: 0.21, turn: 300 },
+    ] as { x: number; z: number; size: number; turn: number }[],
+    /** How deep a chunk sinks (share of its size) and the snow cap on top (share of its size). */
+    chunkSink: 0.35,
+    snowCap: 0.42,
+  },
+
+  /** The far snow banks up against the foot of the paper hills, so the low view has no hard line (#51). */
+  footBank: {
+    /** Heaps of real snow along the backdrop's foot: spacing along the arc, half-width, half-depth, height (units). */
+    spacing: 1.6,
+    radiusX: 1.6,
+    radiusZ: 1.7,
+    height: 0.11,
+    /** Heaps sit this far in front of the paper hills. */
+    inset: 0.45,
+    /** How uneven the row is: spacing and distance jitter (share of a step) and size variety (share of size). */
+    jitter: 0.7,
+    vary: 0.6,
+  },
 };

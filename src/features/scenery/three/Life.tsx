@@ -1,101 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
-import { DoubleSide, type Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, type Texture } from "three";
+import { useEffect } from "react";
 
 import { useSnow } from "@/features/snow-scene";
 
-import { propPx, propSettings, propSrc, village } from "../content";
-import { fitPoint, type GameLane, type VillageProp } from "../village";
-import { useReducedMotion } from "./motion";
-
-/**
- * Chimney smoke: Rachel's smoke-puff doodle rising slowly from each cottage's chimney, two puffs half a loop
- * apart, growing and fading. A flat doodle that faces the camera; it holds still (half risen) for reduced motion.
- */
-export function ChimneySmoke({ placed }: { placed: (VillageProp & { baseY: number })[] }) {
-  const tex = useTexture(propSrc("chimney-smoke"), (loaded) => {
-    const t = loaded as Texture;
-    t.colorSpace = SRGBColorSpace;
-    t.needsUpdate = true;
-  }) as Texture;
-  const reduced = useReducedMotion();
-  const s = village.smoke;
-
-  const chimneys = useMemo(
-    () =>
-      placed.flatMap((p) => {
-        const share = village.chimneys[p.id];
-        if (share === undefined) return [];
-        const along = (share - 0.5) * p.width * (p.flip ? -1 : 1);
-        return [{ key: p.key, x: p.x + along, y: p.baseY + p.height * 0.97, z: p.z - 0.02, scale: p.scale }];
-      }),
-    [placed],
-  );
-
-  const h = propSettings("chimney-smoke")!.height;
-  const px = propPx("chimney-smoke");
-  const w = px ? (h * px.w) / px.h : h;
-  const plane = useMemo(() => {
-    const g = new PlaneGeometry(1, 1);
-    // Origin at the bottom-left puff, so it grows up and away from the chimney.
-    g.translate(0.35, 0.5, 0);
-    return g;
-  }, []);
-  const puffs = useMemo(
-    () =>
-      chimneys.flatMap((c) =>
-        [0, 0.5].map((offset) => ({
-          ...c,
-          offset,
-          material: new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, side: DoubleSide }),
-        })),
-      ),
-    [chimneys, tex],
-  );
-  const refs = useRef<(Mesh | null)[]>([]);
-  useEffect(
-    () => () => {
-      plane.dispose();
-      for (const p of puffs) p.material.dispose();
-    },
-    [plane, puffs],
-  );
-
-  useFrame(({ camera, clock }) => {
-    puffs.forEach((p, i) => {
-      const mesh = refs.current[i];
-      if (!mesh) return;
-      const u = reduced ? (p.offset === 0 ? 0.45 : -1) : (clock.elapsedTime / s.period + p.offset + p.x * 0.13) % 1;
-      mesh.visible = u >= 0;
-      if (u < 0) return;
-      const k = (1 + s.grow * u) * p.scale * 0.55;
-      mesh.position.set(p.x + u * s.rise * 0.25, p.y + u * s.rise, p.z);
-      mesh.scale.set(w * k, h * k, 1);
-      mesh.rotation.y = Math.atan2(camera.position.x - p.x, camera.position.z - p.z);
-      // In softly, out slowly.
-      p.material.opacity = s.opacity * Math.min(u / 0.2, 1) * (1 - Math.max((u - 0.45) / 0.55, 0));
-    });
-  });
-
-  return (
-    <>
-      {puffs.map((p, i) => (
-        <mesh
-          key={`${p.key}-${p.offset}`}
-          ref={(m) => {
-            refs.current[i] = m;
-          }}
-          geometry={plane}
-          material={p.material}
-          raycast={() => null}
-        />
-      ))}
-    </>
-  );
-}
+import { village } from "../content";
+import { fitPoint, type GameLane } from "../village";
 
 /**
  * A few faint footprints and tracks pressed into the snow once at start (`village.tracks`), through the

@@ -9,9 +9,10 @@ import { useSnow } from "@/features/snow-scene";
 
 import { backdrop, propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
-import { Backdrop } from "./Backdrop";
+import { Backdrop, FootBank } from "./Backdrop";
 import { Flecks } from "./Flecks";
-import { ChimneySmoke, Tracks } from "./Life";
+import { ChimneySmoke, IceBeds, IceChunks, Icicles, WarmLights } from "./Atmosphere";
+import { Tracks } from "./Life";
 import { useReducedMotion } from "./motion";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
@@ -37,16 +38,20 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
     return { paper: token("--paper"), shade: token("--snow-shadow"), ink: token("--ink") };
   });
 
+  const reach = Math.max(0, (lane.lineZ - lane.pinSpot.z - backdrop.laneLength) * (1 - village.view.lookAtShare));
   return (
     <PaperContext value={paper}>
       <Flecks>
+        {/* Snow heaped before anything suspends, so the pins' physics ground already includes it. */}
+        <FootBank center={throwingView(lane).lookAt} reach={reach} />
+        <IceBeds lane={lane} />
         <Suspense fallback={null}>
           <Standees lane={lane} pivot={pivot} />
         </Suspense>
         <Suspense fallback={null}>
           <Backdrop
             center={throwingView(lane).lookAt}
-            reach={Math.max(0, (lane.lineZ - lane.pinSpot.z - backdrop.laneLength) * (1 - village.view.lookAtShare))}
+            reach={reach}
           />
         </Suspense>
         <Tracks lane={lane} />
@@ -105,10 +110,14 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
           target={target}
           baseY={bases[i]}
           mound={false}
-        />
+        >
+          <WarmLights id={p.id} width={p.width} height={p.height} />
+          <Icicles id={p.id} width={p.width} height={p.height} />
+        </ThickStandee>
         </Mover>
       ))}
       <ChimneySmoke placed={withBases} />
+      <IceChunks lane={lane} />
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
   );

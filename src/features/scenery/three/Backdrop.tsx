@@ -20,7 +20,7 @@ import {
 
 import { useSnow } from "@/features/snow-scene";
 
-import { backdrop, propPx, propSettings, propSrc } from "../content";
+import { atmosphere, backdrop, propPx, propSettings, propSrc } from "../content";
 import { useReducedMotion } from "./motion";
 import { usePaper } from "./treatment";
 
@@ -95,17 +95,57 @@ type Props = {
  */
 const look = new Vector3();
 
+/** How far upright a phone is held: 0 = landscape or square, 1 = at `backdrop.portrait.aspect` or narrower. */
+function useNarrow(): number {
+  const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
+  return Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
+}
+
+/** The backdrop's distance from its centre for this screen shape and lane reach. */
+const wallRadius = (narrow: number, reach: number) =>
+  backdrop.radius + (backdrop.portrait.radius - backdrop.radius) * narrow + reach;
+
+/**
+ * Real snow banked up against the foot of the paper hills (#51): a row of soft heaps of real snow just in front of
+ * them, so from a low view the hills sink into lit snow with an uneven edge instead of meeting it in a hard straight
+ * line. Render it outside any Suspense (Village does), so the heaps are there before anything samples the snow
+ * (the pins' physics ground). Heaps never stack (the taller wins), so a resize that moves the wall is harmless.
+ */
+export function FootBank({ center, reach = 0 }: Props) {
+  const snow = useSnow();
+  const narrow = useNarrow();
+  const [cx, , cz] = center;
+  useMemo(() => {
+    const f = atmosphere.footBank;
+    const arc = backdrop.arc * DEG;
+    const r = wallRadius(narrow, reach) - 0.05 - f.inset;
+    const steps = Math.max(2, Math.round((r * arc) / f.spacing));
+    // Uneven on purpose (size, spacing and distance vary, the same on every load), so seen from high up it reads
+    // as drifted snow, not a ring of matching lumps.
+    const rnd = (i: number, k: number) => {
+      const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    for (let i = 0; i <= steps; i++) {
+      const a = Math.PI - arc / 2 + (arc * (i + (rnd(i, 1) - 0.5) * f.jitter)) / steps;
+      const k = 1 - f.vary / 2 + f.vary * rnd(i, 2);
+      const d = r + (rnd(i, 3) - 0.5) * f.jitter * f.radiusZ;
+      snow.heapSnow(cx + d * Math.sin(a), cz + d * Math.cos(a), f.radiusX * k, f.radiusZ * (0.8 + 0.4 * rnd(i, 4)), f.height * k);
+    }
+  }, [snow, narrow, reach, cx, cz]);
+  return null;
+}
+
 export function Backdrop({ center, reach = 0 }: Props) {
   // On a phone held upright the backdrop comes a little closer and the hills grow (see `backdrop.portrait`).
-  const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
-  const narrow = Math.min(Math.max((1 - aspect) / (1 - backdrop.portrait.aspect), 0), 1);
+  const narrow = useNarrow();
   const b = useMemo(() => {
     const p = backdrop.portrait;
     const grow = 1 + (p.hillsGrow - 1) * narrow;
     const lift = backdrop.hillsHeight * (grow - 1);
     return {
       ...backdrop,
-      radius: backdrop.radius + (p.radius - backdrop.radius) * narrow + reach,
+      radius: wallRadius(narrow, reach),
       hillsHeight: backdrop.hillsHeight * grow,
       tintFrom: backdrop.tintFrom + lift,
       sky: backdrop.sky.map((s) => ({ ...s, y: s.y + lift })),
@@ -143,6 +183,7 @@ export function Backdrop({ center, reach = 0 }: Props) {
     }
     return sum / n;
   }, [snow, arc, cx, cz, b.radius]);
+
 
   // Paper sky wall (seen from inside the curve).
   const below = 1; // reaches this far under the snow so no gap ever shows at its foot
