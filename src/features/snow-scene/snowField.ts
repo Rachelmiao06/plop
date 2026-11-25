@@ -44,6 +44,15 @@ export type SnowApi = {
   packedAt: (x: number, z: number) => number;
 };
 
+/** Options for a fresh snowfall. */
+export type FreshSnowfallOptions = {
+  /** Seconds from the first heavy flakes to smooth snow. Default in content.ts (about 3). */
+  duration?: number;
+};
+
+/** A local refill: a circle on the snow. */
+export type FreshRegion = { x: number; z: number; radius: number };
+
 /** Snow pushed away by one press or crater: where, how much, how fast. */
 export type Kick = {
   x: number;
@@ -167,6 +176,15 @@ export class SnowTile {
    */
   readonly pressed: Float32Array;
   dirty: DirtyRect | null = null;
+  /**
+   * Fresh snowfall on this tile: when its refill starts (field clock,
+   * seconds; null = not refilling), how far it got (0 to 1), and the circle
+   * it is limited to (null = the whole tile).
+   */
+  freshStart: number | null = null;
+  freshDone = 0;
+  freshLength = 1;
+  freshRegion: FreshRegion | null = null;
 
   constructor(tx: number, tz: number) {
     const g = content.ground;
@@ -250,7 +268,15 @@ export class SnowField implements SnowApi {
   readonly occupancySize: number;
 
   private fresh: SnowTile[] = [];
+  private freed: SnowTile[] = [];
   private kicks: Kick[] = [];
+
+  // Fresh snowfall. The field keeps its own clock (advanced by the drawing
+  // code every frame), so refills are timed the same at any frame rate.
+  private clock = 0;
+  private heavyUntil = -1;
+  private heavy = 0;
+  private freshCursor = 0;
 
   constructor() {
     const g = content.ground;
@@ -586,6 +612,257 @@ export class SnowField implements SnowApi {
     const t = this.fresh;
     this.fresh = [];
     return t;
+  }
+
+  /**
+   * Fresh snowfall over all the snow: the snow falls harder, then every dent
+   * settles back to untouched snow over a few seconds, and the tiles are
+   * freed. Safe to call again while one is running (it carries on, and also
+   * takes in anything pressed since).
+   */
+  freshSnowfall = (options?: FreshSnowfallOptions): void => {
+    const timing = this.startHeavy(options);
+    for (const tile of this.tiles.values()) {
+      // Already refilling the whole tile: leave it on its own schedule.
+      if (tile.freshStart !== null && tile.freshRegion === null) continue;
+      tile.freshStart = timing.start;
+      tile.freshDone = 0;
+      tile.freshLength = timing.settle;
+      tile.freshRegion = null;
+    }
+  };
+
+  /**
+   * Fresh snowfall on one round patch only (centre x, z and radius in scene
+   * units), fading out towards its edge. Tiles left completely smooth are freed.
+   */
+  freshSnowfallAt = (
+    x: number,
+    z: number,
+    radius: number,
+    options?: FreshSnowfallOptions,
+  ): void => {
+    if (!(radius > 0)) return;
+    const timing = this.startHeavy(options);
+    const size = content.ground.tileSize;
+    for (const tile of this.tiles.values()) {
+      // A tile already refilling completely needs nothing more.
+      if (tile.freshStart !== null && tile.freshRegion === null) continue;
+      const nx = Math.min(Math.max(x, tile.originX), tile.originX + size);
+      const nz = Math.min(Math.max(z, tile.originZ), tile.originZ + size);
+      if (Math.hypot(nx - x, nz - z) >= radius) continue;
+      tile.freshStart = timing.start;
+      tile.freshDone = 0;
+      tile.freshLength = timing.settle;
+      tile.freshRegion = { x, z, radius };
+    }
+  };
+
+  /** How heavy the falling snow is right now: 0 normal, 1 a full fresh snowfall. */
+  heaviness(): number {
+    return this.heavy;
+  }
+
+  private startHeavy(options?: FreshSnowfallOptions): { start: number; settle: number } {
+    const f = content.freshSnow;
+    const duration = Math.max(options?.duration ?? f.duration, 0.3);
+    // Keep the same share of the time for the snow to thicken first.
+    const delay = Math.min(f.settleDelay, duration * 0.3);
+    // If heavy snow is already falling, the ground can start straight away.
+    const start = this.clock + (this.heavy > 0.5 ? 0 : delay);
+    const settle = duration - delay;
+    this.heavyUntil = Math.max(this.heavyUntil, start + settle);
+    return { start, settle };
+  }
+
+  /**
+   * Advance fresh snowfall by this many seconds: heavier or lighter flakes,
+   * and the refilling tiles a step nearer smooth. Called once per frame by
+   * the drawing code.
+   */
+  stepFresh(seconds: number): void {
+    const f = content.freshSnow;
+    const dt = Math.min(Math.max(seconds, 0), 0.1);
+    this.clock += dt;
+    const target = this.clock < this.heavyUntil ? 1 : 0;
+    const rate = target > this.heavy ? 1 / f.heavyRise : 1 / f.heavyFall;
+    this.heavy =
+      target > this.heavy
+        ? Math.min(this.heavy + rate * dt, 1)
+        : Math.max(this.heavy - rate * dt, 0);
+
+    const active: SnowTile[] = [];
+    for (const tile of this.tiles.values()) {
+      if (tile.freshStart !== null) active.push(tile);
+    }
+    if (active.length === 0) return;
+
+    // Within the per-frame budget, take tiles in turn starting where the last
+    // frame stopped. A skipped tile catches up next frame: its shape depends
+    // only on how far its refill has got, not on how many steps it took.
+    let budget = f.pointsPerFrame;
+    const startAt = this.freshCursor % active.length;
+    for (let n = 0; n < active.length; n++) {
+      const tile = active[(startAt + n) % active.length];
+      const cost = tile.cols * tile.rows;
+      if (n > 0 && cost > budget) {
+        this.freshCursor = startAt + n;
+        return;
+      }
+      budget -= cost;
+      this.refillTile(tile);
+    }
+    this.freshCursor = 0;
+  }
+
+  /** Tiles freed since the last call (for drawing). */
+  takeFreedTiles(): SnowTile[] {
+    if (this.freed.length === 0) return this.freed;
+    const t = this.freed;
+    this.freed = [];
+    return t;
+  }
+
+  /** How many pressed tiles exist right now (each costs memory and drawing). */
+  tileCount(): number {
+    return this.tiles.size;
+  }
+
+  private refillTile(tile: SnowTile): void {
+    const f = content.freshSnow;
+    const p = content.press;
+    const floorDepth = content.ground.depth;
+    const start = tile.freshStart ?? this.clock;
+    const linear = clamp01((this.clock - start) / Math.max(tile.freshLength, 0.01));
+    if (linear <= 0) return;
+    // Eased, so the snow starts settling gently and arrives softly.
+    const done = linear * linear * (3 - 2 * linear);
+    const before = tile.freshDone;
+    if (done <= before) return;
+    tile.freshDone = done;
+
+    const { cols, rows, height, base, pressed } = tile;
+    const region = tile.freshRegion;
+    const finished = done >= 1;
+
+    if (finished && region === null) {
+      // All the way: exactly untouched snow, then let the tile go.
+      height.set(base);
+      pressed.fill(0);
+      this.freeTile(tile);
+      return;
+    }
+
+    const edge = Math.max(f.localEdge, 1e-3);
+    let i0 = 0;
+    let i1 = cols - 1;
+    let j0 = 0;
+    let j1 = rows - 1;
+    if (region) {
+      i0 = Math.max(Math.floor((region.x - region.radius - tile.originX) / tile.cell), 0);
+      i1 = Math.min(Math.ceil((region.x + region.radius - tile.originX) / tile.cell), cols - 1);
+      j0 = Math.max(Math.floor((region.z - region.radius - tile.originZ) / tile.cell), 0);
+      j1 = Math.min(Math.ceil((region.z + region.radius - tile.originZ) / tile.cell), rows - 1);
+    }
+
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const k = j * cols + i;
+        let weight = 1;
+        if (region) {
+          const d = Math.hypot(tile.xAt(i) - region.x, tile.zAt(j) - region.z) / region.radius;
+          if (d >= 1) continue;
+          const t = clamp01((1 - d) / edge);
+          weight = t * t * (3 - 2 * t);
+        }
+        const qBefore = before * weight;
+        const qNow = done * weight;
+        if (qNow >= 1) {
+          height[k] = base[k];
+          pressed[k] = 0;
+          continue;
+        }
+        const keep = (1 - qNow) / (1 - qBefore);
+        const dev = height[k] - base[k];
+        let below = 0;
+        if (dev > 0) {
+          // Rims and ploughed snow sink back.
+          height[k] = base[k] + dev * keep ** f.rimFade;
+        } else if (dev < 0) {
+          // Pits: everything shallower, and nothing deeper than the rising
+          // floor of new snow, so the bottom fills first.
+          const cap = f.fillFromDepth * (1 - qNow) ** f.fillCurve;
+          below = Math.min(-dev * keep, cap);
+          height[k] = base[k] - below;
+        }
+        if (pressed[k] > 0) {
+          // New snow on top is fresh: the pressed tint follows the depth that
+          // is left and fades out with the refill.
+          const tint = Math.min((below / p.fullTintDepth) ** 0.7, 1);
+          const hard = clamp01(1 - (height[k] - (base[k] - floorDepth)) / p.hardGroundBlend);
+          pressed[k] = Math.min(pressed[k] * keep, tint + hard);
+        }
+      }
+    }
+
+    // Settling snow rounds off sharp walls and rims: relax the dents (not the
+    // untouched shape) a little towards their neighbours. Tile borders are
+    // left alone so neighbouring tiles always agree there.
+    const amount = Math.min((done - before) * f.soften, 0.5);
+    if (amount > 0) {
+      for (let j = Math.max(j0, 1); j <= Math.min(j1, rows - 2); j++) {
+        for (let i = Math.max(i0, 1); i <= Math.min(i1, cols - 2); i++) {
+          const k = j * cols + i;
+          const dev = height[k] - base[k];
+          const around =
+            (height[k - 1] - base[k - 1] +
+              height[k + 1] - base[k + 1] +
+              height[k - cols] - base[k - cols] +
+              height[k + cols] - base[k + cols]) /
+            4;
+          if (dev === 0 && around === 0) continue;
+          let share = amount;
+          if (region) {
+            const d = Math.hypot(tile.xAt(i) - region.x, tile.zAt(j) - region.z) / region.radius;
+            share *= clamp01((1 - d) / edge);
+          }
+          height[k] = base[k] + dev + (around - dev) * share;
+        }
+      }
+    }
+    tile.markDirty(i0, i1, j0, j1);
+
+    if (finished) {
+      // A local refill is done: free the tile if nothing pressed is left on it.
+      tile.freshStart = null;
+      tile.freshRegion = null;
+      tile.freshDone = 0;
+      if (this.isSmooth(tile)) {
+        height.set(base);
+        pressed.fill(0);
+        this.freeTile(tile);
+      }
+    }
+  }
+
+  private isSmooth(tile: SnowTile): boolean {
+    const { height, base, pressed } = tile;
+    for (let k = 0; k < height.length; k++) {
+      if (Math.abs(height[k] - base[k]) > 1e-4 || pressed[k] > 1e-3) return false;
+    }
+    return true;
+  }
+
+  private freeTile(tile: SnowTile): void {
+    const key = this.key(tile.tx, tile.tz);
+    if (this.tiles.get(key) !== tile) return;
+    this.tiles.delete(key);
+    const half = this.occupancySize / 2;
+    this.occupancy[(tile.tz + half) * this.occupancySize + (tile.tx + half)] = 0;
+    // A tile made and freed before it was ever drawn needs no drawing work.
+    const unseen = this.fresh.indexOf(tile);
+    if (unseen >= 0) this.fresh.splice(unseen, 1);
+    else this.freed.push(tile);
   }
 
   /** Surface slope at a tile's grid point, written as an upward-pointing normal. */

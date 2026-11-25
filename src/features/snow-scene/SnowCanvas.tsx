@@ -1,9 +1,10 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { NeutralToneMapping } from "three";
 import { content } from "./content";
+import { setCurrentSnow } from "./freshSnow";
 import { cameraHome } from "./layout";
 import { CameraRig } from "./CameraRig";
 import { Backdrop, Lights, Sharpness, Snowfall } from "./SceneLook";
@@ -16,6 +17,11 @@ import { TempDragPress, TempFps, TempGuides } from "./TempDragPress";
 // The 3D canvas. Loaded in the browser only (see SnowScene.tsx).
 export default function SnowCanvas({ children }: { children?: ReactNode }) {
   const [field] = useState(() => new SnowField());
+  // So fresh snowfall can be asked for from outside the 3D scene.
+  useEffect(() => {
+    setCurrentSnow(field);
+    return () => setCurrentSnow(null);
+  }, [field]);
 
   return (
     <Canvas
