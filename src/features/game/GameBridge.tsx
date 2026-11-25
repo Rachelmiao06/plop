@@ -61,6 +61,8 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
       pins.subscribe((e) => {
         const d = due.current;
         if (e.type === "knocked") game.knocked(e.down);
+        // The bonus show (the roll back from the wall) knocked more: their "+1"s and the extra points.
+        if (e.type === "recount" && game.recount(e.result)) d.gain = d.now + GAME.timing.secondGainAfter;
         if (e.type === "result") {
           // The last throw of a round: once "N down!" has been seen, the next round's set comes instead of a reset.
           const st = game.getState();

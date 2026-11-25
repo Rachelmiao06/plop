@@ -246,8 +246,8 @@ export function Game() {
         <PinsStage pins={pins} />
         <RuleMarker game={game} pins={pins} />
         <GameBridge game={game} pins={pins} link={link} />
-        {/* Together: no filmed chase; the throwing view frames both throws and the set. */}
-        {!together && <CameraDirector pins={pins} link={link} />}
+        {/* Together: a gentle shared follow of both balls instead of a chase of one (CameraDirector decides). */}
+        <CameraDirector pins={pins} link={link} />
       </SnowScene>
       <PaperFinish />
       <GameHint game={game} names={names} />

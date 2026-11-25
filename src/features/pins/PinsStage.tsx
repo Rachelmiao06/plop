@@ -39,7 +39,7 @@ import {
 import { playNearMiss, playStarHit, playThump } from "@/lib/audio";
 import { haptic } from "@/lib/haptics";
 
-import type { BowlEvent, Bowling } from "@/features/bowling";
+import { FEEL, type BowlEvent, type Bowling } from "@/features/bowling";
 import { propSettings, propSrc, propWidth } from "@/features/scenery";
 import { standee3d } from "@/features/scenery/content";
 import { toonMaterial } from "@/features/scenery/three/materials";
@@ -47,6 +47,7 @@ import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
 
 import { currentBowlings, tapBowling } from "./ballTap";
 import { MOUND, PINS, SPECIALS } from "./content";
+import { IMPACT } from "./impact";
 import { nextFormationId, type Pins, type PinsPhase } from "./controller";
 import { playFwump, unlockFwumpOnFirstTouch } from "./fwump";
 import { buildPins, formationById, moundsOf, pinPropIds, sampleGround, type PinSpec } from "./layout";
@@ -80,6 +81,12 @@ type PinRuntime = {
   hidden: boolean;
   /** The ball has touched this card in this throw (the extra impact shove is given once). */
   struck?: boolean;
+  /** When the ball first touched it (real milliseconds), for the development fall-time log. */
+  struckAt?: number;
+  /** And on the pins' own clock, for the first moments of the blow (`IMPACT.card.firstSpin`). */
+  struckClock?: number;
+  /** Its tilt (degrees) when the ball touched it, for the development fall-time log (a card already falling is quick). */
+  struckTilt?: number;
   /** The flop squash spring (drawing only): amount and its speed. */
   squash: { q: number; v: number };
   /** How far the drawing of a fallen card is propped up off the snow (radians, drawing only). */
@@ -99,6 +106,10 @@ function motionShare(): number {
 }
 
 export function PinsStage({ pins }: { pins: Pins }) {
+  // Handy from the browser console while tuning (development only): window.__pinsEvents.subscribe(e => …)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __pinsEvents?: Pins }).__pinsEvents = pins;
+  }, [pins]);
   const debug = useSyncExternalStore(
     pins.subscribeState,
     () => pins.getState().debug,
@@ -166,12 +177,25 @@ function segmentDistance(x: number, z: number, ax: number, az: number, bx: numbe
   return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
 }
 
+/** The card's mass, with the spin inertia of a box its size times `IMPACT.card.inertia`. */
+function cardMass(mass: number, [hx, hy, hz]: [number, number, number]) {
+  const k = (IMPACT.card.inertia * mass) / 3;
+  return {
+    mass,
+    centerOfMass: { x: 0, y: 0, z: 0 },
+    principalAngularInertia: { x: k * (hy * hy + hz * hz), y: k * (hx * hx + hz * hz), z: k * (hx * hx + hy * hy) },
+    angularInertiaLocalFrame: { x: 0, y: 0, z: 0, w: 1 },
+  };
+}
+
 /** A new throw: nothing is down or landed yet. */
 function clearCounts(list: PinRuntime[]) {
   for (const rt of list) {
     rt.down = false;
     rt.landed = false;
     rt.struck = false;
+    rt.struckAt = undefined;
+    rt.struckClock = undefined;
     rt.sparkled = false;
     rt.by = undefined;
   }
@@ -221,6 +245,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   );
   useEffect(() => () => heapMaterial.dispose(), [heapMaterial]);
   const ballBodies = useRef<(RapierRigidBody | null)[]>([]);
+  /** When the last landing thud played (real milliseconds), so a chain of landings stays soft. */
+  const lastThud = useRef(-Infinity);
   const ballColliders = useRef<(RapierCollider | null)[]>([]);
   const flow = useRef({
     phase: "ready" as PinsPhase,
@@ -254,6 +280,20 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     groundChecked: false,
     /** The ball has met a card in this throw (the hit-stop plays once per throw). */
     hitThisThrow: false,
+    /**
+     * When a ball of this throw first met a card, or first rolled past them all (null: not yet). The count comes at
+     * the latest `IMPACT.count.within` after it, even while a ball is still rolling on to the wall.
+     */
+    reachedAt: null as number | null,
+    /** Balls of this throw that have rolled past every card at least once (on to the back wall, maybe back again). */
+    wentPast: new Set<number>(),
+    /**
+     * After the count: the balls still on their bonus show (to the wall and back), the throwers of the count and each
+     * friend's state at the count (kept, so a late card never takes the friend's bonus away).
+     */
+    showBalls: new Set<number>(),
+    countedThrowers: [] as string[],
+    friendDowns: [] as boolean[],
     /** Who threw in this throw (thrower ids), and the latest one (owner of a card nobody touched). */
     throwers: new Set<string>(),
     lastThrower: "",
@@ -334,6 +374,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     f.settledFor = 0;
     f.pendingThrow = false;
     f.hitThisThrow = false;
+    f.reachedAt = null;
+    f.wentPast.clear();
     f.friendGap = Infinity;
     clearCounts(runtime.current);
     pins.emit({ type: "knocked", down: 0, total: counted });
@@ -412,11 +454,15 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     if (f.throwers.size > 1) {
       result.byThrower = countByThrower(formation, downs, runtime.current.map((rt) => rt.by), [...f.throwers], f.lastThrower);
     }
+    f.countedThrowers = [...f.throwers];
     f.throwers.clear();
     const { down, fullClear } = result;
     // The ball came close to the bunny and it is still standing: a tiny surprised mew.
     if (result.friend === "safe" && f.friendGap < SPECIALS.friend.nearMiss) playNearMiss();
     f.fullClear = fullClear;
+    // The ball rolls on (to the wall and back): a bonus show. Cards it knocks now add to the count (`recount`).
+    f.showBalls = new Set(f.throwBalls);
+    f.friendDowns = specs.map((sp, i) => sp.kind === "friend" && !!runtime.current[i]?.down);
     f.throwBalls.clear();
     pins.emit({ type: "result", result });
     // The pop-up's beat you feel: a celebration on a full clear, a small double tap otherwise.
@@ -481,26 +527,52 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           const game = hit?.game;
           const rt = runtime.current[i];
           const body = e.target.rigidBody;
-          if (!ball || !game || f.phase !== "throw" || !rt || !body || rt.anim) return;
+          if (!ball || !game || (f.phase !== "throw" && f.phase !== "result") || !rt || !body || rt.anim) return;
           // The first ball to touch a card makes it that thrower's card ("together" mode counts per player).
           if (!rt.by) rt.by = ball.thrower;
           // A bit more energy than the plain push: a shove, a lift and a tumble, once per card.
           if (!rt.struck) {
             rt.struck = true;
+            rt.struckAt = performance.now();
+            rt.struckClock = f.clock;
+            rt.struckTilt = tiltOf(body.rotation());
+            // Tuning aid (development only): cards first met by a ball rolling back from the wall.
+            if (process.env.NODE_ENV !== "production" && ball.bounces > 0) {
+              const w = window as unknown as { __backKnocks?: number };
+              w.__backKnocks = (w.__backKnocks ?? 0) + 1;
+            }
             const im = PINS.impact;
-            const d = ball.plan.direction;
+            const ic = IMPACT.card;
+            const d = ball.direction;
             const m = body.mass();
             const v = ball.speed;
-            body.applyImpulse({ x: d.x * im.push * m * v, y: im.lift * m, z: d.z * im.push * m * v }, true);
+            // Heavy, not paper: a big shove along the ball's way, a little lift, and much less instant tumble, so the
+            // card takes the blow first and then tips over with weight (its inertia is raised too, see the colliders).
+            const push = im.push * ic.shove;
+            body.applyImpulse({ x: d.x * push * m * v, y: im.lift * ic.lift * m, z: d.z * push * m * v }, true);
+            // The blow: a squash, and the card's base digs a short groove in the snow along the shove.
+            rt.squash.v += ic.squash * 30 * Math.min(1, v / 8);
+            const foot = body.translation();
+            const g = ic.groove;
+            for (let k = 1; k <= 3; k++) {
+              snow.pressGroove(foot.x + d.x * g.length * (k / 3), foot.z + d.z * g.length * (k / 3), s.card[0] * g.share, {
+                velocityX: d.x * v * 0.3,
+                velocityZ: d.z * v * 0.3,
+              });
+            }
+            // And the card smashes snow off the ball: it shrinks, and a small one may crumble apart.
+            const fi = game.feel.impact.perCard;
+            const volume = (4 / 3) * Math.PI * ball.radius ** 3;
+            game.chip(ball.id, (fi.share + fi.volume / Math.max(volume, 1e-6)) * ic.chip[s.weight], { x: foot.x, z: foot.z });
             // Plus a tip backward about the card's own width (away from the throwing line), so it lands face-up.
             const r = body.rotation();
             const across = new Vector3(1, 0, 0).applyQuaternion(new Quaternion(r.x, r.y, r.z, r.w));
             const back = -im.faceUp * m * v;
             body.applyTorqueImpulse(
               {
-                x: d.z * im.tumble * m * v + across.x * back,
+                x: d.z * im.tumble * ic.tumble * m * v + across.x * back,
                 y: (Math.random() * 2 - 1) * im.twist * m * v,
-                z: -d.x * im.tumble * m * v + across.z * back,
+                z: -d.x * im.tumble * ic.tumble * m * v + across.z * back,
               },
               true,
             );
@@ -508,11 +580,22 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           // The ball meets the first card of the throw: a hit-stop, a thump and a bump you feel.
           if (!f.hitThisThrow) {
             f.hitThisThrow = true;
+            if (f.reachedAt === null) f.reachedAt = f.clock;
             const h = PINS.hitStop;
+            const hs = IMPACT.hitStop;
             const size = ball.plan.size;
-            game.hitStop(h.seconds + h.bigExtra * size, h.slowest + (h.bigSlowest - h.slowest) * size);
-            playThump(h.thump + h.thumpPerSize * size);
-            haptic("hit", ball.plan.size);
+            // Bigger and faster = a longer, deeper hold.
+            const fast = clamp01(ball.speed / hs.speedFull);
+            game.hitStop(
+              h.seconds + h.bigExtra * size + hs.speedExtra * fast,
+              Math.max(0.03, h.slowest + (h.bigSlowest - h.slowest) * size - hs.speedSlower * fast),
+            );
+            // A deep, soft double "cr-ump", and a bump you feel.
+            const c = IMPACT.crump;
+            const thump = h.thump + h.thumpPerSize * size;
+            playThump(thump);
+            window.setTimeout(() => playThump(thump * c.echoShare), c.echo * 1000);
+            haptic("hit", clamp01(c.haptic * (0.4 + 0.6 * size) * (0.5 + 0.5 * fast)));
           }
           return;
         }
@@ -532,12 +615,19 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           const along = ((k + 0.5) / l.dents) * length;
           snow.pressGroove(t.x + up.x * along, t.z + up.z * along, radius);
         }
-        if (l.puff > 0) snow.punchCrater(t.x + up.x * length, t.z + up.z * length, l.puff);
+        if (l.puff > 0) snow.punchCrater(t.x + up.x * length, t.z + up.z * length, l.puff * IMPACT.landing.puff);
         const v = b.linvel();
         const w = b.angvel();
         const speed = Math.hypot(v.x, v.y, v.z) + Math.hypot(w.x, w.y, w.z) * length * 0.5;
         const strength = clamp01((speed - l.softSpeed) / (l.hardSpeed - l.softSpeed));
         playFwump(strength, clamp01((s.height * s.width - 0.15) / 0.8));
+        // Landing with weight: a soft thud under the flop (one at a time, so a chain stays soft).
+        const ld = IMPACT.landing;
+        const now = performance.now();
+        if (strength >= ld.thudFrom && now - lastThud.current > ld.gap * 1000) {
+          lastThud.current = now;
+          playThump(ld.thud * strength);
+        }
         haptic("flop", strength);
         // A little squash on landing, harder for a harder flop.
         rt.squash.v += PINS.flop.squash * (0.5 + 0.5 * strength) * 30;
@@ -569,7 +659,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         : ball.rolling
           ? 1
           : clamp01((game.feel.roll.restTime - ball.restAge) / PINS.ball.fadeTime);
-      const r = ball.plan.radius * fade;
+      const r = ball.radius * fade;
       collider.setRadius(Math.max(0.005, r * PINS.ball.radiusShare));
       // Only a rolling ball, or one still part of the throw being counted, pushes cards; a bursting one never.
       const pushes = !bursting && (ball.rolling || (f.phase === "throw" && f.throwBalls.has(ball.id)));
@@ -595,8 +685,11 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   });
 
   /**
-   * The balls of this throw that are through the pins burst into snow (so they never park over the fallen
-   * cards): past every card, or slow among them. True once none of them can touch a card any more.
+   * The balls of this throw roll on through the pins to the back wall and may roll back through them (Rachel: it
+   * should go all the way to the back), so a ball no longer poofs as soon as it is through. It bursts into snow
+   * when it slows down among the cards, or anywhere once it has been past them all (so it never parks over the
+   * fallen cards seen from the low camera), and the count bursts any still rolling (`finishThrow`).
+   * True once none of them can touch a card any more (burst or stopped).
    */
   const cardEnd = useMemo(() => new Vector3(), []);
   const scratchQ = useMemo(() => new Quaternion(), []);
@@ -605,13 +698,16 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const B = PINS.burst;
     let clear = true;
     for (const { ball, game } of allBalls()) {
-      if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
-      const r = ball.plan.radius;
-      const d = ball.plan.direction;
+      if ((!f.throwBalls.has(ball.id) && !f.showBalls.has(ball.id)) || ball.bursting !== null) continue;
+      const r = ball.radius;
       const bx = ball.position.x;
       const bz = ball.position.z;
       let past = true;
       let near = false;
+      // A standing friend (the bunny, the sleepy cat) is never knocked by the roll back from the wall: its +2 is
+      // earned on the way out. A returning ball that would reach one poofs just short of it (a poofing ball pushes nothing).
+      let shyOfFriend = false;
+      const lead = r + B.amongMargin + ball.speed * FEEL.wall.spareFriendsAhead;
       specs.forEach((s, i) => {
         const b = bodies.current[i];
         if (!b || runtime.current[i]?.hidden) return;
@@ -621,12 +717,26 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         cardEnd.set(0, s.height, 0).applyQuaternion(scratchQ.set(q.x, q.y, q.z, q.w));
         const hx = t.x + cardEnd.x;
         const hz = t.z + cardEnd.z;
-        // Past its foot: a fallen card's head may still lie ahead, and the ball bursts on it.
-        if ((bx - t.x) * d.x + (bz - t.z) * d.z < r + B.pastMargin) past = false;
+        // Past it down the lane (toward the back wall): beyond its foot and wherever its head lies.
+        if (bz > Math.min(t.z, hz) - r - B.pastMargin) past = false;
         if (segmentDistance(bx, bz, t.x, t.z, hx, hz) < r + s.card[0] + B.amongMargin) near = true;
+        if (s.kind === "friend" && !runtime.current[i]?.down && Math.hypot(bx - t.x, bz - t.z) < lead + s.card[0]) {
+          shyOfFriend = true;
+        }
       });
-      if (past || (near && ball.speed < B.slowSpeed)) game.burst(ball.id);
-      else if (ball.rolling) clear = false;
+      if (past && !f.wentPast.has(ball.id)) {
+        f.wentPast.add(ball.id);
+        if (f.reachedAt === null) f.reachedAt = f.clock;
+      }
+      // Slow among the cards on its way out: poof now. Back from the wall it may roll on through them (knocking
+      // more over) until it is nearly still (or has stopped), then poof. (A card it shoved all the way to the wall
+      // does not count: once it has bounced it is on its way back.)
+      const back = f.wentPast.has(ball.id) || ball.bounces > 0;
+      const settled = !ball.rolling || ball.speed < FEEL.wall.poofBelow;
+      if ((!back && near && ball.speed < B.slowSpeed) || (back && settled) || (ball.bounces > 0 && shyOfFriend)) game.burst(ball.id);
+      // The first pass is over once it is through the crowd: what it does after (the wall, the roll back) is a bonus
+      // show that never holds up the count.
+      else if (ball.rolling && !back) clear = false;
     }
     return clear;
   };
@@ -638,6 +748,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const d = PINS.down;
     let moving = false;
     let newlyDown = false;
+    let lateDown = false;
     specs.forEach((_, i) => {
       const b = bodies.current[i];
       const rt = runtime.current[i];
@@ -659,13 +770,21 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       if (capped) b.setLinvel({ x, y, z }, true);
       const w = b.angvel();
       const spin = Math.hypot(w.x, w.y, w.z);
-      if (spin > c.angular) b.setAngvel({ x: (w.x * c.angular) / spin, y: (w.y * c.angular) / spin, z: (w.z * c.angular) / spin }, true);
+      // Just struck: it takes the blow before it tips (a heavy card cannot flick over at once, IMPACT.card.firstSpin).
+      const fs = IMPACT.card.firstSpin;
+      const cap = rt.struckClock !== undefined && f.clock - rt.struckClock < fs.for ? Math.min(c.angular, fs.max) : c.angular;
+      if (spin > cap) b.setAngvel({ x: (w.x * cap) / spin, y: (w.y * cap) / spin, z: (w.z * cap) / spin }, true);
       const isDown = tiltOf(b.rotation()) > d.tiltDegrees;
       // A card lying in the snow can no longer change the count, so it may still slide a little.
       const loose = isDown && rt.landed ? d.lyingShare : 1;
       if (!b.isSleeping() && (Math.hypot(x, y, z) > d.settleSpeed * loose || spin > d.settleSpin * loose)) moving = true;
 
       if (f.phase === "throw" && isDown && !rt.down) {
+        // Tuning aid (development only): how long from the ball's touch to "down" (too light under about 0.15 s).
+        if (process.env.NODE_ENV !== "production" && rt.struckAt !== undefined) {
+          const w = window as unknown as { __falls?: string[] };
+          (w.__falls ??= []).push(`${Math.round(performance.now() - rt.struckAt)}ms@${Math.round(rt.struckTilt ?? 0)}°`);
+        }
         newlyDown = true;
         // A star friend tipping over: a little rising sparkle (once a throw, even if it rocks).
         if (specs[i]?.kind === "star" && !rt.sparkled) {
@@ -674,13 +793,33 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         }
       }
       if (f.phase === "throw") rt.down = isDown;
+      // The bonus show after the count: a card knocked by the roll back (or a late chain) adds to the count. A friend
+      // keeps its state from the count, so its bonus is never taken away.
+      else if (f.phase === "result" && isDown && !rt.down && specs[i]?.kind !== "friend") {
+        rt.down = true;
+        lateDown = true;
+      }
     });
+    if (f.phase === "result") {
+      ballsThrough(); // the show balls still poof when they settle (or come near a standing friend)
+      if (lateDown) {
+        const downs = runtime.current.map((r, i) => (specs[i]?.kind === "friend" ? !!f.friendDowns[i] : r.down));
+        const result = countThrow(formation, downs);
+        if (f.countedThrowers.length > 1) {
+          result.byThrower = countByThrower(formation, downs, runtime.current.map((r) => r.by), f.countedThrowers, f.lastThrower);
+        }
+        if (result.fullClear && !f.fullClear) haptic("fullClear");
+        f.fullClear = f.fullClear || result.fullClear;
+        pins.emit({ type: "recount", result });
+      }
+      return;
+    }
     if (f.phase !== "throw") return;
     for (const { ball } of allBalls()) {
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
       specs.forEach((s, i) => {
         if (s.kind !== "friend" || runtime.current[i]?.down) return;
-        const gap = Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) - ball.plan.radius - s.card[0];
+        const gap = Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) - ball.radius - s.card[0];
         if (gap < f.friendGap) f.friendGap = gap;
       });
     }
@@ -691,11 +830,14 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const clear = ballsThrough();
     if (clear && f.clearAt === null) f.clearAt = f.clock;
     if (!clear) f.clearAt = null;
+    const k = IMPACT.count;
     const timedOut =
-      (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) || f.clock - f.launchedAt > d.timeoutAfterLaunch;
-    // The count is certain once no ball can reach a card and the cards are still: "N down!" pops now.
-    // "Together" mode waits until every player has thrown before it counts (`pins.setCountGate`).
-    if (((clear && f.settledFor >= d.settleHold) || timedOut) && pins.countGate()) finishThrow();
+      (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) ||
+      (f.reachedAt !== null && f.clock - f.reachedAt > k.within) ||
+      f.clock - f.launchedAt > d.timeoutAfterLaunch;
+    // The count comes once the first pass through the crowd has settled ("N down!" pops now, even while the ball
+    // still rolls on to the wall). "Together" mode waits until every player has thrown (`pins.setCountGate`).
+    if (((clear && f.settledFor >= k.settle) || timedOut) && pins.countGate()) finishThrow();
   });
 
   /* ---------------- a fallen card rests propped up on a little heap ---------------- */
@@ -821,10 +963,20 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const ballOnSpots =
         !changing &&
         allBalls().some(({ ball }) =>
-          specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.plan.radius + s.card[0]),
+          specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.radius + s.card[0]),
         );
       const waited = f.clock - f.since;
-      if (waited > wait && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) afterResult();
+      // The next turn comes promptly: once "N down!" has shown a moment and the ball's bonus show is over (it has
+      // poofed or stopped), or at the latest `IMPACT.count.nextTurnCap` after the count (a ball still rolling poofs).
+      const k = IMPACT.count;
+      const showing = allBalls().some(({ ball }) => f.showBalls.has(ball.id) && ball.rolling && ball.bursting === null);
+      const least = f.fullClear || changing ? wait : Math.min(wait, k.showAtLeast);
+      const due = (waited > least && !showing) || waited > Math.max(least, k.nextTurnCap);
+      if (due && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) {
+        for (const { ball, game } of allBalls()) if (f.showBalls.has(ball.id) && ball.rolling) game.burst(ball.id);
+        f.showBalls.clear();
+        afterResult();
+      }
     }
 
     // Animations (kinematic) and the boing on landing upright (drawing only).
@@ -930,14 +1082,14 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       ms.grow += ((leaving || arriving ? 0 : 1) - ms.grow) * (1 - Math.exp(-6 * dt));
       for (const { ball } of allBalls()) {
         if (!f.throwBalls.has(ball.id) && !ball.rolling) continue;
-        if (Math.hypot(ball.position.x - m.x, ball.position.z - m.z) > m.radius + ball.plan.radius * 0.5) continue;
+        if (Math.hypot(ball.position.x - m.x, ball.position.z - m.z) > m.radius + ball.radius * 0.5) continue;
         ms.flat += (MOUND.flatten - ms.flat) * (1 - Math.exp(-MOUND.flattenRate * dt));
         if (!ms.puffed && ball.rolling) {
           ms.puffed = true;
           snow.kickUpSnow(m.x, m.z, m.radius * 0.8, {
             amount: MOUND.puff * motion,
-            velocityX: ball.plan.direction.x * 2,
-            velocityZ: ball.plan.direction.z * 2,
+            velocityX: ball.direction.x * 2,
+            velocityZ: ball.direction.z * 2,
           });
         }
       }
@@ -1072,7 +1224,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
             <CuboidCollider
               args={s.card}
               position={[0, lift + s.card[1], 0]}
-              mass={w.mass * (1 - w.footShare)}
+              // Heavier to turn than a plain board (IMPACT.card.inertia), so it tips over with weight.
+              massProperties={cardMass(w.mass * (1 - w.footShare), s.card)}
               friction={w.friction}
               restitution={w.restitution}
             />
