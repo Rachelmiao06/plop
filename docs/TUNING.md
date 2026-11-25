@@ -90,7 +90,7 @@ Full power was the best power (or tied) in 4 of 5 sets, and straight at the midd
 | 1 off to the side | 6.9 | 8.0 | 7.7 | 0.35 / 0.55 |
 | 2 two little groups | 2.1 | 5.0 | 4.9 | 0.15 to 0.7 |
 | 3 slanted row and a mound | 0.0 (stuck in the mound) | 4.8 | 3.3 | 0.7 |
-| 4 bunny's picnic | 3.4 | 6.8 | 5.3 | 0.55 |
+| 4 bunny's picnic | 3.3 | 6.8 | 4.8 | 0.35 |
 | 5 snowy village | 4.7 | 6.6 | 5.3 | 0.55 |
 
 Straight at the middle at full power is beaten in all 5 rounds (by 1.1 to 4.8 points), and full power is never the
