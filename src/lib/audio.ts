@@ -784,8 +784,8 @@ type ExtraName = keyof typeof EXTRA_FILES;
 
 /** Ambience feel numbers. Tune here. Gains are relative to AMBIENCE.volume. */
 export const AMBIENCE = {
-  /** Ambience volume, 0..1. Quiet, so it sits under the music. */
-  volume: 0.5,
+  /** Ambience volume, 0..1. At 0.65 the bed sits about 14 dB under the music. */
+  volume: 0.65,
   /** Seconds to fade in when it starts and out when it stops. */
   fadeIn: 4,
   fadeOut: 1.2,
@@ -844,8 +844,8 @@ export const AMBIENCE = {
 
 /** One-shot cue feel numbers. Tune here. */
 export const CUES = {
-  /** Overall cue volume, 0..1, on top of the effects bus. */
-  volume: 0.55,
+  /** Overall cue volume, 0..1, on top of the effects bus. At 0.42 every cue peaks well under the thump. */
+  volume: 0.42,
   /** Everything above this pitch (Hz) is softened, so no cue is ever sharp. */
   softness: 5200,
   /** How much of each cue goes into the soft echo. */
