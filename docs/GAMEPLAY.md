@@ -1,6 +1,6 @@
 # Plop! · how the game plays
 
-Draft 2, 2026-11-24: **paper bowling on snow.** Chosen by Rachel over draft 1 (snowmen running around a field)
+Draft 2, 2026-11-24, kept up to date with the game (last 2026-11-25): **paper bowling on snow.** Chosen by Rachel over draft 1 (snowmen running around a field)
 because hand-drawn feel matters most and everything here can be her paper cut-outs.
 This file is the source of truth for interaction. `docs/SPEC.md` keeps the why and the look.
 
@@ -99,15 +99,16 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - One person can play alone ("just me" on the start card): one throw a round, against their own best.
 - "Together" mode: both throwers on the line at once, aiming at the same crowd (section 7d).
 
-## 7b. Score display (first version; Rachel will design it properly later)
+## 7b. Score display (Rachel may still redesign it, #31)
 
 - Floats at the top of the screen over the snow, never covering the lane.
-- A translucent frosted-glass panel (soft blur of the snow behind it, like Apple's translucent bars), with a
-  hand-drawn feel on top: a wobbly brown pencil outline, handwritten numbers, the effect doodles for flourishes.
+- A paper panel first, glass second: mostly paper white with a faint ink grain and a short hatched coloured-pencil
+  wash (pale snow-shadow by day, butter by evening), over a light blur of the snow, with a wobbly brown pencil outline
+  that varies in weight, handwritten numbers and Rachel's doodles (thrower faces, star, surprise lines).
 - A hand-drawn progress bar for the current set: how many cut-outs are down out of how many, filling with a
   coloured-pencil stroke as they fall, and a little burst when it fills (full clear).
 - Each player's total next to their snowman's little face (bucket snowman, red-hat snowman); the player whose turn
-  it is glows softly. Points fly up into the bar from the fallen cut-outs.
+  it is has a soft butter crayon ring. Points fly up into the bar from the fallen cut-outs.
 - Can be hidden with one tap. Colours and fonts from the tokens.
 - In a match: a small "round 2 / 3" tag hangs under the panel, and each throw's points (the player's round
   total) fly up from the lane into their score, which counts up when they land. Playing alone, the right side
@@ -141,16 +142,26 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 | Mouse / trackpad | drag the thrower left / right along the line | press on the thrower and drag back; sideways sets the angle | let go |
 | Touch | same as mouse | same as mouse | let go |
 | Keyboard (whoever's turn it is) | A / D or ← / → | hold Space: pull grows while held, A / D or ← / → turn the aim | release Space |
+| Keyboard, together mode | Bucket A / D, Red Hat ← / → | Bucket holds W (or Space), Red Hat holds ↑ (or Enter) | release |
 
 - Dragging on empty snow turns and tilts the camera (never behind the cut-outs). "Reset view" returns to the
   throwing view.
 
 ## 9. Calm extras
 
-- **Fresh snowfall:** a button (and a key) that lets snow fall for a few seconds and smooths every groove and
-  crater away.
-- Background music with an on / off button; snow crunch while pulling and rolling, soft paper flops as cards fall,
-  a cheer on a full clear.
+- **Fresh snowfall:** a round button (and the N key) that lets snow fall for a few seconds and smooths every groove
+  and crater away.
+- **Evening over a match:** round 1 is afternoon; the light glides toward sunset and a cosy evening round by round
+  (only between rounds, never while a ball rolls), and the end card sits in the evening. The street lamp lays a warm
+  pool on the snow, windows, the café lantern and the fairy lights glow, the paper sky sets with Rachel's sun and moon.
+  "Play again" fades back to afternoon. A little real smoke rises from the chimneys and clear ice hangs from the eaves
+  all day.
+- **Sound:** background music and a quiet village ambience (wind, the café fire, chimes, a chickadee), each with its
+  own volume; snow crunch while pulling and rolling, soft paper flops as cards fall, and named cues: a round chime,
+  a star sparkle, the bunny's mew on a near miss, bells on a full clear, a win or tie tune, paper taps on the cards.
+  Everything starts after the first tap; the corner buttons switch music and sound effects.
+- **Share:** a paper-plane button at the bottom left (system share sheet, "link copied!", or inside WeChat a note
+  pointing to the ··· menu).
 
 ## 10. Feel targets (numbers live in `content.ts`)
 

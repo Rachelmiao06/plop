@@ -31,8 +31,8 @@ export type GainEvent = {
 
 export type ScoreHudProps = {
   players: readonly [HudPlayer, HudPlayer];
-  /** Whose turn it is: 0 = left, 1 = right. */
-  active: 0 | 1;
+  /** Whose turn it is: 0 = left, 1 = right, "both" when both throw at once (together mode). */
+  active: 0 | 1 | "both";
   /** Cut-outs down in the current set, and how many the set has. */
   down: number;
   total: number;
@@ -163,7 +163,8 @@ export function ScoreHud({
   };
 
   const t = content.text;
-  const color = content.looks[players[active].look].fill;
+  // Together, the bar fills for both, so it takes a neutral warm pencil instead of one player's colour.
+  const color = active === "both" ? "var(--butter)" : content.looks[players[active].look].fill;
   const evening = useEvening();
   const vars = {
     "--hud-blur": content.glass.blur,
@@ -192,10 +193,12 @@ export function ScoreHud({
             <p className="sr-only" aria-live="polite">
               {round ? `${t.roundLabel(round.now, round.of)}. ` : ""}
               {t.set(down, total)}. {t.total(players[0].name, players[0].total)}.{" "}
-              {solo ? "" : `${t.total(players[1].name, players[1].total)}. ${t.turn(players[active].name)}.`}
+              {solo
+                ? ""
+                : `${t.total(players[1].name, players[1].total)}.${active === "both" ? "" : ` ${t.turn(players[active].name)}.`}`}
             </p>
             <div className="flex items-center gap-3">
-              <PlayerScore player={players[0]} active={active === 0} side="left" gain={gain} />
+              <PlayerScore player={players[0]} active={active !== 1} side="left" gain={gain} />
               <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <div aria-hidden className="font-heading text-lg leading-none text-ink">
                   <span className="font-bold text-ink-deep tabular-nums">{down}</span>
@@ -205,7 +208,7 @@ export function ScoreHud({
                 </div>
                 <ProgressBar down={down} total={total} color={color} knock={knock} />
               </div>
-              {solo ? <SoloBest best={soloBest ?? null} /> : <PlayerScore player={players[1]} active={active === 1} side="right" gain={gain} />}
+              {solo ? <SoloBest best={soloBest ?? null} /> : <PlayerScore player={players[1]} active={active !== 0} side="right" gain={gain} />}
             </div>
             {round && (
               <div className="pointer-events-none absolute inset-x-0 -bottom-4 flex justify-center">

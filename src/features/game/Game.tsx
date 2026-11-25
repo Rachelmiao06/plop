@@ -202,7 +202,7 @@ export function Game() {
           { ...players[0], total: state.scores[0] },
           { ...players[1], total: state.scores[1] },
         ]}
-        active={state.active}
+        active={together ? "both" : state.active}
         down={set.down}
         total={set.total}
         knock={state.knock}
