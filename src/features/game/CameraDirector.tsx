@@ -82,8 +82,10 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     [pins],
   );
 
-  useFrame((_, delta) => {
+  useFrame(({ size }, delta) => {
     const c = GAME.camera;
+    // On a tall phone screen the width is the narrow side: keep `frame` units across it, not up it.
+    const narrow = Math.min(1, size.width / Math.max(size.height, 1));
     const st = s.current;
     const less = prefersLessMotion();
     const bowling = link.get();
@@ -161,7 +163,7 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
         const lx = bx + ball.plan.direction.x * ch.ahead;
         const lz = bz + ball.plan.direction.z * ch.ahead;
         const ly = snow.heightAt(lx, lz) + ch.lookHeight;
-        const fov = lensFor(ch.frame, Math.hypot(lx - cx, ly - cy, lz - cz), ch.fovMin, ch.fovMax);
+        const fov = lensFor(ch.frame / narrow, Math.hypot(lx - cx, ly - cy, lz - cz), ch.fovMin, ch.fovMax);
         // Ease from the launch push into the steady chase.
         const u = smooth(clamp01(st.since / c.launch.time));
         const lens = smooth(clamp01(st.since / c.launch.lensTime));
@@ -193,7 +195,7 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     setSnowCameraShot({
       position: [px, py, pz],
       lookAt: [pin.x, ly, lz],
-      fov: lensFor(im.frame, Math.hypot(pin.x - px, ly - py, lz - pz), c.chase.fovMin, c.chase.fovMax),
+      fov: lensFor(im.frame / narrow, Math.hypot(pin.x - px, ly - py, lz - pz), c.chase.fovMin, c.chase.fovMax),
       rate: im.rate,
       lookRate: im.lookRate,
       interruptible: true,

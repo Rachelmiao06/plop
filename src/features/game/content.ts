@@ -53,7 +53,8 @@ export const GAME = {
      * Chase: the camera pushes in only part of the way and never passes the snowman (Rachel): it settles
      * `behind` units behind the throwing line, `height` up (high enough to see over the snowman), following
      * `followX` of the ball's sideways way, and looks at the ball (`ahead` units in front of it, at
-     * `lookHeight`). It follows by zooming: the lens keeps about `frame` units of snow in view around the ball,
+     * `lookHeight`). It follows by zooming: the lens keeps about `frame` units of snow in view around the ball (across the
+     * narrow side of the screen, so a phone held upright is not zoomed in tighter),
      * between `fovMin` and `fovMax` degrees, so the ball stays big all the way down the lane.
      */
     chase: {
@@ -64,7 +65,7 @@ export const GAME = {
       lookHeight: 0.3,
       frame: 3.4,
       fovMin: 11,
-      fovMax: 30,
+      fovMax: 40,
       rate: 5,
       lookRate: 8,
     },
