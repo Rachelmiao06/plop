@@ -534,8 +534,8 @@ export const village = {
   view: {
     lookAtShare: 0.45,
     lookAtHeight: 0.4,
-    pathAt: 0.1,
-    distance: 1.9,
+    pathAt: 0.15,
+    distance: 2.05,
     turn: 0,
   },
 

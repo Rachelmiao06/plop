@@ -48,7 +48,7 @@ export const GAME = {
      * chase lens over `lensTime` seconds, while the camera dives in (widening it while still far away
      * would look like a zoom out).
      */
-    launch: { push: 9, fovKick: 45, minShare: 0.35, time: 0.45, rate: 7, lensTime: 0.55 },
+    launch: { push: 9, fovKick: 45, minShare: 0.35, time: 0.5, rate: 8.5, lensTime: 0.55 },
     /**
      * Chase: `back` units behind the ball (plus `backPerRadius` of its radius) and `height` above the snow
      * (plus `heightPerRadius`), looking `ahead` units down the lane at `lookHeight`. A wider lens than the

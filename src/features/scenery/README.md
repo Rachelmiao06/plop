@@ -140,9 +140,11 @@ Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.
 </SnowScene>
 ```
 
-- **Fitted to the game's lane:** `villageLayout(lane)` stretches the drawn layout's depth so its line (z = 0) and pin zone
-  (z = -6.5) land on the lane's line and pin spot, and moves the left and right props out by the thrower's extra slide
-  room. The layout itself is not changed. Only `frame` props are placed; the friend cut-outs stay for the pins feature
+- **Fitted to the game's lane:** `villageLayout(lane)` fits the drawn layout's depth with `fitZ`: between the line
+  (z = 0) and the pin zone (z = -6.5) it stretches so they land on the lane's line and pin spot; behind the pins it keeps
+  `village.backDepthScale` (0.862, the scale it had on the first 5.6-unit lane), so on the long 8.6-unit lane the far
+  cluster, the calm snow and the paper sky stay as close behind the pins as before and only the sides of the lane grow.
+  It also moves the left and right props out by the thrower's extra slide room. The layout itself is not changed. Only `frame` props are placed; the friend cut-outs stay for the pins feature
   (so the blue flag, a pin, is not in the village and has no sway here).
 - **Standing in the snow:** each base sits on the lowest snow along its bottom edge (`heightAt`), sunk by its manifest
   `sink`, in a soft heap of **real snow** made with the snow scene's `heapSnow` (`village.mound`). The heap is part of
@@ -168,12 +170,14 @@ The throwing view looks about 13° below the horizon at the top of the screen, s
 the snow used to run on, empty, behind the village. Now the scene is built in layers like a paper theatre:
 
 - **Sky and far hills (`three/Backdrop.tsx`, `backdrop` in `content.ts`):** a curved paper wall stands just behind the
-  village (radius 9.6 round the throwing view's look-at point, 220° of arc), `--paper` blending toward `--snow-shadow`
+  village (radius 9.6 round the throwing view's look-at point on a 5.6-unit lane, `backdrop.laneLength`; on a longer
+  lane `Village` passes a `reach` so the wall moves back with the pins; 220° of arc), `--paper` blending toward `--snow-shadow`
   higher up. Rachel's far panorama (`far-hills`, cut along the hill line) is repeated along its foot, a little hazed
   toward `--snow-shadow`. The sun, three clouds and a flying bird (`sky-*`) are flat doodles on the wall; the clouds drift a
   few degrees, the bird crosses every minute. The wall is opaque (drawn before the snow, so the snow behind it costs
-  nothing) and thins out in a fine paper-grain pattern between 38° and 50° of camera height, so the high view is all
-  snow as before. On a phone held upright it comes a little closer and the hills grow (`backdrop.portrait`) so they
+  nothing) and thins out in a fine paper-grain pattern between 38° and 50° of how steeply the camera looks down, so the
+  high view is all snow as before (measured from the view direction, not the camera's height over the look-at point,
+  so the game's camera riding low behind the ball keeps the sky). On a phone held upright it comes a little closer and the hills grow (`backdrop.portrait`) so they
   show under the score panel. No change to the snow scene was needed.
 - **Village:** the red cottage, cocoa stall and fairy lights join the home cluster and the far end; the snowman family
   watches from the lane's edge by the igloo; chimney smoke (Rachel's puff doodle) rises from both cottages

@@ -307,7 +307,7 @@ export const FORMATIONS: Formation[] = [
       { prop: "girl-earmuffs", dx: -1.05, dz: 0.15, turn: 10 },
       { prop: "snowman-newspaper", dx: -0.05, dz: 0.05, turn: -4 },
       { prop: "boy-snowman", dx: 1.15, dz: -0.15, flip: true, turn: -10 },
-      { prop: "pine-walking", dx: -0.65, dz: -0.95, turn: 6 },
+      { prop: "pine-walking", dx: -0.58, dz: -1.3, turn: 6 },
       { prop: "girl-earmuffs", dx: 0.55, dz: -1.2, flip: true, scale: 0.95, turn: -8 },
     ],
   },

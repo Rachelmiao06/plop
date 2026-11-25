@@ -8,8 +8,8 @@ seconds, units per second.
 |---|---|---|---|
 | 1 | **How big the ball gets.** Smallest and biggest snowball (radius). Bigger = slower, heavier, wider path. | `0.125` → `0.6` | `src/features/bowling/content.ts` · `FEEL.ball.radiusSmall`, `radiusBig` |
 | 2 | **How far you pull for a full ball.** Longer = more drag on a phone, more time to aim. Keyboard: Space fills at `pullSpeed` (about 1.5 s to full). | `1.6` units · `1.1` /s | `FEEL.pull.max` · `FEEL.keyboard.pullSpeed` |
-| 3 | **How fast the ball rolls.** Top speed of a small and of a full ball. A light ball reaches the pins in about 0.65–0.8 s, a full one in about 1.2–1.3 s. | `10.5` and `5.6` | `FEEL.roll.speedSmall`, `speedBig` |
-| 4 | **How far it rolls.** Slowing in fresh snow (a full ball slows only `dragBigShare` as much), and how much less on an old groove. | `4` · `0.45` · `0.8` share | `FEEL.roll.dragFresh` · `dragBigShare` · `dragOnPacked` |
+| 3 | **How fast the ball rolls.** Top speed of a small and of a full ball. On the long lane (pins 8.6 from the line) a light ball reaches the pins in about 0.9 s, a full one in about 1.35 s. | `13.5` and `8.4` | `FEEL.roll.speedSmall`, `speedBig` |
+| 4 | **How far it rolls.** Slowing in fresh snow (a full ball slows only `dragBigShare` as much), and how much less on an old groove. Both stop about 3 units past the pin spot. | `6.5` · `0.45` · `0.8` share | `FEEL.roll.dragFresh` · `dragBigShare` · `dragOnPacked` |
 | 5 | **How heavy the ball feels in the hand.** How quickly it follows the finger, small vs big. Lower = heavier, laggier. | `22` and `9` | `FEEL.follow.rateLight`, `rateHeavy` |
 | 6 | **How easily cut-outs fall.** Tilt past which a card counts as down, and each weight class's mass and foot depth (deeper foot = harder to tip). | `50`° · light `0.3` / `0.07` … heavy `0.9` / `0.16` | `src/features/pins/content.ts` · `PINS.down.tiltDegrees`, `PINS.weight` |
 | 7 | **How lively a topple is.** Gravity (stronger = paper flops, weaker = floats) and the speed cap that stops cards flying off. | `-13` · `4.5` | `PINS.world.gravity` · `PINS.caps.linear` |
@@ -17,27 +17,46 @@ seconds, units per second.
 | 9 | **The springy reset.** How long each card takes to hop back up, and how high. | `0.6` s · `0.28` | `PINS.reset.time`, `hop` |
 | 10 | **Points and the hand-over.** Points per card, the full-clear bonus, and how soon after the pins stand the next player may throw. | `1` · `3` · `0.25` s | `src/features/game/content.ts` · `GAME.score.perCard`, `fullClearBonus`, `GAME.timing.passTurnAfterReady` |
 
-## The five numbers that make the throw satisfying
+## The numbers that make the throw satisfying
 
-Rachel (2026-11-25): the throw felt slow with no punch. These five change that the most:
+Rachel (2026-11-25): the throw felt slow with no punch, the camera static, the lane too short. These change that the most:
 
-1. **Top speed**, `FEEL.roll.speedSmall` / `speedBig` (`10.5` / `5.6`). Light ball to the pins in about 0.7 s, full ball about 1.25 s (was about 1.3 s and 2 s).
-2. **The snap**, `FEEL.roll.snap` (`from 0.35`, `time 0.09` s). The ball leaves at 35% of its speed and reaches full speed in 0.09 s, like a band let go. Lower `from` = more visible kick.
-3. **Early carry**, `FEEL.roll.early` (`dragShare 0.2` over `0.6` s). The snow barely slows it at first, then the full drag eases in (`dragFresh 4`), so it carries its speed to the pins and still stops behind them.
-4. **Tension while pulling**, `FEEL.follow.tensionAtFull` (`0.55`). Near full pull the ball follows only 55% as fast, so the last stretch resists like a loading band. With `FEEL.thrower.leanAtFull` (`0.42`) and `LOOK.ballSquash.pullLoad` (`0.08`) it looks loaded too.
-5. **Impact energy**, `PINS.impact` (`push 0.11`, `lift 0.18`, `tumble 0.05`) and `PINS.hitStop` (`0.14` s at `12%` speed). The extra shove and tumble when the ball touches a card, and the short catch at the first hit.
+1. **Lane length**, `FEEL.lane.pinSpot` (`z -7.2`, 8.6 from the line `lineZ 1.4`; was 5.6). Everything follows it: pin formations, the village between the line and the pins (behind the pins it keeps its old spacing, `village.backDepthScale` in scenery), the calm snow and the paper sky behind the pins.
+2. **Top speed**, `FEEL.roll.speedSmall` / `speedBig` (`13.5` / `8.4`). Light ball to the pins in about 0.9 s, full ball about 1.35 s. The aim line still uses the same `stepRoll`, so it stays exact.
+3. **The snap**, `FEEL.roll.snap` (`from 0.35`, `time 0.09` s). The ball leaves at 35% of its speed and reaches full speed in 0.09 s, like a band let go. Lower `from` = more visible kick.
+4. **Carry, then stop**, `FEEL.roll.early` (`dragShare 0.2` over `0.7` s) then `dragFresh 6.5`. The snow barely slows it at first, so it carries its speed down the long lane, then the drag stops it behind the pins.
+5. **Tension while pulling**, `FEEL.follow.tensionAtFull` (`0.55`), with `FEEL.thrower.leanAtFull` (`0.42`), `LOOK.ballSquash.pullLoad` (`0.08`) and the camera easing in (`GAME.camera.aim`, below).
+6. **The release**, `LOOK.thrower.lunge` (`distance 0.62`, `stiffness 95`: bigger and snappier, `minShare 0.45` on a weak pull), `LOOK.ballSquash.launchSquash` / `launch` (`0.2` squash against the snow, then `0.24` stretch), `LOOK.kick.release` (the puff behind the thrower) and the sound: a low push-off thump `FEEL.beats.pushThump` (`0.32`) and a second whoosh on a strong pull (`whooshDoubleFrom 0.45`).
+7. **The roll you see and hear**, `LOOK.kick.plume` (snow thrown up behind, grows with speed and size), `LOOK.kick.plough` (a big ball's bow wave ahead), `LOOK.clumps.perUnit` (`2.6`), `LOOK.ball.marks` / `markInk` (spin marks, `28` / `0.72`), and `FEEL.sound.crunchFullSpeed` (`11`: the crunch's pace follows the speed all the way down the lane).
+8. **Impact energy**, `PINS.impact` (`push 0.13`, `lift 0.24`, `tumble 0.062`), and `PINS.hitStop` (`0.14` s at `12%`, a full ball up to `+0.1` s at `7%`; thump `0.32 + 0.68 × size`).
 
-Also part of the throw's feel: the snowman rolls on its round bottom when it slides and lunges after the ball
-(`LOOK.thrower.roll`, `idleRoll`, `lunge`), wind curls and extra spray behind a fast ball (`LOOK.speed`), the
-whoosh follows the ball's speed (`FEEL.beats.whooshFullSpeed`), and the view eases a little after the ball and
-settles back after the hit (`GAME.cameraFollow` in `src/features/game/content.ts`).
+### The camera (`GAME.camera` in `src/features/game/content.ts`)
+
+One camera moves through five stages on critically damped springs, so it never jumps. A spring `rate` of about 2 is a
+calm glide, 6 follows with a little physical lag, 12 is tight. These change how the camera feels the most:
+
+| Stage | What you feel | Number(s) today |
+|---|---|---|
+| Aim | The view eases lower and closer behind the thrower as the pull loads | `aim.closer 0.16`, `lower 1.1`, `lookBack 1.4`, `rate 4` |
+| Launch | The push forward and the lens kick, times the pull's power; how fast it dives in | `launch.push 9`, `fovKick 45`, `rate 8.5` for `time 0.5` s, lens widens over `lensTime 0.55` s |
+| Chase | How far behind and above the ball (more for a big ball), how far ahead it looks, the lens, the lag | `chase.back 2.6 (+2.6 × radius)`, `height 1.05 (+1.6 × radius)`, `ahead 2.6`, `fov 30 (+0.9 per unit/s)`, `rate 5.5`, `lookRate 9` |
+| Impact | When it swings, the three-quarter angle and distance on the pins | `impact.triggerAhead 1.3`, `angle 40`, `distance 5`, `height 2.1`, `fov 30`, `rate 3.2` |
+| Return | The glide home once the pins pop back | `ret.rate 1.9` |
+
+Any drag, scroll, pinch or key during the chase or the impact hands the view back (`shots.takeoverRate` 3.5 in
+snow-scene `content.ts`); the next throw is filmed again. "Reduce motion" keeps only a gentle lean after the ball
+(`camera.reduced`). The throwing view itself is `village.view` in scenery `content.ts` (`pathAt 0.1`, `distance 1.9`,
+so the whole longer lane and the hills fit).
+
+Also part of the throw's feel: the snowman rolls on its round bottom when it slides (`LOOK.thrower.roll`, `idleRoll`),
+and wind curls and extra spray trail a fast ball (`LOOK.speed`, now `from 5` to `full 12` units per second).
 
 ## Also worth knowing
 
 - **Snow depth and how dark pressed snow gets:** `src/features/snow-scene/content.ts` (`ground.depth` 0.9, and the press colours).
 - **The score bar's spring:** `src/features/hud/content.ts` (`bar.stiffness`, `bar.damping`).
 - **A ball left in the snow melts away** `GAME.timing.meltBallAfterResult` (1.1 s) after the count, so the reset never waits for it.
-- **Camera:** the throwing view comes from `throwingView()` in `src/features/scenery/`; turning and zoom limits are in snow-scene `content.ts` (`cameraPath`, `orbit`).
+- **Camera:** the throwing view comes from `throwingView()` in `src/features/scenery/`; turning and zoom limits are in snow-scene `content.ts` (`cameraPath`, `orbit`); the throw's camera moves are `GAME.camera` (above).
 
 ## Feel in the hand: vibration, squash and bounce (#10)
 

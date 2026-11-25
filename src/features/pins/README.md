@@ -57,7 +57,10 @@ Formation ids and exports are fixed; the game imports them.
 - **Ball:** each rolling bowling ball is a kinematic sphere at the same spot and radius (`ball.radiusShare`), so it
   shoves cards and always keeps the simulation's path (a small ball ploughs through as a big one does; see "Later").
   Once the throw is counted a resting ball stops pushing, and the reset waits for it to leave the spots
-  (`reset.waitForBallMax`).
+  (`reset.waitForBallMax`). The first time the ball touches each card it gets an extra shove, lift and tumble
+  (`impact`); the first card of a throw also starts the hit-stop with a thump, both bigger for a bigger ball
+  (`hitStop.bigExtra`, `bigSlowest`, `thumpPerSize`). Pins stand around `lane.pinSpot`, 8.6 from the line on the
+  long lane.
 - **Toppling:** real Rapier contacts give the chain reactions. After every physics step speeds are capped
   (`caps`) so nothing jitters or flies off. When a tipped card touches the snow it presses soft dents along its
   length, a tiny puff crater at its head, and plays a synthesized paper "fwump" (`fwump.ts`).
