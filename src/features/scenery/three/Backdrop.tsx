@@ -31,9 +31,9 @@ const fade = { uOpacity: { value: 1 } };
 
 /** A flat drawing shown exactly as drawn (no light, no tone mapping), fading with the backdrop. */
 /**
- * `tile` lays the drawing along the band `repeat` times: every other copy mirrored so each joint meets its own
- * mirror image (the panorama's two ends do not match), using only `crop` (share of the width that has art,
- * without the empty margin), shifted by `phase` copies.
+ * `tile` lays the drawing along the band `repeat` times, side by side (Rachel's panorama is drawn to tile: its
+ * right end meets its left), using only `crop` (share of the width that has art, without the empty margin),
+ * shifted by `phase` copies.
  */
 type Tile = { repeat: number; crop: [number, number]; phase: number };
 
@@ -69,10 +69,10 @@ function artPlaneMaterial(map: Texture, paper: Color, haze: number, tile: Tile |
         // Seen from inside the curve, the drawing runs the other way round (so it is not mirrored).
         float u = ${mirror ? "1.0 - vUv.x" : "vUv.x"};
         ${tile ? `float t = u * uRepeat + uPhase;
-        float f = fract(t);
-        if (mod(floor(t), 2.0) >= 1.0) f = 1.0 - f;
-        u = mix(uCrop.x, uCrop.y, f);` : ""}
-        vec4 art = texture2D(uMap, vec2(u, vUv.y));
+        u = mix(uCrop.x, uCrop.y, fract(t));
+        // Pick the texture detail from the unbroken coordinate, so the jump back at each joint draws no line.
+        vec2 steady = vec2(t * (uCrop.y - uCrop.x), vUv.y);
+        vec4 art = textureGrad(uMap, vec2(u, vUv.y), dFdx(steady), dFdy(steady));` : `vec4 art = texture2D(uMap, vec2(u, vUv.y));`}
         if (art.a < 0.02) discard;
         gl_FragColor = vec4(mix(art.rgb, uPaper, uHaze), art.a * uOpacity);
         #include <colorspace_fragment>
@@ -198,7 +198,7 @@ export function Backdrop({ center, reach = 0 }: Props) {
   const crop = b.hillsCrop;
   const copyWidth = (px ? (b.hillsHeight * px.w) / px.h : b.hillsHeight * 14) * (crop[1] - crop[0]);
   const hillsRadius = b.radius - 0.05;
-  // A whole number of copies (never stretched much), mirrored at every joint, with a copy's middle straight back.
+  // A whole number of copies (never stretched much), side by side, with a copy's middle straight back.
   const repeats = Math.max(1, Math.round((hillsRadius * arc) / copyWidth));
   const phase = 0.5 - ((repeats * 0.5) % 1);
   const hills = useMemo(

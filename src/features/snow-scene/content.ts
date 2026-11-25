@@ -12,6 +12,14 @@ export const content = {
   tagline: "A cute snowy toy: pull back, roll a snowball, let go.",
 
   resetView: "Reset view",
+
+  // The round "Fresh snow" / "Reset view" buttons, in the score display's hand-drawn style (#49):
+  // size (px), the frosted-glass blur, and the pencil line (as in the HUD's content.pencil).
+  doodleButtons: {
+    size: 40,
+    blur: "14px",
+    pencil: { width: 1.7, wobble: 0.9, secondPass: 0.35, overshoot: 8 },
+  },
   lookHint: "Scroll or pinch to rise and dip. Swipe sideways or drag to turn.",
 
   // TEMPORARY: words for the press test hook. Remove with TempDragPress.
@@ -62,7 +70,7 @@ export const content = {
     // while medium drifts and then big mounds take over. Low views get
     // their depth from those.
     driftFadeStart: 6,
-    driftFadeEnd: 9.5,
+    driftFadeEnd: 15,
     midStart: 3.5,
     midFull: 7.5,
     midFadeStart: 12,
@@ -189,15 +197,15 @@ export const content = {
   // shadows (exported as `snowShadow`). Set here, nowhere else.
   shade: {
     color: tokens.snowShadow,
-    strength: 0.8,
+    strength: 0.65,
   },
 
   light: {
     // Sun height above the horizon and its compass direction, in degrees.
     // 0 = shining from the right, 90 = from behind the scene toward the viewer.
-    sunElevation: 24,
+    sunElevation: 42,
     sunAzimuth: 128,
-    sunStrength: 5,
+    sunStrength: 3.1,
     skyStrength: 1.7,
     exposure: 1.0,
     // Shadows: sharpness and softness.

@@ -58,6 +58,17 @@ export type SceneryProp = {
   spare?: boolean;
   /** Reads as moving: a candidate for a small looping motion later (part 2 or after). */
   motion?: "loop";
+  /*
+    Tags for the scene effects (lamp light, chimney smoke, ice), which attach to props by these.
+    Points on the drawing are shares of its width (from the left) and height (from the foot), like
+    `village.chimneys`; flip mirrors them with the drawing. Optional: a prop without a tag gets no effect.
+  */
+  /** Warm lights drawn on the prop (lamp glass, lantern, lit window, bulbs): one point each. */
+  emitsLight?: [number, number][];
+  /** Top of the chimney, where smoke starts. */
+  chimneyAt?: [number, number];
+  /** Eave lines icicles may hang from: [x0, y0, x1, y1] each. */
+  icicleEdge?: [number, number, number, number][];
 };
 
 export const props = {
@@ -69,8 +80,8 @@ export const props = {
 
   // Frame: village scenery along the lane and at the far end. Never knocked down.
   "tree-snowmen": { label: "Big tree with tiny snowmen", height: 2, group: "big", sink: 0.08, set: "doodle", role: "frame" },
-  "cottage-blue": { label: "Cottage with a blue roof", height: 1.6, group: "big", sink: 0.08, set: "doodle", role: "frame" },
-  "igloo-friends": { label: "Igloo with a snowman in the window", height: 1.2, group: "big", sink: 0.08, set: "doodle", role: "frame" },
+  "cottage-blue": { label: "Cottage with a blue roof", height: 1.6, group: "big", sink: 0.08, set: "doodle", role: "frame", chimneyAt: [0.76, 0.97] },
+  "igloo-friends": { label: "Igloo with a snowman in the window", height: 1.2, group: "big", sink: 0.08, set: "doodle", role: "frame", icicleEdge: [[0.2, 0.5, 0.46, 0.5], [0.53, 0.52, 0.74, 0.52]] },
   "pine-snow-tall": { label: "Tall snowy pine", height: 1.6, group: "tree", sink: 0.05, set: "doodle", role: "frame" },
   "pine-snow-short": { label: "Short snowy pine", height: 1.1, group: "tree", sink: 0.05, set: "doodle", role: "frame" },
   "mound-snow": { label: "Snow mound", height: 0.38, group: "small", sink: 0.06, set: "doodle", role: "frame" },
@@ -93,10 +104,26 @@ export const props = {
   "log-music": { label: "Hollow log with radio, snowman and penguin", height: 0.95, group: "mid", sink: 0.06, set: "doodle", role: "pin", pin: { footprint: [1.5, 0.45], weight: "heavy" } },
 
   // Village additions (doodle-6): the red cottage, cocoa stall and fairy lights join the clusters; the family watches.
-  "cottage-red": { label: "Red cottage with two little pines", height: 1.35, group: "big", sink: 0.08, set: "doodle", role: "frame" },
+  "cottage-red": { label: "Red cottage with two little pines", height: 1.35, group: "big", sink: 0.08, set: "doodle", role: "frame", chimneyAt: [0.7, 0.97], emitsLight: [[0.615, 0.355]] },
   "cocoa-stall": { label: "Cocoa stall", height: 1.15, group: "big", sink: 0.06, set: "doodle", role: "frame" },
-  "fairy-lights": { label: "Fairy lights on two posts", height: 0.8, group: "mid", sink: 0.06, set: "doodle", role: "frame" },
+  "fairy-lights": { label: "Fairy lights on two posts", height: 0.8, group: "mid", sink: 0.06, set: "doodle", role: "frame", emitsLight: [[0.172, 0.61], [0.332, 0.509], [0.502, 0.459], [0.677, 0.513], [0.836, 0.615]] },
   "snowman-family": { label: "Snowman family holding hands", height: 0.62, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
+
+  // The village street (doodle-8, -9, -10): a cocoa corner, homes, a post office, a landmark tree, quiet details.
+  "street-lamp": { label: "Doodle street lamp", height: 1.5, group: "mid", sink: 0.06, set: "doodle", role: "frame", emitsLight: [[0.5, 0.7]] },
+  "cafe-stump": { label: "Tree-stump café with a rabbit serving cocoa", height: 1.3, group: "big", sink: 0.07, set: "doodle", role: "frame", emitsLight: [[0.12, 0.48]] },
+  "cottage-snow": { label: "Snow cottage with a cat in the window", height: 1.4, group: "big", sink: 0.08, set: "doodle", role: "frame", chimneyAt: [0.26, 0.76], emitsLight: [[0.39, 0.42], [0.69, 0.34]], icicleEdge: [[0.14, 0.43, 0.5, 0.56], [0.5, 0.56, 0.82, 0.43]] },
+  "tree-christmas": { label: "Decorated Christmas tree", height: 1.7, group: "tree", sink: 0.06, set: "doodle", role: "frame" },
+  "penguins-postbox": { label: "Two penguins posting a letter", height: 0.85, group: "mid", sink: 0.05, set: "doodle", role: "frame" },
+  "mice-lantern": { label: "Two mice with a lantern under a pine", height: 1.0, group: "mid", sink: 0.05, set: "doodle", role: "frame", emitsLight: [[0.365, 0.16]] },
+  "bench-cat": { label: "Bench with a sleeping cat", height: 0.6, group: "mid", sink: 0.04, set: "doodle", role: "frame" },
+  "otter-cocoa": { label: "Otter with a cocoa mug", height: 0.5, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
+  // The mug and the mouse join the street as small bystanders; the sled waits in a phone corner. The red mailbox stays
+  // a spare (the penguins' postbox is the post office).
+  "mug-cocoa": { label: "Cocoa mug character in a blue scarf", height: 0.5, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
+  "mouse-letter": { label: "Mouse carrying a letter", height: 0.42, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
+  "mailbox-red": { label: "Red mailbox with a flag", height: 0.75, group: "mid", sink: 0.05, set: "doodle", spare: true },
+  "sled-red": { label: "Red sled with a green blanket", height: 0.34, group: "small", sink: 0.03, set: "doodle", role: "frame" },
 
   // Ground details and life (doodle-7).
   "pond-frozen": { label: "Frozen pond", height: 0.34, group: "small", sink: 0.04, set: "doodle", role: "frame" },
@@ -129,9 +156,9 @@ export const props = {
   flag: { label: "Flag", height: 1.8, group: "mid", sink: 0.08, set: "crayon", spare: true },
   bench: { label: "Bench", height: 0.9, group: "mid", sink: 0.04, set: "crayon", spare: true },
   "log-hollow": { label: "Hollow log", height: 0.9, group: "mid", sink: 0.06, set: "crayon", spare: true },
-  // The lamp and fence frame the near corners until the near-edge framing sheet arrives (#38).
-  "street-lamp": { label: "Street lamp", height: 1.5, group: "mid", sink: 0.07, set: "crayon", role: "frame" },
-  fence: { label: "Fence", height: 0.6, group: "mid", sink: 0.05, set: "crayon", role: "frame" },
+  // Retired from the frame: they clashed with the doodle set (the doodle street lamp replaces the crayon one).
+  "street-lamp-crayon": { label: "Street lamp (crayon)", height: 1.5, group: "mid", sink: 0.07, set: "crayon", spare: true },
+  fence: { label: "Fence", height: 0.6, group: "mid", sink: 0.05, set: "crayon", spare: true },
   mailbox: { label: "Mailbox", height: 1.1, group: "mid", sink: 0.05, set: "crayon", spare: true },
   radio: { label: "Radio", height: 0.45, group: "small", sink: 0.02, set: "crayon", spare: true },
   bucket: { label: "Bucket", height: 0.4, group: "small", sink: 0.03, set: "crayon", spare: true },
@@ -253,7 +280,7 @@ export const lane = {
 export const throwers: [PropId, PropId] = ["thrower-bucket", "thrower-redhat"];
 
 /** The area shown on the top-down map. */
-export const mapArea = { minX: -6.5, maxX: 6.5, minZ: -11.8, maxZ: 2.2 };
+export const mapArea = { minX: -7.8, maxX: 7.8, minZ: -12.2, maxZ: 2.8 };
 
 export type Placement = {
   prop: PropId;
@@ -267,63 +294,79 @@ export type Placement = {
   side: "left" | "right" | "far";
   /** Stands this high above the snow instead of in it (the red bird on the stump). Default 0. */
   lift?: number;
+  /**
+   * Only on this kind of screen. "portrait": a phone held upright (narrower than `village.portraitAspect`), which
+   * sees only the lane, so a few small cut-outs stand low in its bottom corners. Default: every screen.
+   */
+  view?: "portrait" | "landscape";
 };
 
 /*
-  Lane framing, cosy and airy, in three clusters with the lane clear down the middle, read as one little place
-  (#38). Behind the pins (z about -6.5 to -8) is a calm patch of open snow, at least 3 units deep and as wide as
-  the lane (`lane.calm`), so the little cut-outs read against white snow (Rachel: the tree and flag right behind
-  the pins made the background as crowded as the pins). Behind everything stands the paper sky with the far
-  hills (`backdrop`), so the snow ends in hills instead of fading out.
-  far    — the big tree is the anchor, back and to the right; the cocoa stall and the fairy lights back left,
-           under a tall pine, so the left cluster and the far end join into one little square; a bush and a
-           mound at the corners.
-  left   — "home": the blue cottage about level with the pins, the red cottage behind it to the left, a tall pine
-           between; nearer the thrower the frozen pond with the sliding penguin, a snowy stump with the red bird,
-           the rabbit by the bush.
-  right  — the igloo, the snowman family watching from the lane's edge, the skier, a snowball pile near the line.
-  near   — the lamp and a short pine at the left corner, the fence and a bush at the right, low and wide of the
-           thrower so they frame the bottom corners without covering the lane (desktop only; a phone held
-           upright is too narrow to see them).
+  A cosy little village street along both sides of the lane, in clusters with open snow between them, the lane
+  clear down the middle. Behind the pins (z about -6.5 to -8) is a calm patch of open snow, at least 3 units deep
+  and as wide as the lane (`lane.calm`), so the little cut-outs read against white snow (Rachel: the tree and flag
+  right behind the pins made the background as crowded as the pins). Behind everything stands the paper sky with
+  the far hills (`backdrop`). A little wider than before (Rachel: "a bit bigger and richer"), with quiet pines on
+  the outer edge so the side and high views show a village, not a clump.
+  far     — the village square: the decorated Christmas tree is the landmark back left of the calm snow, with the
+            cocoa corner beside it (the tree-stump café and the cocoa stall side by side, the fairy lights strung in
+            front) and the red cottage at the end of the row; the big tree with the snowmen anchors the back right.
+  left    — homes: the blue cottage and the snow cottage with the cat side by side a little in front of the pins,
+            far enough forward that their roofs stay below the back row (nothing hides the café). Nearer the thrower the frozen pond with the sliding penguin, the doodle street lamp
+            beside it, a snowy stump with the red bird, the rabbit by the bush, and the bench with the sleeping
+            cat as a quiet detail at the far edge.
+  right   — the igloo and the snowman family watching from the lane's edge, the otter with its cocoa watching too,
+            the skier, and the post office near the thrower (the penguins posting a letter); the mice with their
+            lantern and sled sit quietly at the outer edge past the igloo.
+  near    — short pines and bushes low and wide of the thrower, framing the bottom corners without covering the
+            lane (desktop only; a phone held upright is too narrow to see them).
   Big things far, small things near; pines mirrored and scaled so no two look copy-pasted.
 */
 export const layout: Placement[] = [
-  // far end: tree back right, cocoa corner back left, the middle left open
+  // far end: the village square back left, the big tree back right, the middle left open
+  // seen from the throwing view as one row along the back: tree, café, cocoa stall, then the red cottage
+  { prop: "tree-christmas", x: -3.0, z: -11.3, side: "far" },
+  { prop: "cafe-stump", x: -4.55, z: -10.45, side: "far" },
+  { prop: "cocoa-stall", x: -6.2, z: -10.95, side: "far" },
+  { prop: "fairy-lights", x: -3.3, z: -9.15, scale: 0.9, side: "far" },
   { prop: "tree-snowmen", x: 4.0, z: -10.6, side: "far" },
-  { prop: "pine-snow-tall", x: -4.6, z: -10.4, scale: 1.05, side: "far" },
-  { prop: "cocoa-stall", x: -3.55, z: -10.6, side: "far" },
-  { prop: "fairy-lights", x: -3.15, z: -9.2, scale: 0.95, side: "far" },
-  { prop: "pine-snow-short", x: 5.6, z: -9.4, flip: true, side: "far" },
-  { prop: "bush-snow", x: -2.6, z: -11.0, scale: 0.8, side: "far" },
+  { prop: "pine-snow-short", x: 5.7, z: -9.6, flip: true, side: "far" },
+  { prop: "pine-snow-tall", x: 6.6, z: -11.3, scale: 0.9, side: "far" },
   { prop: "mound-snow", x: 2.7, z: -9.0, scale: 0.85, side: "far" },
 
-  // left side: home
-  { prop: "cottage-blue", x: -3.75, z: -6.9, side: "left" },
-  { prop: "cottage-red", x: -4.95, z: -9.3, side: "left" },
-  { prop: "pine-snow-tall", x: -5.55, z: -7.4, scale: 0.8, flip: true, side: "left" },
-  { prop: "bush-snow", x: -2.75, z: -5.3, scale: 0.85, side: "left" },
-  { prop: "rabbit", x: -3.25, z: -5.05, flip: true, side: "left" },
+  // left side: homes
+  // the homes stand a little forward of the back row, so their roofs stay below it and nothing hides the café
+  { prop: "cottage-red", x: -7.2, z: -10.2, scale: 0.95, side: "left" },
+  { prop: "cottage-blue", x: -3.75, z: -5.6, side: "left" },
+  { prop: "cottage-snow", x: -5.55, z: -5.6, scale: 0.95, side: "left" },
+  { prop: "pine-snow-tall", x: -7.6, z: -7.4, scale: 0.85, flip: true, side: "left" },
+  { prop: "bush-snow", x: -2.65, z: -4.55, scale: 0.8, side: "left" },
+  { prop: "mug-cocoa", x: -2.45, z: -6.45, scale: 0.9, side: "left" },
+  { prop: "rabbit", x: -3.1, z: -4.35, flip: true, side: "left" },
+  // the pond corner, with the street lamp lighting the snow (its glow: `village.lampGlow`)
   { prop: "pond-frozen", x: -3.55, z: -3.7, scale: 1.15, side: "left" },
   { prop: "penguin-slide", x: -2.55, z: -3.5, side: "left" },
+  { prop: "street-lamp", x: -2.75, z: -2.45, side: "left" },
   { prop: "stump-snow", x: -4.75, z: -4.4, side: "left" },
   { prop: "bird-red", x: -4.72, z: -4.36, lift: 0.36, side: "left" },
+  { prop: "bench-cat", x: -5.7, z: -3.2, side: "left" },
+  { prop: "pine-snow-short", x: -7.3, z: -4.6, scale: 0.9, side: "left" },
   { prop: "pine-snow-short", x: -3.9, z: -2.2, scale: 0.85, side: "left" },
-  // The street lamp stands by the lane part way down, lighting the snow (its glow: `village.lampGlow`).
-  { prop: "street-lamp", x: -2.75, z: -2.45, side: "left" },
   { prop: "mound-snow", x: -3.3, z: -1.3, scale: 0.8, side: "left" },
 
-  // right side
+  // right side: watchers by the lane, the post office near the thrower, the mice at the outer edge
   { prop: "igloo-friends", x: 3.6, z: -5.6, side: "right" },
   { prop: "pine-snow-short", x: 3.9, z: -8.3, scale: 1.1, flip: true, side: "right" },
-  { prop: "mound-snow", x: 2.75, z: -4.3, scale: 0.75, flip: true, side: "right" },
   { prop: "snowman-family", x: 2.75, z: -6.75, flip: true, side: "right" },
-  { prop: "skier", x: 2.55, z: -2.9, side: "right" },
-  { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
-  { prop: "snowballs", x: 3.05, z: -0.9, side: "right" },
-  // Filling the right side between the skier and the igloo, which the longer lane opened up.
-  { prop: "pine-snow-tall", x: 4.45, z: -4.0, scale: 0.9, flip: true, side: "right" },
-  { prop: "bush-snow", x: 3.2, z: -3.55, scale: 0.75, side: "right" },
-  { prop: "stump-snow", x: 3.9, z: -1.55, side: "right" },
+  { prop: "mice-lantern", x: 5.85, z: -7.0, flip: true, side: "right" },
+  { prop: "otter-cocoa", x: 2.55, z: -4.35, side: "right" },
+  { prop: "pine-snow-tall", x: 4.85, z: -3.9, scale: 0.9, flip: true, side: "right" },
+  { prop: "skier", x: 2.6, z: -3.0, side: "right" },
+  { prop: "penguins-postbox", x: 3.6, z: -1.75, side: "right" },
+  { prop: "snowballs", x: 2.75, z: -0.6, side: "right" },
+  { prop: "mouse-letter", x: 4.4, z: -1.05, flip: true, side: "right" },
+  { prop: "pine-snow-tall", x: 7.4, z: -6.0, scale: 0.85, side: "right" },
+  { prop: "bush-snow", x: 6.4, z: -2.9, scale: 0.8, flip: true, side: "right" },
 
   // near corners, framing the bottom of the throwing view
   { prop: "bush-snow", x: -3.45, z: 0.35, scale: 0.7, side: "left" },
@@ -331,6 +374,13 @@ export const layout: Placement[] = [
   { prop: "bush-snow", x: -3.3, z: 2.15, scale: 0.7, side: "left" },
   { prop: "pine-snow-short", x: 3.85, z: 1.85, scale: 0.9, side: "right" },
   { prop: "bush-snow", x: 3.7, z: 0.7, scale: 0.85, flip: true, side: "right" },
+
+  // A phone held upright sees only the lane, so a few small friends stand low in its bottom corners, in front of
+  // the line and wide of the pull (all under the near height limit, so they never cover the thrower or the pins).
+  { prop: "mug-cocoa", x: -0.36, z: 1.7, scale: 0.85, view: "portrait", side: "left" },
+  { prop: "sled-red", x: -0.3, z: 2.15, scale: 0.9, view: "portrait", side: "left" },
+  { prop: "otter-cocoa", x: 0.5, z: 1.75, scale: 0.9, flip: true, view: "portrait", side: "right" },
+  { prop: "mouse-letter", x: 0.38, z: 2.2, view: "portrait", side: "right" },
 ];
 
 /**
@@ -446,7 +496,7 @@ export const standee3d = {
 
   /** Gentle sway in the wind. */
   sway: {
-    props: ["tree-snowmen", "pine-snow-tall", "pine-snow-short", "flag-blue"] as PropId[],
+    props: ["tree-snowmen", "pine-snow-tall", "pine-snow-short", "flag-blue", "tree-christmas"] as PropId[],
     /** Degrees either way. */
     angle: 1.4,
     /** Swings per second. */
@@ -521,6 +571,9 @@ export const village = {
     radiusShare: 1 / 3,
   },
 
+  /** Narrower than this (width / height) is a phone held upright: the game's own switch (`GAME.phoneView.maxAspect`). */
+  portraitAspect: 0.8,
+
   /** Side props move out by this much more than the thrower's extra slide room, to keep the roll lane open. */
   sideMargin: 0,
 
@@ -565,7 +618,7 @@ export const village = {
    * it breathes `breathe` of its strength `breatheSpeed` times a second.
    */
   lampGlow: {
-    head: [0.51, 0.6] as [number, number],
+    head: [0.5, 0.7] as [number, number],
     haloSize: 1.9,
     haloOpacity: 0.95,
     /** The halo stands this far behind the lamp (scene units), so the drawn lamp stays crisp in front of it. */
@@ -610,8 +663,8 @@ export const village = {
     /** How deep each print goes (scene units): faint, but enough to show its pale-blue tint. */
     depth: 0.05,
     walks: [
-      { kind: "boots", from: [-2.75, -8.6], to: [-2.65, -6.0] },
-      { kind: "hops", from: [-2.9, -5.2], to: [-3.4, -3.0] },
+      { kind: "boots", from: [-3.0, -8.7], to: [-3.0, -6.0] },
+      { kind: "hops", from: [-2.9, -4.5], to: [-3.4, -3.0] },
       { kind: "sled", from: [2.6, -7.4], to: [3.2, -3.4] },
     ] as { kind: "boots" | "hops" | "sled"; from: [number, number]; to: [number, number] }[],
   },
@@ -652,11 +705,11 @@ export const backdrop = {
   /** Far hills band: height on the wall (width follows the drawing), how far its foot sinks into the snow. */
   hillsHeight: 0.95,
   /**
-   * The share of `far-hills.webp`'s width that holds the drawing (its first and last 9 columns are empty), so no
-   * white gap shows where copies meet. The two ends do not match, so copies alternate mirrored and each joint meets
-   * its own mirror image. A version Rachel draws to tile would be best.
+   * The share of `far-hills.webp`'s width that holds the drawing (the cut leaves a clear margin at both ends), so
+   * no gap shows where copies meet. Rachel drew this panorama to tile, so copies sit side by side, never mirrored
+   * (`scripts/prep_far_hills.py` eased her right end by a few pixels so both lines meet exactly).
    */
-  hillsCrop: [10 / 2126, 2116 / 2126] as [number, number],
+  hillsCrop: [18.5 / 2188, 2169.5 / 2188] as [number, number],
   hillsSink: 0.12,
   /** The far hills fade this much toward `--snow-shadow` (distance haze), so they sit behind the village on the lit snow. */
   haze: 0.3,
