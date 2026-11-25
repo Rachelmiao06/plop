@@ -21,7 +21,7 @@
 import { useEffect, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { content } from "./content";
-import { snowPointers } from "./pointers";
+import { snowPointers, snowView } from "./pointers";
 import { useSnow, useSnowLayout, useSnowPoint } from "./snowContext";
 
 type Finger = {
@@ -248,16 +248,19 @@ export function TempFps() {
       __plopCamera?: typeof camera;
       __plopTrail?: () => typeof tempTrail;
       __plopSharpness?: (ratio: number) => void;
+      __plopView?: () => ReturnType<NonNullable<typeof snowView.state>> | undefined;
     };
     w.__plopBench = bench;
     w.__plopCamera = camera;
     w.__plopTrail = () => tempTrail;
     w.__plopSharpness = (ratio: number) => get().setDpr(ratio);
+    w.__plopView = () => snowView.state?.();
     return () => {
       delete w.__plopBench;
       delete w.__plopCamera;
       delete w.__plopTrail;
       delete w.__plopSharpness;
+      delete w.__plopView;
     };
   }, [show, get]);
 

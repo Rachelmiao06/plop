@@ -1,58 +1,46 @@
 "use client";
 
-import { useContext, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { Camera } from "three";
 import { content } from "./content";
 import { cameraDistance, getLayout } from "./layout";
-import { groundPoint, snowPointers, snowView } from "./pointers";
+import { snowPointers, snowView } from "./pointers";
 import { sharedUniforms } from "./sharedUniforms";
-import { SnowContext } from "./snowContext";
-import { baseHeightAt } from "./snowField";
 
-// The diorama camera. One finger (or the mouse) on empty snow turns the view
-// within limits; two fingers or the wheel zoom. It never goes behind or
-// under the scene, and "reset view" brings back the starting angle.
+// The diorama camera. Its whole state is two numbers: where it is on one
+// path (low and close, through the play view, up to high and far) and how
+// far it is turned left or right. Every kind of input moves those two.
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const RAD = Math.PI / 180;
 
 class CameraView {
-  // Zoom: 1 = a character is a fifth of the screen height; smaller = closer.
-  private level = 1;
-  private goalLevel = 1;
-  // True while the view is at its "home" zoom (both characters just in
-  // frame), so it stays that way when turned.
-  private atHome = true;
-  // The point on the ground the camera looks at.
-  private x = 0;
-  private z = 0;
-  private goalX = 0;
-  private goalZ = 0;
-  // Turn left/right and tilt up/down, in degrees.
-  private yaw = 0;
+  // Position on the path, 0 (low end) to 1 (high end): where it is asked to
+  // be, and where it is now on its way there.
+  private goalPath: number = content.cameraPath.playAt;
+  private path: number = content.cameraPath.playAt;
+  // Turned left/right, in degrees.
   private goalYaw = 0;
-  private pitch: number = content.camera.elevation;
-  private goalPitch: number = content.camera.elevation;
-  // Leftover turning speed after a flick (degrees per second).
+  private yaw = 0;
+  // Leftover speed after a flicked drag (path per second, degrees per second).
+  private spinPath = 0;
   private spinYaw = 0;
-  private spinPitch = 0;
   private aspect = 1;
 
   setAspect(aspect: number): void {
-    if (aspect === this.aspect) return;
     this.aspect = aspect;
-    this.refit();
   }
 
   /**
-   * The "home" zoom for the current turn: far enough that both character
-   * spots stay in frame, never closer than the normal full view.
+   * The play-view distance for a given turn: far enough that both character
+   * spots stay in frame, never closer than the normal view.
    */
-  private homeLevel(): number {
+  private homeLevel(yaw: number): number {
     const layout = getLayout(this.aspect);
-    const cos = Math.cos(this.goalYaw * RAD);
-    const sin = Math.sin(this.goalYaw * RAD);
+    const cos = Math.cos(yaw * RAD);
+    const sin = Math.sin(yaw * RAD);
     // How much width the two spots need now, and how much they needed
     // before any turning (the starting view is never changed by this).
     let need = 0;
@@ -67,153 +55,211 @@ class CameraView {
     return Math.max(1, wide);
   }
 
-  private refit(): void {
-    if (this.atHome) this.goalLevel = this.homeLevel();
-    this.keepInBounds();
+  /** Move along the path by this share of it (positive = rise). Eases into both ends. */
+  movePath(amount: number): void {
+    if (amount === 0) return;
+    const room = amount > 0 ? 1 - this.goalPath : this.goalPath;
+    const ease = clamp(room / content.cameraPath.endEase, 0.08, 1);
+    this.goalPath = clamp(this.goalPath + amount * ease, 0, 1);
   }
 
-  /** Zoom by `factor` (below 1 = closer), keeping this ground point in place on screen. */
-  zoomAbout(px: number, pz: number, factor: number): void {
-    const z = content.zoom;
-    const home = this.homeLevel();
-    const next = clamp(this.goalLevel * factor, z.closest, Math.max(z.farthest, home));
-    const ratio = next / this.goalLevel;
-    this.goalX = px + (this.goalX - px) * ratio;
-    this.goalZ = pz + (this.goalZ - pz) * ratio;
-    this.goalLevel = next;
-    this.atHome = Math.abs(next - home) < home * 0.005;
-    this.keepInBounds();
+  /** Turn by this many degrees. Eases into both limits. */
+  turn(degrees: number): void {
+    if (degrees === 0) return;
+    const limit = content.orbit.yawLimit;
+    const room = limit - Math.sign(degrees) * this.goalYaw;
+    const ease = clamp(room / (limit * 0.15), 0.08, 1);
+    this.goalYaw = clamp(this.goalYaw + degrees * ease, -limit, limit);
   }
 
-  panBy(dx: number, dz: number): void {
-    this.goalX += dx;
-    this.goalZ += dz;
-    this.keepInBounds();
-  }
-
-  /** Turn and tilt by this many degrees, within the limits. */
-  orbitBy(yaw: number, pitch: number): void {
-    const o = content.orbit;
-    this.goalYaw = clamp(this.goalYaw + yaw, -o.yawLimit, o.yawLimit);
-    this.goalPitch = clamp(this.goalPitch + pitch, o.pitchMin, o.pitchMax);
-    this.refit();
-  }
-
-  /** Let the view coast on after a flick. */
-  flick(yawPerSecond: number, pitchPerSecond: number): void {
+  /** Let the view coast on after a flicked drag. */
+  flick(pathPerSecond: number, yawPerSecond: number): void {
+    this.spinPath = pathPerSecond;
     this.spinYaw = yawPerSecond;
-    this.spinPitch = pitchPerSecond;
   }
 
   reset(): void {
+    this.goalPath = content.cameraPath.playAt;
     this.goalYaw = 0;
-    this.goalPitch = content.camera.elevation;
+    this.spinPath = 0;
     this.spinYaw = 0;
-    this.spinPitch = 0;
-    this.goalX = 0;
-    this.goalZ = 0;
-    this.atHome = true;
-    this.goalLevel = this.homeLevel();
-  }
-
-  // The closer the view, the further it may wander; from the home zoom outward it is centred.
-  private keepInBounds(): void {
-    const z = content.zoom;
-    const home = this.homeLevel();
-    const room = clamp((home - this.goalLevel) / (home - z.closest), 0, 1);
-    this.goalX = clamp(this.goalX, -z.panX * room, z.panX * room);
-    this.goalZ = clamp(this.goalZ, -z.panZFar * room, z.panZNear * room);
   }
 
   update(seconds: number): void {
-    const o = content.orbit;
-    if (this.spinYaw !== 0 || this.spinPitch !== 0) {
-      this.orbitBy(this.spinYaw * seconds, this.spinPitch * seconds);
-      const slow = Math.exp(-o.friction * seconds);
+    const input = content.cameraInput;
+    if (this.spinPath !== 0 || this.spinYaw !== 0) {
+      this.movePath(this.spinPath * seconds);
+      this.turn(this.spinYaw * seconds);
+      const slow = Math.exp(-input.friction * seconds);
+      this.spinPath *= slow;
       this.spinYaw *= slow;
-      this.spinPitch *= slow;
-      if (Math.abs(this.spinYaw) + Math.abs(this.spinPitch) < 0.5) {
+      if (Math.abs(this.spinPath) < 0.002 && Math.abs(this.spinYaw) < 0.5) {
+        this.spinPath = 0;
         this.spinYaw = 0;
-        this.spinPitch = 0;
       }
     }
-    const zoomEase = 1 - Math.exp(-content.zoom.ease * seconds);
-    this.level += (this.goalLevel - this.level) * zoomEase;
-    this.x += (this.goalX - this.x) * zoomEase;
-    this.z += (this.goalZ - this.z) * zoomEase;
-    const turnEase = 1 - Math.exp(-o.ease * seconds);
-    this.yaw += (this.goalYaw - this.yaw) * turnEase;
-    this.pitch += (this.goalPitch - this.pitch) * turnEase;
+    // Glide toward the goal by the same share per second at any frame rate.
+    this.path += (this.goalPath - this.path) * (1 - Math.exp(-input.ease * seconds));
+    this.yaw += (this.goalYaw - this.yaw) * (1 - Math.exp(-input.turnEase * seconds));
   }
 
   apply(camera: Camera, time: number): void {
     const c = content.camera;
-    const z = content.zoom;
-    const d = cameraDistance() * this.level;
-    // Flying out past the home zoom also tips the view up, in one glide.
-    const home = this.homeLevel();
-    const out = clamp((this.level - home) / Math.max(z.farthest - home, 0.01), 0, 1);
-    const lift = out * out * (3 - 2 * out);
-    const pitch = (this.pitch + (z.highPitch - this.pitch) * lift) * RAD;
+    const p = content.cameraPath;
+
+    // -1 at the low end, 0 at the play view, 1 at the high end, with finer
+    // control around the play view.
+    const side = this.path >= p.playAt ? 1 - p.playAt : p.playAt;
+    const v = clamp((this.path - p.playAt) / side, -1, 1);
+    const w = v * (p.middleSpeed + (1 - p.middleSpeed) * Math.abs(v));
+
+    // Distance and angle move together along the path. Distance is blended
+    // on a log scale, so each step feels the same size near and far.
+    const home = this.homeLevel(this.yaw);
+    const level =
+      w >= 0
+        ? Math.exp(lerp(Math.log(home), Math.log(Math.max(p.highDistance, home)), w))
+        : Math.exp(lerp(Math.log(home), Math.log(p.lowDistance), -w));
+    const pitch =
+      (w >= 0 ? lerp(c.elevation, p.highPitch, w) : lerp(c.elevation, p.lowPitch, -w)) *
+      RAD;
+
     const thin = clamp(
-      (this.level - z.flakeFadeStart) / (z.flakeFadeEnd - z.flakeFadeStart),
+      (level - p.flakeFadeStart) / (p.flakeFadeEnd - p.flakeFadeStart),
       0,
       1,
     );
     sharedUniforms.uFlakeFade.value = 1 - thin;
+
+    const d = cameraDistance() * level;
     const yaw = this.yaw * RAD;
     const flat = d * Math.cos(pitch);
     // A tiny slow sway so sparkles glint; smaller when close so it never swims.
     const t = time * c.swaySpeed;
-    const sway = c.swayAmount * this.level;
-    const side = Math.sin(t) * sway;
+    const sway = c.swayAmount * Math.min(level, 1);
+    const across = Math.sin(t) * sway;
     camera.position.set(
-      this.x + flat * Math.sin(yaw) + side * Math.cos(yaw),
+      flat * Math.sin(yaw) + across * Math.cos(yaw),
       c.targetHeight + d * Math.sin(pitch) + Math.cos(t * 1.3) * sway * 0.5,
-      this.z + flat * Math.cos(yaw) - side * Math.sin(yaw),
+      flat * Math.cos(yaw) - across * Math.sin(yaw),
     );
-    camera.lookAt(this.x, c.targetHeight, this.z);
+    camera.lookAt(0, c.targetHeight, 0);
+  }
+
+  /** For measuring: where on the path and how far turned. */
+  state() {
+    return {
+      path: this.path,
+      goalPath: this.goalPath,
+      yaw: this.yaw,
+      goalYaw: this.goalYaw,
+    };
   }
 }
 
 type Touch = { x: number; y: number; time: number; mouse: boolean };
+type GestureLike = Event & { scale?: number };
 
 export function CameraRig() {
-  const field = useContext(SnowContext);
-  if (!field) throw new Error("CameraRig must be inside the snow scene");
   const canvas = useThree((s) => s.gl.domElement);
-  const get = useThree((s) => s.get);
   const view = useMemo(() => new CameraView(), []);
 
   useEffect(() => {
     snowView.reset = () => view.reset();
+    snowView.state = () => view.state();
+    const input = content.cameraInput;
+    // The whole scene (canvas and the buttons over it).
+    const scene = canvas.closest("section") ?? canvas;
+    const overScene = (e: Event) => e.target instanceof Node && scene.contains(e.target);
 
-    const point = { x: 0, z: 0 };
-    const onSnow = (clientX: number, clientY: number) =>
-      groundPoint(clientX, clientY, canvas, get().camera, baseHeightAt, point);
+    // ---- Trackpad, mouse wheel and trackpad pinch -------------------------
+    let lastWheel = -Infinity;
+    let axis: "path" | "turn" | null = null;
+    let travelled = 0;
+    let travelledX = 0;
 
-    // Mouse wheel, and trackpad pinch (which browsers report as ctrl + wheel).
     const wheel = (e: WheelEvent) => {
+      if (!overScene(e)) return;
+      // Keep the page from scrolling, bouncing or zooming.
       e.preventDefault();
-      const lines = e.deltaMode === 1 ? 16 : 1;
-      const speed = e.ctrlKey
-        ? content.zoom.trackpadPinchSpeed
-        : content.zoom.wheelSpeed;
-      const factor = Math.exp(e.deltaY * lines * speed);
-      if (onSnow(e.clientX, e.clientY)) view.zoomAbout(point.x, point.z, factor);
+      const lines = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
+      const dx = e.deltaX * lines;
+      const dy = e.deltaY * lines;
+      if (dx === 0 && dy === 0) return;
+      const sinceLast = e.timeStamp - lastWheel;
+      lastWheel = e.timeStamp;
+      const scroll = input.invertScroll ? -1 : 1;
+
+      if (e.ctrlKey) {
+        // Trackpad pinch (Chrome, Firefox): fingers together = rise.
+        view.movePath(
+          clamp(dy, -input.pinchMaxDelta, input.pinchMaxDelta) * input.pinchPath,
+        );
+        return;
+      }
+
+      // A mouse wheel notch: one big step on its own. Move a fixed share of
+      // the path, whatever size this browser reports a notch as.
+      const notch =
+        e.deltaMode !== 0 ||
+        (dx === 0 && Math.abs(dy) >= 50 && Number.isInteger(dy) && sinceLast > 40);
+      if (notch) {
+        view.movePath(scroll * Math.sign(dy) * input.wheelStep);
+        axis = null;
+        return;
+      }
+
+      // A trackpad swipe: many small deltas, then a momentum tail. Pick the
+      // main direction once per swipe, so a mostly-vertical swipe never turns.
+      if (sinceLast > input.gestureGap) {
+        axis = null;
+        travelled = 0;
+        travelledX = 0;
+      }
+      if (!axis) {
+        travelled += Math.abs(dx) + Math.abs(dy);
+        travelledX += Math.abs(dx);
+        if (travelled < input.axisDeadZone) return;
+        axis = travelledX * 2 > travelled ? "turn" : "path";
+      }
+      const most = input.trackpadMaxDelta;
+      if (axis === "path") {
+        view.movePath(scroll * clamp(dy, -most, most) * input.trackpadPath);
+      } else {
+        const turn = input.invertTurn ? -1 : 1;
+        view.turn(turn * clamp(dx, -most, most) * input.trackpadTurn);
+      }
     };
 
-    // Every finger (and the mouse while its button is down) on the canvas.
+    // Trackpad pinch in Safari arrives as gesture events instead.
+    let lastScale = 1;
+    const gestureStart = (e: GestureLike) => {
+      if (!overScene(e)) return;
+      e.preventDefault();
+      lastScale = e.scale ?? 1;
+    };
+    const gestureChange = (e: GestureLike) => {
+      if (!overScene(e)) return;
+      e.preventDefault();
+      const scale = e.scale ?? 1;
+      if (scale > 0 && lastScale > 0) {
+        view.movePath(-Math.log(scale / lastScale) * input.gesturePath);
+      }
+      lastScale = scale;
+    };
+    const gestureEnd = (e: GestureLike) => {
+      if (overScene(e)) e.preventDefault();
+    };
+
+    // ---- Fingers and mouse on the canvas ----------------------------------
     const touches = new Map<number, Touch>();
-    // Two fingers on empty snow: pinch to zoom, and slide to move the view.
+    // Two fingers on empty snow: pinch moves along the path.
     let pair: [number, number] | null = null;
     let lastGap = 0;
-    let lastMidX = 0;
-    let lastMidY = 0;
-    // One finger on empty snow: turn the view. Remember its recent speed for a flick.
-    let turning: number | null = null;
-    let turnYaw = 0;
-    let turnPitch = 0;
+    // One finger (or the mouse) on empty snow: turn, and up/down moves along the path.
+    let dragging: number | null = null;
+    let flickPath = 0;
+    let flickYaw = 0;
 
     const endPinch = () => {
       pair = null;
@@ -241,14 +287,14 @@ export function CameraRig() {
       touch.time = e.timeStamp;
 
       // Decided here, not on touch-down, so a feature has had its chance to
-      // claim the finger first. Claimed fingers never turn or zoom the view.
+      // claim the finger first. Claimed fingers never move the camera.
       const free = [...touches.keys()].filter((id) => !snowPointers.claimed.has(id));
       const freeFingers = free.filter((id) => !touches.get(id)?.mouse);
 
       if (!pair && freeFingers.length >= 2) {
         pair = [freeFingers[0], freeFingers[1]];
         snowPointers.pinching = true;
-        turning = null;
+        dragging = null;
         lastGap = 0;
       }
 
@@ -257,64 +303,62 @@ export function CameraRig() {
         const b = touches.get(pair[1]);
         if (!a || !b) return endPinch();
         const gap = Math.hypot(a.x - b.x, a.y - b.y);
-        const midX = (a.x + b.x) / 2;
-        const midY = (a.y + b.y) / 2;
+        // Fingers together = rise, the same as a trackpad pinch.
         if (lastGap > 0 && gap > 0) {
-          // Slide: keep the snow under the fingers under the fingers.
-          if (onSnow(lastMidX, lastMidY)) {
-            const fromX = point.x;
-            const fromZ = point.z;
-            if (onSnow(midX, midY)) view.panBy(fromX - point.x, fromZ - point.z);
-          }
-          if (onSnow(midX, midY)) view.zoomAbout(point.x, point.z, lastGap / gap);
+          view.movePath(Math.log(lastGap / gap) * input.touchPinchPath);
         }
         lastGap = gap;
-        lastMidX = midX;
-        lastMidY = midY;
         return;
       }
 
       if (snowPointers.lookOff || free.length !== 1 || free[0] !== e.pointerId) return;
-      // Dragging right turns the scene to the right; dragging down tips it
-      // toward you (a more top-down view).
-      const yaw = -dx * content.orbit.speed;
-      const pitch = dy * content.orbit.speed;
-      view.orbitBy(yaw, pitch);
-      turning = e.pointerId;
-      turnYaw = turnYaw * 0.6 + (yaw / seconds) * 0.4;
-      turnPitch = turnPitch * 0.6 + (pitch / seconds) * 0.4;
+      // Dragging right turns the scene to the right; dragging down rises
+      // toward the high view.
+      const yaw = -dx * input.dragTurn;
+      const path = dy * input.dragPath;
+      view.turn(yaw);
+      view.movePath(path);
+      dragging = e.pointerId;
+      flickYaw = flickYaw * 0.6 + (yaw / seconds) * 0.4;
+      flickPath = flickPath * 0.6 + (path / seconds) * 0.4;
     };
 
     const up = (e: PointerEvent) => {
       const touch = touches.get(e.pointerId);
-      if (turning === e.pointerId && touch) {
+      if (dragging === e.pointerId && touch) {
         // Coast on only if the finger was still moving when it lifted.
-        const paused = e.timeStamp - touch.time > 90;
-        if (!paused) view.flick(turnYaw, turnPitch);
-        turning = null;
+        if (e.timeStamp - touch.time <= 90) view.flick(flickPath, flickYaw);
+        dragging = null;
       }
-      turnYaw = 0;
-      turnPitch = 0;
+      flickPath = 0;
+      flickYaw = 0;
       touches.delete(e.pointerId);
       snowPointers.claimed.delete(e.pointerId);
       if (pair && pair.includes(e.pointerId)) endPinch();
     };
 
-    canvas.addEventListener("wheel", wheel, { passive: false });
+    window.addEventListener("wheel", wheel, { passive: false });
+    window.addEventListener("gesturestart", gestureStart, { passive: false });
+    window.addEventListener("gesturechange", gestureChange, { passive: false });
+    window.addEventListener("gestureend", gestureEnd, { passive: false });
     canvas.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
     return () => {
-      canvas.removeEventListener("wheel", wheel);
+      window.removeEventListener("wheel", wheel);
+      window.removeEventListener("gesturestart", gestureStart);
+      window.removeEventListener("gesturechange", gestureChange);
+      window.removeEventListener("gestureend", gestureEnd);
       canvas.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
       snowView.reset = () => {};
+      snowView.state = undefined;
       endPinch();
     };
-  }, [canvas, get, field, view]);
+  }, [canvas, view]);
 
   useFrame((state, delta) => {
     view.setAspect(state.size.width / Math.max(state.size.height, 1));

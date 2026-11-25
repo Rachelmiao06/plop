@@ -14,7 +14,7 @@ const SnowCanvas = dynamic(() => import("./SnowCanvas"), { ssr: false });
  */
 export function SnowScene({ children }: { children?: ReactNode }) {
   return (
-    <section className="relative h-full w-full overflow-hidden bg-background select-none">
+    <section className="relative h-full w-full touch-none overflow-hidden overscroll-none bg-background select-none">
       <h1 className="sr-only">{content.title}</h1>
       <SnowCanvas>{children}</SnowCanvas>
       <ViewControls />

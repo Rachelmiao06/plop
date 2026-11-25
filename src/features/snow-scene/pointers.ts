@@ -18,8 +18,12 @@ export const snowPointers = {
 };
 
 /** Lets buttons outside the 3D scene ask the camera for things. */
-export const snowView = {
-  /** Glide back to the starting angle and zoom. Set by the camera. */
+export const snowView: {
+  /** Glide back to the play view. Set by the camera. */
+  reset: () => void;
+  /** For measuring: where the camera is on its path and how far it is turned. */
+  state?: () => { path: number; goalPath: number; yaw: number; goalYaw: number };
+} = {
   reset: () => {},
 };
 

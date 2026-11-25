@@ -6,7 +6,7 @@ export const content = {
   tagline: "A cute snowy toy: pull back, roll a snowball, let go.",
 
   resetView: "Reset view",
-  lookHint: "Drag to look around. Pinch or scroll to zoom.",
+  lookHint: "Scroll or pinch to rise and dip. Swipe sideways or drag to turn.",
 
   // TEMPORARY: words for the press test hook. Remove with TempDragPress.
   tempLook: "Look",
@@ -200,47 +200,76 @@ export const content = {
     swaySpeed: 0.22,
   },
 
-  zoom: {
-    // Closest view, as a share of the full-scene camera distance.
-    closest: 0.36,
-    // Furthest view: this many times the full-scene distance. From there
-    // the play area looks small, like looking down on a tiny village.
-    farthest: 5.5,
-    // Pulling out past the full scene also tips the view up toward this
-    // angle (degrees). Steep, but short of straight down, so upright
+  // The camera travels along one path, from a low, close view looking across
+  // the snow (characters large) up to a high, far, steep view (everything
+  // small). Scrolling, pinching and dragging up/down move along that path;
+  // swiping or dragging sideways turns the view around the play area.
+  cameraPath: {
+    // The low end: angle above the ground (degrees) and distance (as a share
+    // of the normal play-view distance).
+    lowPitch: 14,
+    lowDistance: 0.75,
+    // The middle is the normal play view (camera.elevation, both characters
+    // in frame). The high end: steep but short of straight down, so upright
     // cut-out scenery never looks flat.
     highPitch: 76,
-    // The falling snow thins out between these zoom levels, so it never
-    // shows as a small cloud over the middle from high up.
+    highDistance: 5.5,
+    // Where the play view sits on the path: 0 = low end, 1 = high end.
+    playAt: 0.42,
+    // Finer control around the play view: 1 = even all along, smaller =
+    // slower near the middle (0.45 means a little under half speed there).
+    middleSpeed: 0.45,
+    // Over this last share of the path at each end, input slows down, so the
+    // view eases into its limits instead of stopping dead.
+    endEase: 0.12,
+    // The falling snow thins out between these distances, so it never shows
+    // as a small cloud over the middle from high up.
     flakeFadeStart: 1.5,
     flakeFadeEnd: 3,
-    // Wheel and trackpad-pinch sensitivity.
-    wheelSpeed: 0.0015,
-    trackpadPinchSpeed: 0.012,
-    // How quickly the view glides to where it was asked to go (higher = snappier).
-    ease: 9,
-    // How far from the middle the view may wander when fully zoomed in.
-    panX: 3.2,
-    panZFar: 2.8,
-    panZNear: 2.4,
   },
 
-  // Turning the view by dragging on empty snow.
+  // How input moves along the path and turns the view. Path amounts are a
+  // share of the whole path; turns are in degrees.
+  cameraInput: {
+    // Mac natural scrolling: fingers up = rise and pull back, like a map.
+    // Set true to swap.
+    invertScroll: false,
+    invertTurn: false,
+    // Trackpad two-finger swipe: path per pixel, degrees per pixel, and the
+    // largest single delta counted (fast flicks are capped, never jump).
+    trackpadPath: 0.0006,
+    trackpadTurn: 0.1,
+    trackpadMaxDelta: 60,
+    // A swipe must move this many pixels before it picks an axis (up/down or
+    // sideways); after that the other axis is ignored until the swipe ends.
+    axisDeadZone: 6,
+    // Silence (ms) that ends one swipe, including its momentum tail.
+    gestureGap: 160,
+    // A mouse wheel notch moves this share of the path, whatever size the
+    // browser reports it as.
+    wheelStep: 0.06,
+    // Pinch on a trackpad (ctrl + wheel in Chrome, gestures in Safari):
+    // path per unit of pinch delta, and per unit of log scale change.
+    pinchPath: 0.014,
+    pinchMaxDelta: 12,
+    gesturePath: 0.5,
+    // Mouse or one-finger drag on empty snow: degrees turned and path moved per pixel.
+    dragTurn: 0.3,
+    dragPath: 0.004,
+    // Two fingers on a phone: path per unit of log pinch change.
+    touchPinchPath: 0.5,
+    // How quickly the view glides to where it was asked to go (higher =
+    // snappier), and how quickly a flicked drag slows down after letting go.
+    ease: 10,
+    turnEase: 12,
+    friction: 4.5,
+  },
+
+  // Turning the view.
   orbit: {
-    // Lowest and highest angle above the ground (degrees): side-on to nearly
-    // top-down. Kept high enough that the far snow has always turned to haze
-    // before its end could show.
-    pitchMin: 25,
-    pitchMax: 82,
     // How far left and right the view may turn (degrees). Never behind the scene.
     yawLimit: 60,
-    // Degrees turned per pixel dragged.
-    speed: 0.3,
-    // How quickly the view glides after the finger (higher = snappier), and
-    // how quickly a flick slows down after letting go.
-    ease: 14,
-    friction: 4.5,
-    // Room kept around the characters when the view pulls back to keep both in frame.
+    // Room kept around the characters when the play view pulls back to keep both in frame.
     fitMargin: 0.65,
   },
 

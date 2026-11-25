@@ -28,7 +28,17 @@ Inside `<SnowScene>`, these are available:
 
 The deeper the snow is pressed, the darker and bluer it gets and the taller its rim. Dents stay. Dust and small clumps fly by themselves whenever snow is pressed or hit; nothing to call.
 
-The view is part of the scene: one finger or a mouse drag on empty snow turns it (25 degrees up to nearly top-down, 60 degrees left and right, never behind), pinch / wheel / trackpad pinch zooms, and the "Reset view" button brings back the start. Zooming out past the full scene flies up to a high, steep view (`zoom.farthest`, `zoom.highPitch`) where the play area looks small; it stops short of straight down, so upright cut-out scenery never looks flat. The view pulls back by itself when needed so both character spots stay in frame, so `useSnowLayout()` spots are valid at every angle and zoom. Things you place must be real 3D (the view turns).
+The camera is part of the scene. Its whole state is two numbers: a position on one path (low and close looking across the snow, through the play view, up to high, far and steep where everything looks small) and a turn left/right (up to 60 degrees, never behind). Every input moves those two, so they never fight:
+
+- trackpad two-finger swipe up/down, mouse wheel, trackpad pinch, phone pinch: along the path (fingers up / pinch together = rise; `cameraInput.invertScroll` swaps)
+- trackpad two-finger swipe sideways, or a drag on empty snow: turn (a drag up/down also moves along the path)
+- "Reset view": back to the play view
+
+A swipe picks one axis after a few pixels, so a mostly vertical swipe never turns the view. Mouse notches move a fixed step whatever size the browser reports. All gains and limits are in `content.ts` under `cameraPath`, `cameraInput` and `orbit`. Over the scene, the page never scrolls, bounces or zooms.
+
+The play-view distance pulls back by itself when needed so both character spots stay in frame, so `useSnowLayout()` spots are valid at every angle. Things you place must be real 3D or face the camera (the view turns and rises to 76 degrees, never straight down).
+
+Camera control is never blocked while characters are idle. When a character starts being dragged, call `claimSnowPointer(pointerId)`; that finger then no longer moves the camera. (Wheel and keys are not claimable yet; nothing uses keys.)
 
 Snow is everywhere: the play area (`ground.sizeX` by `ground.sizeZ`, centred on 0, 0) is the part that can be pressed; around it one big cheap surface runs out to a soft haze. The two share the same height function (`baseHeightAt`), the same material and the same points along their meeting line, so there is no seam. Toward the edge of the play area the snow gives less and less (`ground.edgeLock`), so a dent never shows where the pressable part ends. `heightAt` works anywhere; pressing only does something inside the play area.
 
