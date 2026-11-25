@@ -26,7 +26,8 @@ const [pins] = useState(() => createPins());          // formation id optional
 
 - `pins.subscribe(event => …)` events, for the score HUD later:
   - `knocked` `{ down, total }` live, each time a card tips past "down" during a throw
-  - `result` `{ result: { down, total, fullClear } }` once everything has settled (or timed out)
+  - `result` `{ result: { down, total, fullClear } }` once the first pass has settled (or timed out)
+  - `recount` `{ result }` after that, when the ball's roll back from the wall (or a late chain) knocked more
   - `ready` `{ formation, total }` cards are standing again (after a reset or a new set)
   - `phase` `ready → throw → result → resetting | changing → ready`
 - `pins.getState()` / `pins.subscribeState()` for `useSyncExternalStore` (formation, phase, down, total, last result, debug).
@@ -80,7 +81,7 @@ Formation ids and exports are fixed; the game imports them.
   (`impact`); the first card of a throw also starts the hit-stop with a thump, both bigger for a bigger ball
   (`hitStop.bigExtra`, `bigSlowest`, `thumpPerSize`). Pins stand around `lane.pinSpot`, 8.6 from the line on the
   long lane.
-- **A heavy hit (`impact.ts`):** cards have 12× the spin inertia of a plain board and, for 0.3 s after the ball
+- **A heavy hit (`impact.ts`):** cards have 3× the spin inertia of a plain board and, for 0.3 s after the ball
   touches them, a low spin cap, so they take the blow (a shove, a squash, a groove dug at the base) before they tip;
   each card struck smashes snow off the ball (bowling's `chip`); landing adds a soft thud and a bigger puff; the
   first contact's hit-stop grows with size and speed, with a double thump and a vibration. Development builds log
@@ -99,11 +100,14 @@ Formation ids and exports are fixed; the game imports them.
   `burst.slowSpeed` among the cards on its way out, or, once it has been past them all or bounced, when it is nearly
   still (`FEEL.wall.poofBelow`). On its way back it can knock more cards; they count. It never knocks a standing
   friend on the way back: it poofs just short of it (`FEEL.wall.spareFriendsAhead`), so the friend's +2 is earned on the way out.
-- **Counting:** a card is down when tilted past `down.tiltDegrees`. The `result` event (and "N down!") comes once
-  no ball of the throw can reach a card any more (it has poofed or stopped) and every card has been still for
-  `down.settleHold` (a card already lying in the snow may still slide a little, `down.lyingShare`), or
-  `down.timeoutAfterClear` after that, and at the latest bowling's `FEEL.wall.countWithin` (3.5 s) after the ball
-  first met a card (or rolled past them all); a ball still rolling then poofs, so nothing falls after the count.
+- **Counting (quick, `IMPACT.count`):** a card is down when tilted past `down.tiltDegrees`; its `knocked` event (the
+  "+1") fires in that step. The `result` event (and "N down!") comes once the ball is through the crowd (or has poofed
+  or stopped) and no card has moved for `count.settle`, at the latest `count.within` after the ball first met a card,
+  even while the ball rolls on to the wall. After that the bounce and the roll back are a bonus show: a card they
+  knock (or a late chain) emits `recount` with the grown count (each friend keeps its state from the count, so its
+  bonus never goes away), and the game adds the difference. The cards pop back once "N down!" has shown
+  `count.showAtLeast` and the ball has poofed or stopped, at the latest `count.nextTurnCap` after the count (a ball
+  still rolling then poofs).
 - **Reset:** after `reset.delayAfterResult`, every card is held still (kinematic) and the moved ones hop back in a
   little wave, landing with a boing; then all return to the physics together. After a full clear (or "next set")
   the set ducks into the snow, fresh snow settles on the spot, and the next set hops in from further down the lane.

@@ -91,8 +91,6 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     () =>
       pins.subscribe((e) => {
         const st = s.current;
-        // The count is in: whatever still rolls is poofing, so settle on the pins.
-        if (e.type === "result" && st.stage === "chase") st.stage = "settle";
         // The pins popping back up (or a new set arriving) ends it: glide home for the next turn.
         if (e.type === "phase" && (e.phase === "resetting" || e.phase === "changing" || e.phase === "ready")) {
           if (st.stage !== "aim") {

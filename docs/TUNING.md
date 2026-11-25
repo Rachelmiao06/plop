@@ -52,10 +52,12 @@ middle of the line:
 | **Where the wall is.** How far in front of the paper the ball meets it (the snow bank); at most this many bounces a roll. | `inset 0.55` · `most 2` | `FEEL.wall` |
 | **The hit.** A soft thump (size scale `thump` + `thumpPerSize` for a full ball, times how hard: `fullSpeed` straight at the wall = hardest), the ball's squash and a puff off the bank. | `0.22` + `0.3` · `7` /s · squash `0.3`, puff `0.12` | `FEEL.wall` · `LOOK.wallHit` |
 | **The paper's wobble.** How high a full hit lifts it and pushes it back, how wide along the arc, how fast it shivers and dies away. | `lift 0.2` · `push 0.22` · `width 3.2` · `2.6` waves/s · `damping 2.2` · `1.9` s | `WOBBLE` in `src/features/scenery/three/Backdrop.tsx` (move to scenery `content.ts` when that file is free) |
-| **The score still comes promptly.** The count comes when the ball has stopped (or poofed), at the latest this long after it first meets a card (or rolls past them all); a ball still rolling then poofs. A ball back from the wall poofs once slower than `poofBelow`. | `countWithin 3.5` s · `poofBelow 0.8` /s | `FEEL.wall` |
+| **The score is quick.** Each card's "+1" flies the moment it falls. "N down!" pops once the ball is through the crowd and no card has moved for `settle`, at the latest `within` after the first contact, even while the ball rolls on to the wall. Cards knocked after that (the roll back, a late chain) add their "+1" and tick "N down!" up (`recount`); a friend keeps its state from the count. The cards pop back once "N down!" has shown `showAtLeast` and the ball has poofed or stopped, at the latest `nextTurnCap` after the count. A ball back from the wall poofs once slower than `poofBelow`. | `settle 0.35` s · `within 1.3` s · `showAtLeast 1.0` s · `nextTurnCap 1.7` s · `poofBelow 0.8` /s | `IMPACT.count` (pins `impact.ts`) · `FEEL.wall` |
 
-In the browser "N down!" came 2.3 to 4.7 s after letting go (16 throws, light to full, straight and angled). Cards first
-met by a ball rolling back from the wall can fall too, and they count. A standing friend (bunny, sleepy cat) never
+Measured in the browser (5 to 6 throws each, light to full), before → after the quick count: first contact → "N down!"
+2.1–3.8 s → 1.2–1.6 s; "N down!" → the next player's turn 2.1–3.1 s → 2.1–2.7 s (a full clear keeps its longer
+celebration, about 3.2 s); a card's "+1" flies in the same frame it tips past "down" (unchanged). Cards first met by a
+ball rolling back from the wall can fall too, and they count. A standing friend (bunny, sleepy cat) never
 falls to the roll back: the ball poofs just short of it, `FEEL.wall.spareFriendsAhead` (`0.12` s of its travel) ahead, so
 the friend's +2 is decided on the way out.
 
@@ -65,13 +67,15 @@ the friend's +2 is decided on the way out.
 |---|---|---|
 | **The ball breaks up.** Each card it strikes knocks off a share of its snow plus a fist of snow (times the card's weight: light `0.75`, medium `1`, heavy `1.5`); a small ball crumbles apart on a crowd, a big one loses a few chunks per card. The roll keeps its path; only the ball you see (and the one the cards feel) shrinks. | `share 0.07` + `volume 0.005` · crumbles below radius `0.1` | `FEEL.impact` (bowling) · `IMPACT.card.chip` (pins) |
 | **Chunks and powder.** Big chunks thrown out of the struck side that tumble and roll on the snow and dent it, a burst of powder, a squash of the ball. | `4` chunks per tenth of the snow lost (`2`–`9`), size `0.07`–`0.13`, roll slowing `2.6`, melt `1.4` s; crumble `12` chunks | `LOOK.chunks` (bowling) |
-| **Heavy cards.** Spin inertia times a plain board's; for the first moments after the touch a card spins at most `firstSpin.max` (it takes the blow, then tips); a bigger shove, less lift and tumble; a squash and a groove dug at its base. | inertia `×12` · `3.6` rad/s for `0.3` s · shove `×1.7`, lift `×0.5`, tumble `×0.35` · groove `0.32` long | `IMPACT.card` (pins `impact.ts`) |
+| **Heavy cards.** Spin inertia times a plain board's; for the first moments after the touch a card spins at most `firstSpin.max` (it takes the blow, then tips); a bigger shove, less lift and tumble; a squash and a groove dug at its base. | inertia `×3` · `3.0` rad/s for `0.3` s · shove `×1.7`, lift `×0.5`, tumble `×0.35` · groove `0.32` long | `IMPACT.card` (pins `impact.ts`) |
 | **Landing with weight.** A soft thud under the paper flop (one per `0.14` s so chains stay soft) and a bigger snow puff. | thud `0.16` from strength `0.35` · puff `×1.6` | `IMPACT.landing` |
 | **The first contact.** The hit-stop grows with size and speed; a deep double "cr-ump" (the thump, then `0.6` of it `0.045` s later); vibration `hit` by size and speed; a small camera shake (`4` alternating pushes, each `0.55` of the last); the view slides `2.2` to the side so the cards show beside the ball. | hit-stop `+0.06` s / `-0.04` at `12` /s · shake push `2.2` · side `2.2` | `IMPACT.hitStop`, `IMPACT.crump` · `CAMERA.shake`, `CAMERA.chase.side` |
 
 Measured in the browser (development build logs `window.__falls`): cards that were standing when the ball touched
-them went down 0.13 to 2 s later, most 0.2 to 0.9 s (before: 33 to 75 ms, they flicked over). Cards already tipping from
-a neighbour can still go down quicker. "N down!" still came 2.6 to 4.6 s after letting go.
+them went down 0.12 to 1.7 s later, most 0.2 to 0.9 s (before: 33 to 75 ms, they flicked over). Cards already tipping from
+a neighbour can still go down quicker. More inertia than `×3` slowed the cards' own settling so much that one card in the
+classic crowd stood crooked at rest and fell by itself at the start of a throw (a free point), so it stays at `×3` and the
+first-moment spin cap carries the weight.
 
 ### The camera (`src/features/game/camera.ts`, and `GAME.camera` in `src/features/game/content.ts`)
 
@@ -184,7 +188,7 @@ gentler hand again, raise `FEEL.pull.sweet` heaviness or `FEEL.roll.soft.drag`.
 
 - **Snow depth and how dark pressed snow gets:** `src/features/snow-scene/content.ts` (`ground.depth` 0.9, and the press colours).
 - **The score bar's spring:** `src/features/hud/content.ts` (`bar.stiffness`, `bar.damping`).
-- **The hit, readable (#47, #48, #52; changed by the back wall):** the ball no longer poofs as soon as it is through the pins; it rolls on to the wall and back, and poofs when it slows among the cards on its way out (`PINS.burst`: `slowSpeed 2.4`, `amongMargin 0.3`) or, back from the wall, once slower than `FEEL.wall.poofBelow` (the poof is `FEEL.roll.burstTime 0.32` s and `LOOK.burst` in bowling). "N down!" pops once the ball has poofed or stopped and the cards are still for `PINS.down.settleHold` (`0.25` s; a card lying in the snow may still slide at `lyingShare` `4`×), at most `timeoutAfterClear` (`1.4` s) after that, and at the latest `FEEL.wall.countWithin` (`3.5` s) after the ball first meets a card. Fallen cards rest propped `PINS.rest.elevationDegrees` (`16`°) off the snow on a little heap (`rest.heap`); higher reads more like a standing card. While pulling, the ball sits beside the feet: `FEEL.pull.beside` (`base 0.2` + `share 1` × radius, eased in over `rampOver 0.45`).
+- **The hit, readable (#47, #48, #52; changed by the back wall):** the ball no longer poofs as soon as it is through the pins; it rolls on to the wall and back, and poofs when it slows among the cards on its way out (`PINS.burst`: `slowSpeed 2.4`, `amongMargin 0.3`) or, back from the wall, once slower than `FEEL.wall.poofBelow` (the poof is `FEEL.roll.burstTime 0.32` s and `LOOK.burst` in bowling). "N down!" pops once the ball is through the crowd and the cards are still for `IMPACT.count.settle` (`0.35` s; a card lying in the snow may still slide at `lyingShare` `4`×), at the latest `IMPACT.count.within` (`1.3` s) after the ball first meets a card; later cards add to it (`recount`). Fallen cards rest propped `PINS.rest.elevationDegrees` (`16`°) off the snow on a little heap (`rest.heap`); higher reads more like a standing card. While pulling, the ball sits beside the feet: `FEEL.pull.beside` (`base 0.2` + `share 1` × radius, eased in over `rampOver 0.45`).
 - **A ball left in the snow melts away** `GAME.timing.meltBallAfterResult` (1.1 s) after the count, so the reset never waits for it.
 - **Camera:** the throwing view comes from `throwingView()` in `src/features/scenery/`; turning and zoom limits are in snow-scene `content.ts` (`cameraPath`, `orbit`); the throw's camera moves are `GAME.camera` (above).
 

@@ -106,6 +106,10 @@ function motionShare(): number {
 }
 
 export function PinsStage({ pins }: { pins: Pins }) {
+  // Handy from the browser console while tuning (development only): window.__pinsEvents.subscribe(e => …)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __pinsEvents?: Pins }).__pinsEvents = pins;
+  }, [pins]);
   const debug = useSyncExternalStore(
     pins.subscribeState,
     () => pins.getState().debug,
@@ -278,11 +282,18 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     hitThisThrow: false,
     /**
      * When a ball of this throw first met a card, or first rolled past them all (null: not yet). The count comes at
-     * the latest `FEEL.wall.countWithin` after it, even while a ball is still rolling back from the wall.
+     * the latest `IMPACT.count.within` after it, even while a ball is still rolling on to the wall.
      */
     reachedAt: null as number | null,
     /** Balls of this throw that have rolled past every card at least once (on to the back wall, maybe back again). */
     wentPast: new Set<number>(),
+    /**
+     * After the count: the balls still on their bonus show (to the wall and back), the throwers of the count and each
+     * friend's state at the count (kept, so a late card never takes the friend's bonus away).
+     */
+    showBalls: new Set<number>(),
+    countedThrowers: [] as string[],
+    friendDowns: [] as boolean[],
     /** Who threw in this throw (thrower ids), and the latest one (owner of a card nobody touched). */
     throwers: new Set<string>(),
     lastThrower: "",
@@ -443,13 +454,15 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     if (f.throwers.size > 1) {
       result.byThrower = countByThrower(formation, downs, runtime.current.map((rt) => rt.by), [...f.throwers], f.lastThrower);
     }
+    f.countedThrowers = [...f.throwers];
     f.throwers.clear();
     const { down, fullClear } = result;
     // The ball came close to the bunny and it is still standing: a tiny surprised mew.
     if (result.friend === "safe" && f.friendGap < SPECIALS.friend.nearMiss) playNearMiss();
     f.fullClear = fullClear;
-    // A ball still rolling back from the wall poofs now, so nothing knocks a card after the count.
-    for (const { ball, game } of allBalls()) if (f.throwBalls.has(ball.id) && ball.rolling) game.burst(ball.id);
+    // The ball rolls on (to the wall and back): a bonus show. Cards it knocks now add to the count (`recount`).
+    f.showBalls = new Set(f.throwBalls);
+    f.friendDowns = specs.map((sp, i) => sp.kind === "friend" && !!runtime.current[i]?.down);
     f.throwBalls.clear();
     pins.emit({ type: "result", result });
     // The pop-up's beat you feel: a celebration on a full clear, a small double tap otherwise.
@@ -514,7 +527,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           const game = hit?.game;
           const rt = runtime.current[i];
           const body = e.target.rigidBody;
-          if (!ball || !game || f.phase !== "throw" || !rt || !body || rt.anim) return;
+          if (!ball || !game || (f.phase !== "throw" && f.phase !== "result") || !rt || !body || rt.anim) return;
           // The first ball to touch a card makes it that thrower's card ("together" mode counts per player).
           if (!rt.by) rt.by = ball.thrower;
           // A bit more energy than the plain push: a shove, a lift and a tumble, once per card.
@@ -685,7 +698,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const B = PINS.burst;
     let clear = true;
     for (const { ball, game } of allBalls()) {
-      if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
+      if ((!f.throwBalls.has(ball.id) && !f.showBalls.has(ball.id)) || ball.bursting !== null) continue;
       const r = ball.radius;
       const bx = ball.position.x;
       const bz = ball.position.z;
@@ -721,7 +734,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const back = f.wentPast.has(ball.id) || ball.bounces > 0;
       const settled = !ball.rolling || ball.speed < FEEL.wall.poofBelow;
       if ((!back && near && ball.speed < B.slowSpeed) || (back && settled) || (ball.bounces > 0 && shyOfFriend)) game.burst(ball.id);
-      else if (ball.rolling) clear = false;
+      // The first pass is over once it is through the crowd: what it does after (the wall, the roll back) is a bonus
+      // show that never holds up the count.
+      else if (ball.rolling && !back) clear = false;
     }
     return clear;
   };
@@ -733,6 +748,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const d = PINS.down;
     let moving = false;
     let newlyDown = false;
+    let lateDown = false;
     specs.forEach((_, i) => {
       const b = bodies.current[i];
       const rt = runtime.current[i];
@@ -777,7 +793,27 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         }
       }
       if (f.phase === "throw") rt.down = isDown;
+      // The bonus show after the count: a card knocked by the roll back (or a late chain) adds to the count. A friend
+      // keeps its state from the count, so its bonus is never taken away.
+      else if (f.phase === "result" && isDown && !rt.down && specs[i]?.kind !== "friend") {
+        rt.down = true;
+        lateDown = true;
+      }
     });
+    if (f.phase === "result") {
+      ballsThrough(); // the show balls still poof when they settle (or come near a standing friend)
+      if (lateDown) {
+        const downs = runtime.current.map((r, i) => (specs[i]?.kind === "friend" ? !!f.friendDowns[i] : r.down));
+        const result = countThrow(formation, downs);
+        if (f.countedThrowers.length > 1) {
+          result.byThrower = countByThrower(formation, downs, runtime.current.map((r) => r.by), f.countedThrowers, f.lastThrower);
+        }
+        if (result.fullClear && !f.fullClear) haptic("fullClear");
+        f.fullClear = f.fullClear || result.fullClear;
+        pins.emit({ type: "recount", result });
+      }
+      return;
+    }
     if (f.phase !== "throw") return;
     for (const { ball } of allBalls()) {
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
@@ -794,13 +830,14 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const clear = ballsThrough();
     if (clear && f.clearAt === null) f.clearAt = f.clock;
     if (!clear) f.clearAt = null;
+    const k = IMPACT.count;
     const timedOut =
       (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) ||
-      (f.reachedAt !== null && f.clock - f.reachedAt > FEEL.wall.countWithin) ||
+      (f.reachedAt !== null && f.clock - f.reachedAt > k.within) ||
       f.clock - f.launchedAt > d.timeoutAfterLaunch;
-    // The count is certain once no ball can reach a card and the cards are still: "N down!" pops now.
-    // "Together" mode waits until every player has thrown before it counts (`pins.setCountGate`).
-    if (((clear && f.settledFor >= d.settleHold) || timedOut) && pins.countGate()) finishThrow();
+    // The count comes once the first pass through the crowd has settled ("N down!" pops now, even while the ball
+    // still rolls on to the wall). "Together" mode waits until every player has thrown (`pins.setCountGate`).
+    if (((clear && f.settledFor >= k.settle) || timedOut) && pins.countGate()) finishThrow();
   });
 
   /* ---------------- a fallen card rests propped up on a little heap ---------------- */
@@ -929,7 +966,17 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.radius + s.card[0]),
         );
       const waited = f.clock - f.since;
-      if (waited > wait && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) afterResult();
+      // The next turn comes promptly: once "N down!" has shown a moment and the ball's bonus show is over (it has
+      // poofed or stopped), or at the latest `IMPACT.count.nextTurnCap` after the count (a ball still rolling poofs).
+      const k = IMPACT.count;
+      const showing = allBalls().some(({ ball }) => f.showBalls.has(ball.id) && ball.rolling && ball.bursting === null);
+      const least = f.fullClear || changing ? wait : Math.min(wait, k.showAtLeast);
+      const due = (waited > least && !showing) || waited > Math.max(least, k.nextTurnCap);
+      if (due && (!ballOnSpots || waited > wait + PINS.reset.waitForBallMax)) {
+        for (const { ball, game } of allBalls()) if (f.showBalls.has(ball.id) && ball.rolling) game.burst(ball.id);
+        f.showBalls.clear();
+        afterResult();
+      }
     }
 
     // Animations (kinematic) and the boing on landing upright (drawing only).

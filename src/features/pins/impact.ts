@@ -12,12 +12,12 @@ export const IMPACT = {
      * Heavier to turn: each card's spin inertia is `inertia` times a plain board's of its size and mass, so it takes
      * the blow first (a shove and a squash) and only then tips over, with weight.
      */
-    inertia: 12,
+    inertia: 3,
     /**
      * For the first `for` seconds after the ball touches it, a card spins at most `max` radians per second (instead of
      * `PINS.caps.angular`): it takes the blow before it tips, so it can never be down in under about 0.2 s.
      */
-    firstSpin: { max: 3.6, for: 0.3 },
+    firstSpin: { max: 3.0, for: 0.3 },
     /** On the ball's first touch: the shove along the ball's way, the lift and the tumble, as shares of `PINS.impact`. */
     shove: 1.7,
     lift: 0.5,
@@ -45,4 +45,15 @@ export const IMPACT = {
    * `gap` seconds so a chain stays soft) and a bigger puff of snow (`puff` × `PINS.landing.puff`).
    */
   landing: { thud: 0.16, thudFrom: 0.35, gap: 0.14, puff: 1.6 },
+  /**
+   * The count is quick (Rachel: the score was far too slow). Each card adds its "+1" the moment it falls. "N down!"
+   * pops once the ball is through the crowd and no card has moved for `settle` seconds, at the latest `within` seconds
+   * after the ball first meets a card (or rolls past them all), even while the ball still rolls on to the wall: the
+   * bounce and the roll back are a bonus show, and cards they knock add their "+1" and tick "N down!" up (`recount`).
+   * The cards pop back (and the next turn comes) once "N down!" has shown `showAtLeast` seconds and the ball has
+   * poofed or stopped, at the latest `nextTurnCap` seconds after the count (a ball still rolling then poofs); the
+   * pop-back and the hand-over take about 0.85 s more, so the next turn comes at most about 2.5 s after "N down!". A
+   * full clear or a new set keeps the pins' own longer pause.
+   */
+  count: { settle: 0.35, within: 1.3, showAtLeast: 1.0, nextTurnCap: 1.7 },
 } as const;

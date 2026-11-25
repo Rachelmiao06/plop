@@ -71,6 +71,8 @@ and `<GroupBoard>` (`GAME.board.limit` rows), passed to `MatchEnd` as children.
 ## Files
 
 - `content.ts` players, points, timings of the loop, the words. Tune here.
+- `rules.ts` `recount` (with `GameBridge`): after "N down!", cards knocked by the ball's roll back from the wall add
+  their "+1"s and the difference in points (never taken away).
 - `camera.ts` the camera's follow of a throw (chase, settle, together mode).
 - `rules.ts` `createGame()`: turns, scores, and when a throw may start. Plain TypeScript, no drawing, no timers.
 - `GameBridge.tsx` inside the canvas: feeds bowling and pins events into the rules, runs the timers on the scene

@@ -162,8 +162,8 @@ export const FEEL = {
    * The hit: a soft thump of `thump` (+ `thumpPerSize` for a full ball) on the thump sound's size scale, times how
    * hard it hit (`fullSpeed` units per second straight at the wall = the hardest), a puff of snow (`LOOK.wallPuff`)
    * and a wobble of the paper (the backdrop's).
-   * The long roll back must not hold up the score: the pins count the throw at the latest `countWithin` seconds after
-   * the ball first meets a card (or first rolls past them all, on a miss), and any ball still rolling then poofs.
+   * The roll to the wall and back never holds up the score: the pins count the first pass through the crowd and treat
+   * the rest as a bonus show (the pins' `IMPACT.count`).
    * A ball that has been past the pins rolls back from the wall until it is nearly still (`poofBelow` units per
    * second), then poofs into snow so it never parks over the fallen cards.
    */
@@ -175,7 +175,6 @@ export const FEEL = {
     thump: 0.22,
     thumpPerSize: 0.3,
     fullSpeed: 7,
-    countWithin: 3.5,
     poofBelow: 0.8,
     /**
      * The friend (bunny, sleepy cat) keeps its +2 from the way out: a ball rolling back from the wall poofs just short
