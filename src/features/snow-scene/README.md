@@ -40,7 +40,7 @@ The play-view distance pulls back by itself when needed so both character spots 
 
 Camera control is never blocked while characters are idle. When a character starts being dragged, call `claimSnowPointer(pointerId)`; that finger then no longer moves the camera. (Wheel and keys are not claimable yet; nothing uses keys.)
 
-Snow is everywhere, and it can be pressed anywhere (up to `ground.pressReach` from the middle). Untouched snow is one big cheap surface out to the haze, shaped by `baseHeightAt`. The first time something presses a spot, a 4 by 4 unit tile of fine grid is made there and remembers the dents; the plain snow hides itself under every tile. Tiles near the middle use 0.05-unit squares, tiles further out 0.1 (only seen from high up), and every tile has a short hidden lip so no gap shows between tiles. Tiles and plain snow share the same height formula, look and edge slopes, so no seam shows. `heightAt` and `packedAt` work everywhere.
+Snow is everywhere, and it can be pressed anywhere (up to `ground.pressReach` from the middle). Untouched snow is one big cheap surface out to the haze, shaped by `baseHeightAt`. The first time something presses a spot, a 4 by 4 unit tile of fine grid is made there and remembers the dents; the plain snow hides itself under every tile. All tiles use 0.05-unit squares (`ground.farCell` can make far tiles coarser if speed ever needs it), and every tile has a short hidden lip so no gap shows between tiles. Tiles and plain snow share the same height formula, look and edge slopes, so no seam shows. `heightAt` and `packedAt` work everywhere.
 
 ## Files
 
@@ -65,7 +65,7 @@ Everything temporary is in `TempDragPress.tsx` and is marked `TEMPORARY` where i
 
 Always:
 
-Scaling rule (test press only): the test press grows with camera distance (up to `tempDrag.maxScale` times), together with its lag, dig speed and crater size, so from high up a drag still leaves a track you can see. Stamps stay at most `tempDrag.maxStepCells` grid squares apart so wide grooves stay smooth. The real snowball has a fixed size and should call `pressGroove` with its own radius; it is not scaled. Snow dust and clumps grow with the size of the dent that threw them (`spray.baseRadius`, `spray.maxSizeScale`), which is natural for any press, test or real.
+Press size: the test press keeps its real size on the snow at any camera distance, so close up a drag leaves a wide groove and from far a thin one (`tempDrag.maxScale` = 1; above 1 it would grow when seen from far). Stamps stay at most `tempDrag.maxStepCells` grid squares apart so grooves stay smooth. Snow dust and clumps grow with the size of the dent that threw them (`spray.baseRadius`, `spray.maxSizeScale`).
 
 - `?guides` in the address: two stand-in blocks at the character spots
 - `?fps` in the address: frame rate replaces the hint text

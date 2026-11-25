@@ -225,7 +225,8 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
       },
       // Which squares have a tile, and how big a square is.
       uTiles: { value: tiles },
-      uTileInfo: { value: new Vector4(g.tileSize, tilesAcross, 0, 0) },
+      // tile size, tiles across, how far the plain snow overlaps the outer edge
+      uTileInfo: { value: new Vector4(g.tileSize, tilesAcross, g.cell * 0.4, 0) },
       // where the far snow starts and finishes melting into the sky
       uHaze: {
         value: new Vector4(content.haze.start, content.haze.end, 0, content.ground.centerZ),
@@ -273,6 +274,10 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
         uniform vec4 uFarDrift;
         uniform sampler2D uTiles;
         uniform vec4 uTileInfo;
+        bool snowTileAt(vec2 c) {
+          if (any(lessThan(c, vec2(0.0))) || any(greaterThanEqual(c, vec2(uTileInfo.y)))) return false;
+          return texture2D(uTiles, (c + 0.5) / uTileInfo.y).r > 0.5;
+        }
         uniform vec4 uFarRipple;
         uniform vec4 uGrain;
         uniform vec4 uSparkle;
@@ -284,10 +289,19 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
         "#include <color_fragment>",
         /* glsl */ `#include <color_fragment>
         #ifdef SNOW_PLAIN
-          // A tile is drawn here instead: step aside.
+          // A tile is drawn here instead: step aside. Along the outer edge of
+          // the pressed area (where the next square has no tile) stay a hair
+          // over the tile, so no hairline gap can show between the two.
           vec2 tileCell = floor(vSnowPos.xz / uTileInfo.x) + uTileInfo.y * 0.5;
-          if (all(greaterThanEqual(tileCell, vec2(0.0))) && all(lessThan(tileCell, vec2(uTileInfo.y)))
-              && texture2D(uTiles, (tileCell + 0.5) / uTileInfo.y).r > 0.5) discard;
+          if (snowTileAt(tileCell)) {
+            vec2 inTile = fract(vSnowPos.xz / uTileInfo.x);
+            float edge = uTileInfo.z / uTileInfo.x;
+            float sx = inTile.x < edge ? -1.0 : (inTile.x > 1.0 - edge ? 1.0 : 0.0);
+            float sz = inTile.y < edge ? -1.0 : (inTile.y > 1.0 - edge ? 1.0 : 0.0);
+            bool overlap = (sx != 0.0 && !snowTileAt(tileCell + vec2(sx, 0.0)))
+              || (sz != 0.0 && !snowTileAt(tileCell + vec2(0.0, sz)));
+            if (!overlap) discard;
+          }
         #endif
         // Scene units covered by one screen pixel: fine detail fades out
         // before it gets smaller than a pixel and starts to shimmer.

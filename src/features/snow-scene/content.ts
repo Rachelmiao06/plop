@@ -25,7 +25,7 @@ export const content = {
     // from high up), and every tile has a short hidden lip hanging down its
     // edges so no gap shows where a fine and a coarse tile meet.
     fineRadius: 12,
-    farCell: 0.1,
+    farCell: 0.05,
     skirtDepth: 0.5,
     // How far from the middle pressing works (beyond it the snow is haze),
     // and the most tiles kept, so memory stays bounded.
@@ -308,11 +308,11 @@ export const content = {
   tempDrag: {
     ballRadius: 0.28,
     craterRadius: 0.5,
-    // The test press grows with camera distance, so a drag leaves a track of
-    // about the same size on screen near or far. Never smaller than above,
-    // never more than this many times bigger. (The real snowball will have a
-    // fixed size; this is only for the test press.)
-    maxScale: 3.5,
+    // How much the test press may grow with camera distance. 1 = it keeps its
+    // real size on the snow at any distance, so from far away a drag leaves a
+    // thin track and close up a wide one (Rachel). Above 1 it grows up to
+    // that many times bigger when seen from far.
+    maxScale: 1,
     // Distance between stamps while dragging, as a share of the radius, and
     // never more than this many grid squares (wider gaps show as stripes).
     spacing: 0.25,
