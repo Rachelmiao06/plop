@@ -100,8 +100,13 @@ class SpraySim {
     this.dust.raycast = () => {};
 
     this.clumps = new InstancedMesh(
-      new IcosahedronGeometry(1, 0),
-      new MeshStandardMaterial({ color: content.colors.snow, roughness: 0.9 }),
+      new IcosahedronGeometry(1, 1),
+      new MeshStandardMaterial({
+        color: content.colors.snow,
+        emissive: content.colors.snow,
+        emissiveIntensity: s.clumpGlow,
+        roughness: 0.9,
+      }),
       s.clumpCount,
     );
     this.clumps.instanceMatrix.setUsage(DynamicDrawUsage);

@@ -29,7 +29,7 @@ export const content = {
     // Pressing longer digs further, down to hard ground.
     sinkPerRadius: 0.3,
     // How steep the walls of a deep pit are (rise per unit sideways).
-    wallSlope: 2.1,
+    wallSlope: 1.7,
     // Share of the pushed-away snow that piles up at the edge (the rest packs down).
     rimShare: 0.55,
     // Rim width as a share of the dent's radius, with an upper limit.
@@ -38,7 +38,7 @@ export const content = {
     // Rim height grows with the depth of the dent, between these limits.
     rimHeightPerDepth: 0.55,
     rimMinHeight: 0.035,
-    rimMaxHeight: 0.26,
+    rimMaxHeight: 0.16,
     // Snow already sunk this deep gets no rim piled on it, so grooves stay clean.
     rimSkipDepth: 0.03,
     // How much the rim is smoothed each time it is touched (0 = sharp, 1 = very soft).
@@ -49,7 +49,7 @@ export const content = {
     hardGroundBlend: 0.05,
     // Ploughing: how much more snow piles ahead of a moving ball than beside
     // it, how little is left behind it, and the speed at which that is in full effect.
-    plough: 1.3,
+    plough: 0.9,
     ploughBehind: 0.1,
     ploughFullSpeed: 1.2,
   },
@@ -76,7 +76,7 @@ export const content = {
     burstBoost: 1.6,
     burstSpeed: 2.6,
     // Share thrown when pressing without moving; full amount at fullSpeed.
-    stillShare: 0.25,
+    stillShare: 0.15,
     fullSpeed: 2.5,
     // Most thrown by one press, so a huge hit cannot empty the pool.
     maxPerKick: 90,
@@ -86,7 +86,9 @@ export const content = {
     dustRise: 0.9,
     dustDrag: 3.2,
     dustGravity: 0.6,
-    clumpSize: 0.035,
+    clumpSize: 0.02,
+    // How much the clumps glow with their own light, so they never look like stones.
+    clumpGlow: 0.3,
     clumpRise: 2.4,
     clumpGravity: 7.5,
     // How long a landed clump stays before it melts into the snow.
@@ -157,7 +159,7 @@ export const content = {
 
   zoom: {
     // Closest view, as a share of the full-scene camera distance.
-    closest: 0.3,
+    closest: 0.36,
     // Wheel and trackpad-pinch sensitivity.
     wheelSpeed: 0.0015,
     trackpadPinchSpeed: 0.012,
@@ -166,7 +168,7 @@ export const content = {
     // How far from the middle the view may wander when fully zoomed in.
     panX: 3.4,
     panZFar: 3.2,
-    panZNear: 1.6,
+    panZNear: 2.6,
   },
 
   layout: {
@@ -203,6 +205,11 @@ export const content = {
     spacing: 0.25,
     // How fast holding still digs down, in units per second.
     digRate: 0.4,
+    // A finger waits this long (seconds) before pressing, so a pinch leaves no dent.
+    touchDelay: 0.09,
+    // Moving faster than this (units per second) stops the digging: a drag
+    // leaves a track, only a slow or still press digs a pit.
+    digStopSpeed: 0.8,
     // Friction: how quickly the pressed point catches up with the finger,
     // in fresh snow (slow, heavy) and along a packed track (quick).
     followFresh: 6,

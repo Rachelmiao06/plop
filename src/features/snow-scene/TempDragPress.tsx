@@ -26,6 +26,9 @@ type Finger = {
   x: number;
   z: number;
   placed: boolean;
+  touch: boolean;
+  // Seconds since it touched down.
+  age: number;
 };
 
 // One entry per finger. Mouse and touch both count as fingers.
@@ -44,6 +47,8 @@ export function TempDragPress() {
         x: 0,
         z: 0,
         placed: false,
+        touch: e.pointerType !== "mouse",
+        age: 0,
       });
       // Keep following the finger even if it slides off the canvas.
       try {
@@ -96,7 +101,11 @@ export function TempDragPress() {
   // digging and the pressed point can lag behind the finger.
   useFrame((_, delta) => {
     // Two fingers on empty snow are a pinch-to-zoom, not two presses.
-    if (snowPointers.pinching) fingers.clear();
+    let touching = 0;
+    for (const [id, finger] of fingers) {
+      if (finger.touch && !snowPointers.claimed.has(id)) touching++;
+    }
+    if (snowPointers.pinching || touching >= 2) fingers.clear();
     if (fingers.size === 0) return;
 
     const t = content.tempDrag;
@@ -108,6 +117,11 @@ export function TempDragPress() {
       if (snowPointers.claimed.has(id)) continue;
       const target = pointOnSnow(finger.clientX, finger.clientY);
       if (!target) continue;
+
+      // A touch waits a moment before it presses, in case a second finger
+      // is about to land and make it a pinch.
+      finger.age += seconds;
+      if (finger.touch && finger.age < t.touchDelay) continue;
 
       if (!finger.placed) {
         finger.placed = true;
@@ -131,8 +145,10 @@ export function TempDragPress() {
       const moveZ = toZ * share;
       const distance = Math.hypot(moveX, moveZ);
       const stamps = Math.max(Math.ceil(distance / step), 1);
+      const speed = distance / seconds;
+      const digging = Math.max(1 - speed / t.digStopSpeed, 0);
       const options = {
-        dig: (t.digRate * seconds) / stamps,
+        dig: (t.digRate * digging * seconds) / stamps,
         velocityX: moveX / seconds,
         velocityZ: moveZ / seconds,
       };
@@ -202,10 +218,16 @@ export function TempFps() {
       }
       return (performance.now() - start) / frames;
     };
-    const w = window as unknown as { __plopBench?: typeof bench };
+    const camera = () => get().camera.position.toArray();
+    const w = window as unknown as {
+      __plopBench?: typeof bench;
+      __plopCamera?: typeof camera;
+    };
     w.__plopBench = bench;
+    w.__plopCamera = camera;
     return () => {
       delete w.__plopBench;
+      delete w.__plopCamera;
     };
   }, [show, get]);
 

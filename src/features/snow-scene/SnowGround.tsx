@@ -209,7 +209,9 @@ function buildMaterial(): MeshStandardMaterial {
         float sparklePhase = dot(sparkleView, sparkleFacing) * uSparkle.z + sparkleRnd * 6.2831;
         float sparkleGlint = pow(max(sin(sparklePhase), 0.0), 20.0);
         float sparkleOn = step(1.0 - uSparkle.y, sparkleRnd);
-        float sparkleDot = 1.0 - smoothstep(0.2, 0.5, length(fract(sparkleP) - 0.5));
+        // A glint stays a pin-point on screen, however close the camera is.
+        float sparkleSize = clamp(1.4 * snowPx / uSparkle.x, 0.06, 0.5);
+        float sparkleDot = 1.0 - smoothstep(sparkleSize * 0.4, sparkleSize, length(fract(sparkleP) - 0.5));
         float sparkleSun = smoothstep(0.03, 0.2, dot(reflectedLight.directDiffuse, vec3(0.3333)));
         float sparkleFade = 1.0 - smoothstep(0.7, 2.5, snowPx / uSparkle.x);
         outgoingLight += uSparkleColor * uSparkle.w * sparkleGlint * sparkleOn

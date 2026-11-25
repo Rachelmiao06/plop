@@ -15,3 +15,8 @@ One line per decision: date, what, why.
 - 2026-11-24 · The snow fades into a fog colour in its own shader (not Three.js scene fog), and the backdrop is that same colour. Scene fog is applied before tone mapping and left a visible seam at the mesh edge.
 - 2026-11-24 · The camera sways very slightly all the time. Sparkles only glint when the view shifts, and the view is otherwise fixed.
 - 2026-11-24 · Other features use the snow only through `useSnow()` and `useSnowLayout()` from `@/features/snow-scene`, as children of `<SnowScene>`. Pointer rays skip the snow mesh (too many triangles); aim at a flat plane and correct with `heightAt`.
+- 2026-11-24 · Pressing adds up: one touch is shallow, holding digs down to hard ground, and the snow layer is 0.9 units thick (was 0.5) so shallow and deep read differently from the camera. Rachel: the first version lacked depth.
+- 2026-11-24 · Digging depth and friction are decided by the caller, not the snow: `pressGroove` takes `dig` and a velocity, and `packedAt` reports resistance. The snowball feature can then make a big ball feel heavier with its own numbers.
+- 2026-11-24 · Dust and clumps are thrown by the snow itself whenever it is pressed or hit, so every feature gets them without extra code.
+- 2026-11-24 · Zoom is written by hand, not drei CameraControls: the camera only moves along its fixed viewing line, and the view is clamped back to the centre at full size. Two unclaimed fingers are a pinch; a feature calls `claimSnowPointer` to keep a finger for its own drag.
+- 2026-11-24 · The snow stays a CPU height grid (not a GPU displacement map), because later features need `heightAt`. Measured cost is small.
