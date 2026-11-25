@@ -10,7 +10,10 @@
  *    with an image.
  * 5. Checks the first image in the home page body is the WeChat share image (at least 300 px) and loads.
  * 6. Fetches a page that does not exist: it must answer 404.
- * 7. Fails if the server printed an error while doing all this.
+ * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
+ *    taken and then listed, a rude nickname and an impossible score are refused. The test page `/dev/leaderboard`
+ *    is one of the pages in step 3.
+ * 8. Fails if the server printed an error while doing all this.
  *
  * It does NOT run the page in a browser: client-side JavaScript errors, WebGL, the 3D scene, the loading screen
  * fading out and any interaction are not covered. It only proves the server can render every page.
@@ -172,6 +175,28 @@ async function main() {
       if (res.status === 200) pass(`${src} (${width}px, first image)`);
       else fail(`WeChat share image ${src} answered ${res.status}`);
     }
+
+    console.log("\nLeaderboard API (/api/scores):");
+    const group = `smoke${String(port).slice(-3).padStart(3, "0")}`;
+    const post = (body) =>
+      fetch(base + "/api/scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT),
+      });
+    const expect = async (label, res, status, check = () => true) => {
+      const json = await res.json().catch(() => ({}));
+      if (res.status !== status) fail(`${label}: answered ${res.status} ${JSON.stringify(json)}, expected ${status}`);
+      else if (!check(json)) fail(`${label}: unexpected answer ${JSON.stringify(json)}`);
+      else pass(`${label} ${status}`);
+    };
+    const good = { group, name: "Smoke", score: 7, rounds: 3, mode: "turns" };
+    await expect("GET bad group", await get(base + "/api/scores?g=nope"), 400, (j) => j.error === "bad_group");
+    await expect("POST good score", await post(good), 200, (j) => j.entry?.best === 7 && j.rank === 1);
+    await expect("GET lists it", await get(`${base}/api/scores?g=${group}`), 200, (j) => j.scores?.[0]?.name === "Smoke");
+    await expect("POST rude name", await post({ ...good, name: "傻逼" }), 400, (j) => j.error === "rude_name");
+    await expect("POST impossible score", await post({ ...good, score: 9999 }), 400, (j) => j.error === "bad_score");
 
     console.log("\nMissing page:");
     const missing = await get(base + "/this-page-does-not-exist");
