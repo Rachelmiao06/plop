@@ -3,3 +3,4 @@ export { ShareButton } from "./ShareButton";
 export { WeChatShareImage } from "./WeChatShareImage";
 export { WeChatHint } from "./WeChatHint";
 export { SHARE } from "./content";
+export { ensureGroupId, getGroupId } from "./group";

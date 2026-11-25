@@ -3,6 +3,7 @@ export { InviteBackdrop } from "./InviteBackdrop";
 export { InviteCard } from "./InviteCard";
 export { INVITE } from "./content";
 export {
+  cleanGroup,
   cleanName,
   cleanScore,
   gamePath,

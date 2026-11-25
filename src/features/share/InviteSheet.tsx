@@ -3,7 +3,8 @@
 /**
  * "Invite a friend": a small hand-drawn paper sheet above the share button. It asks for your name (optional, at
  * most 12 characters) and, once you have finished a match alone on this device, offers to include your best score.
- * Then it makes a short link to the invite card, `/invite?from=<name>&score=<n>`, and shares it:
+ * Then it makes a short link to the invite card, `/invite?g=<group>&from=<name>&score=<n>` (the group id from
+ * `ensureGroupId`, so all of one person's invites share a leaderboard), and shares it:
  *
  * - inside WeChat: copies the link and opens the card page, where the "tap ··· top right" hint shows, so WeChat's
  *   own menu sends it as a proper chat card (WeChat blocks sharing from a page without its JS-SDK);
@@ -19,6 +20,7 @@ import { cleanName, INVITE, invitePath } from "@/features/invite";
 
 import { copy, isWeChat, store, systemShare } from "./actions";
 import { SHARE } from "./content";
+import { ensureGroupId } from "./group";
 
 const words = SHARE.invite;
 
@@ -60,7 +62,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
   const send = async () => {
     const clean = cleanName(name);
     store.set("local", words.nameKey, clean ?? "");
-    const path = invitePath({ name: clean, score: best !== null && withScore ? best : null });
+    const path = invitePath({ group: ensureGroupId(), name: clean, score: best !== null && withScore ? best : null });
     const url = window.location.origin + path;
 
     if (isWeChat()) {

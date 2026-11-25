@@ -39,6 +39,8 @@ export const SHARE = {
     wechat: { zh: "链接已复制。点右上角 ··· 把卡片发给朋友", en: "link copied · tap ··· to send the card" },
     /** The invite page shows the sender the "···" hint once, when this is set (sessionStorage). */
     sentKey: "plop.invite.sent",
+    /** This device's invite group id (localStorage), see `group.ts`. */
+    groupKey: "plop.group",
     /** The last name typed, kept on this device only (localStorage), so it is there next time. */
     nameKey: "plop.invite.name",
   },

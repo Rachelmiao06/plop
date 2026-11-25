@@ -9,7 +9,7 @@
  * 4. Reads the home page's <head> and fetches the icons and the share card it points to: each must answer 200
  *    with an image.
  * 5. Checks the first image in the home page body is the WeChat share image (at least 300 px) and loads.
- * 6. Opens the invite card with and without a name (`/invite`, `/invite?from=test&score=12`): the title must name the
+ * 6. Opens the invite card with and without a name and group (`/invite`, `/invite?from=test&score=12`, with `g=`): the title must name the
  *    inviter for WeChat's chat card, and the first image in the body must be the invite's own square card.
  * 7. Fetches a page that does not exist: it must answer 404.
  * 8. Fails if the server printed an error while doing all this.
@@ -181,6 +181,7 @@ async function main() {
     const invites = [
       ["/invite", "有人邀请你来打雪仗 · Plop!"],
       ["/invite?from=test&score=12", "test 邀请你来打雪仗 · Plop!"],
+      ["/invite?g=test1234&from=test&score=12", "test 邀请你来打雪仗 · Plop!"],
     ];
     for (const [path, title] of invites) {
       try {

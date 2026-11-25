@@ -1,6 +1,6 @@
 # invite
 
-The invite card at `/invite?from=<name>&score=<n>`: a Christmas-evening welcome a friend opens from a WeChat chat (or
+The invite card at `/invite?g=<group>&from=<name>&score=<n>`: a Christmas-evening welcome a friend opens from a WeChat chat (or
 any link). Mounted by `src/app/invite/page.tsx`; nothing in the game, snow scene or scenery is changed.
 
 1. The paper loading screen (from `@/features/loading`) shows Rachel's mouse-with-a-letter while the scene loads; its
@@ -12,16 +12,20 @@ any link). Mounted by `src/app/invite/page.tsx`; nothing in the game, snow scene
    seal pops, a soft bell `playTie` then a sparkle `playStarHit` from `src/lib/audio.ts`, only after the tap); with no
    tap it opens by itself after `timing.autoOpen`, silently. The card says "**{name}** 邀请你来打一局雪仗 ❄️" (or
    "有人邀请你来打一局雪仗 ❄️"), "TA 打了 {score} 分，你能赢吗？" when a score came along, and one big
-   "接受挑战 / Play" button to `/?from=<name>` (the game ignores it for now; one day it can say "vs {name}").
+   "接受挑战 / Play" button to `/?g=<group>&from=<name>` (the game ignores both for now; one day it can say
+   "vs {name}" and show the group's board). Under the message is an empty, marked **leaderboard slot**
+   (`data-leaderboard-slot`) where `<GroupBoard group={group} />` from the leaderboard feature can be mounted.
    Chinese first, English beneath in small text.
 4. The sender, arriving here from the share sheet inside WeChat, also sees the "tap ··· to send" note once
    (`SHARE.invite.sentKey` in sessionStorage).
 
 ## The link
 
-`link.ts` makes and reads it, for both sides: `invitePath`, `readInvite`, `gamePath`, `inviteTitle`. Only a name
-(at most `link.nameMax` = 12 characters; control characters and `< >` dropped) and a whole-number score
-(0 to `link.scoreMax`) travel. Nothing else.
+`link.ts` makes and reads it, for both sides: `invitePath`, `readInvite`, `gamePath`, `inviteTitle`, `cleanGroup`.
+Only a group id (exactly `link.groupLength` = 8 of `A-Z a-z 0-9 _ -`, the leaderboard's rule), a name (at most
+`link.nameMax` = 12 characters; control characters and `< >` dropped) and a whole-number score (0 to
+`link.scoreMax`) travel. Nothing else. The group id itself is made and remembered by the share feature
+(`getGroupId()` / `ensureGroupId()`).
 
 ## WeChat's chat card
 

@@ -8,6 +8,8 @@ export const INVITE = {
     nameMax: 12,
     /** Highest score kept in a link. */
     scoreMax: 999,
+    /** Invite group id (`?g=`): exactly this many URL-safe characters (A-Z a-z 0-9 _ -), same rule as the leaderboard. */
+    groupLength: 8,
   },
 
   meta: {

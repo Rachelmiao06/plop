@@ -5,7 +5,8 @@
  * mouse-with-a-letter hops in and an envelope drops in front of it. A tap (or, after a while, nothing) opens it:
  * the flap folds back, the seal pops, a soft bell rings (only after a tap: browsers allow sound after one),
  * and the card slides out and comes to the front: "{name} 邀请你来打一局雪仗", the score if one was shared,
- * and one big "接受挑战 / Play" button to the game. Chinese first, English beneath in small text.
+ * and one big "接受挑战 / Play" button to the game (`/?g=<group>&from=<name>`). Chinese first, English beneath in
+ * small text. Under the message there is an empty, marked slot for the group leaderboard.
  *
  * Hand-drawn bits (envelope, card edge, button edge) are fixed uneven paths in token colours, like the share
  * button's; the characters and the fairy lights are Rachel's cut-outs used as they are.
@@ -121,7 +122,7 @@ function withName(text: string, name: string) {
   );
 }
 
-export function InviteCard({ name, score }: Invite) {
+export function InviteCard({ group, name, score }: Invite) {
   const loaded = useLoaded();
   const [stage, setStage] = useState<Stage>("waiting");
   // The sender, just back from making this invite inside WeChat: show them where "···" is (read once, cleared below).
@@ -317,8 +318,14 @@ export function InviteCard({ name, score }: Invite) {
                 />
               </p>
             )}
+            {/*
+              LEADERBOARD SLOT: "this group's top scores" goes here, under the message and above the button.
+              Mount it only when there is a group, e.g. `{group && <GroupBoard group={group} limit={5} />}`
+              (from `@/features/leaderboard`, PR #73). It renders nothing for now; the wrapper below is the spot.
+            */}
+            <div data-leaderboard-slot={group ?? undefined} className="relative empty:hidden" />
             <Link
-              href={gamePath(name)}
+              href={gamePath(name, group)}
               className="plop-invite-btn relative mx-auto mt-6 block w-[min(70vw,250px)] px-6 py-3 text-ink-deep outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
