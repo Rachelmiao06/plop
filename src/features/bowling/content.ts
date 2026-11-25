@@ -169,7 +169,7 @@ export const FEEL = {
    */
   wall: {
     inset: 0.55,
-    bounce: 0.5,
+    bounce: 0.58,
     slide: 0.8,
     most: 2,
     thump: 0.22,

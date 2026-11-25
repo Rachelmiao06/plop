@@ -498,6 +498,11 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           // A bit more energy than the plain push: a shove, a lift and a tumble, once per card.
           if (!rt.struck) {
             rt.struck = true;
+            // Tuning aid (development only): cards first met by a ball rolling back from the wall.
+            if (process.env.NODE_ENV !== "production" && ball.bounces > 0) {
+              const w = window as unknown as { __backKnocks?: number };
+              w.__backKnocks = (w.__backKnocks ?? 0) + 1;
+            }
             const im = PINS.impact;
             const d = ball.direction;
             const m = body.mass();
@@ -643,9 +648,12 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         f.wentPast.add(ball.id);
         if (f.reachedAt === null) f.reachedAt = f.clock;
       }
-      // Slow among the cards: poof now. Back from the wall: once it is nearly still (or has stopped).
+      // Slow among the cards on its way out: poof now. Back from the wall it may roll on through them (knocking
+      // more over) until it is nearly still (or has stopped), then poof. (A card it shoved all the way to the wall
+      // does not count: once it has bounced it is on its way back.)
+      const back = f.wentPast.has(ball.id) || ball.bounces > 0;
       const settled = !ball.rolling || ball.speed < FEEL.wall.poofBelow;
-      if ((near && ball.speed < B.slowSpeed) || (f.wentPast.has(ball.id) && settled)) game.burst(ball.id);
+      if ((!back && near && ball.speed < B.slowSpeed) || (back && settled)) game.burst(ball.id);
       else if (ball.rolling) clear = false;
     }
     return clear;
