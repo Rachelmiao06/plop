@@ -745,3 +745,650 @@ export function startMusicOnFirstTouch(): () => void {
   events.forEach((e) => window.addEventListener(e, handler, true));
   return remove;
 }
+
+// ================================================================ ambience and cues
+//
+// Added for the village. Everything below only adds; nothing above changed.
+//
+//   startAmbience()                quiet village bed: wind with gusts, the cocoa-corner fire,
+//                                  now and then distant wind chimes or sleigh bells, a chickadee.
+//                                  Call from a tap or click the first time (it unlocks audio).
+//   startAmbienceOnFirstTouch()    or let it start with the first touch anywhere
+//   stopAmbience()                 fade it out
+//   setAmbienceVolume(v)           ambience volume 0..1, separate from music and effects
+//   isAmbiencePlaying()
+//
+// The ambience and the cues run on the effects bus, so the sound-effects switch
+// (setEffectsOn) silences them too; the music switch does not touch them.
+//
+// Named one-shots for game moments (no inputs; all soft and short):
+//
+//   playRoundStart()   a soft chime
+//   playStarHit()      a little sparkle, for the star pin
+//   playNearMiss()     a tiny surprised kitten "mew", for a near miss on the cat or a friend
+//   playFullClear()    a warm bell flourish
+//   playWin()          a short happy jingle for the end card
+//   playTie()          a gentle two-note "ding-dong"
+//   playTap()          a soft paper tap, for buttons
+
+/** The ambience recordings (credits in public/assets/audio/CREDITS.md). Loaded only when needed. */
+const EXTRA_FILES = {
+  wind: "/assets/audio/ambience-wind.mp3",
+  fire: "/assets/audio/ambience-fire.mp3",
+  bird: "/assets/audio/ambience-chickadee.mp3",
+  bells: "/assets/audio/ambience-sleigh-bells.mp3",
+  mew: "/assets/audio/kitten-mew.mp3",
+} as const;
+
+type ExtraName = keyof typeof EXTRA_FILES;
+
+/** Ambience feel numbers. Tune here. Gains are relative to AMBIENCE.volume. */
+export const AMBIENCE = {
+  /** Ambience volume, 0..1. At 0.65 the bed sits about 14 dB under the music. */
+  volume: 0.65,
+  /** Seconds to fade in when it starts and out when it stops. */
+  fadeIn: 4,
+  fadeOut: 1.2,
+
+  wind: {
+    /** Exact length of the loop inside the file (seconds); the end is cross-faded into the start. */
+    loop: 26,
+    gain: 0.55,
+    /** Wind is muffled to this pitch (Hz) between gusts, and opens up to gustPitch in a gust. */
+    pitch: 900,
+    gustPitch: 2200,
+    /** A gust swells the wind by up to this much (0.6 = 60% louder). */
+    gustDepth: 0.6,
+    /** Seconds between gusts, and how long one takes to rise and to fall away. */
+    gustEvery: [6, 14],
+    gustRise: [1.2, 2.6],
+    gustFall: [2, 4.5],
+  },
+
+  fire: {
+    loop: 13,
+    gain: 0.22,
+    /** Softened above this pitch (Hz): it is across the square, not in your lap. */
+    pitch: 3500,
+    /** -1 left .. 1 right. The cocoa corner is back left in the village. */
+    pan: -0.35,
+  },
+
+  /** Distant wind chimes: a few soft notes from a pentatonic set, now and then. */
+  chimes: {
+    every: [12, 28],
+    notes: [1047, 1175, 1319, 1568, 1760, 2093],
+    count: [2, 5],
+    /** Seconds between notes in one cluster. */
+    stagger: [0.12, 0.55],
+    decay: 3.2,
+    gain: 0.05,
+    pitch: 3200,
+  },
+
+  /** Instead of chimes, sometimes distant sleigh bells (share of the chime moments). */
+  bells: { share: 0.3, gain: 0.16, pitch: 3800 },
+
+  bird: {
+    every: [20, 45],
+    gain: 0.16,
+    /** Random playback speed either way, so it is not the same chirp every time. */
+    speedSpread: 0.06,
+    pitch: 7000,
+  },
+
+  /** How much of the distant sounds (chimes, bells, bird) goes into the soft room echo. */
+  echo: 0.45,
+  echoLength: 2.2,
+} as const;
+
+/** One-shot cue feel numbers. Tune here. */
+export const CUES = {
+  /** Overall cue volume, 0..1, on top of the effects bus. At 0.42 every cue peaks well under the thump. */
+  volume: 0.42,
+  /** Everything above this pitch (Hz) is softened, so no cue is ever sharp. */
+  softness: 5200,
+  /** How much of each cue goes into the soft echo. */
+  echo: 0.25,
+
+  roundStart: { notes: [784, 1175], gap: 0.09, gain: 0.32, decay: 1.4 },
+  starHit: { notes: [1568, 1976, 2349, 2637, 3136], gap: 0.045, gain: 0.14, decay: 0.7 },
+  nearMiss: { gain: 0.55, speed: [0.98, 1.12], pitch: 4200 },
+  fullClear: {
+    notes: [523, 659, 784, 1047, 1319, 1568],
+    gap: 0.075,
+    gain: 0.2,
+    decay: 1.3,
+    /** The closing chord, after the run. */
+    chord: [523, 784, 1047, 1319],
+    chordGain: 0.12,
+    chordDecay: 2.2,
+    /** A little distant sleigh-bell shimmer underneath (0 = none). */
+    bells: 0.12,
+  },
+  win: {
+    /** [pitch Hz, start seconds] — a tiny music-box tune. */
+    tune: [
+      [784, 0],
+      [988, 0.13],
+      [1175, 0.26],
+      [1568, 0.42],
+      [1319, 0.6],
+      [1568, 0.74],
+    ],
+    gain: 0.24,
+    decay: 0.9,
+    chord: [784, 1175, 1568],
+    chordAt: 0.9,
+    chordGain: 0.1,
+    chordDecay: 1.8,
+  },
+  tie: { notes: [988, 784], gap: 0.32, gain: 0.26, decay: 1.5 },
+  tap: { pitch: 1700, length: 0.035, gain: 0.22, thump: 190, thumpGain: 0.18 },
+} as const;
+
+type Extras = {
+  /** Ambience volume and fade (separate from the cues). */
+  bed: GainNode;
+  /** Cues gain, softened. */
+  cues: GainNode;
+  /** A soft room echo shared by ambience and cues. */
+  echo: ConvolverNode;
+};
+
+let extras: Extras | null = null;
+const extraBuffers = new Map<ExtraName, Promise<AudioBuffer | null>>();
+
+const pick = (range: readonly [number, number] | readonly number[]) =>
+  lerp(range[0], range[1], Math.random());
+
+/** A gentle room echo: two seconds of softly decaying noise. */
+function echoImpulse(ctx: AudioContext, seconds: number): AudioBuffer {
+  const length = Math.floor(ctx.sampleRate * seconds);
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      const t = i / length;
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3) * 0.5;
+    }
+  }
+  return buffer;
+}
+
+function extrasFor(e: Engine): Extras {
+  if (extras) return extras;
+  const echo = e.ctx.createConvolver();
+  echo.buffer = echoImpulse(e.ctx, AMBIENCE.echoLength);
+  const echoSoft = e.ctx.createBiquadFilter();
+  echoSoft.type = "lowpass";
+  echoSoft.frequency.value = 3000;
+  echo.connect(echoSoft).connect(e.out);
+
+  const bed = e.ctx.createGain();
+  bed.gain.value = 0;
+  bed.connect(e.out);
+
+  const soften = e.ctx.createBiquadFilter();
+  soften.type = "lowpass";
+  soften.frequency.value = CUES.softness;
+  soften.Q.value = 0.5;
+  soften.connect(e.out);
+  const cues = e.ctx.createGain();
+  cues.gain.value = CUES.volume;
+  cues.connect(soften);
+
+  extras = { bed, cues, echo };
+  return extras;
+}
+
+/** Load one of the extra recordings once; null if it could not be loaded. */
+function extraBuffer(e: Engine, name: ExtraName): Promise<AudioBuffer | null> {
+  let p = extraBuffers.get(name);
+  if (!p) {
+    p = fetchSound(e, EXTRA_FILES[name]).catch(() => null);
+    extraBuffers.set(name, p);
+  }
+  return p;
+}
+
+/**
+ * Where the sound really starts. Some browsers keep the few milliseconds of
+ * silence an MP3 encoder adds; skipping it keeps a loop seamless either way.
+ */
+function soundStart(buffer: AudioBuffer): number {
+  const d = buffer.getChannelData(0);
+  const limit = Math.min(d.length, Math.floor(buffer.sampleRate * 0.1));
+  for (let i = 0; i < limit; i++) if (Math.abs(d[i]) > 1e-4) return i / buffer.sampleRate;
+  return 0;
+}
+
+/** A soft bell voice: a sine with a quiet overtone, fading out. */
+function bell(
+  e: Engine,
+  dest: AudioNode,
+  at: number,
+  pitch: number,
+  gain: number,
+  decay: number,
+  overtones: readonly (readonly [number, number])[] = [
+    [2, 0.25],
+    [3, 0.08],
+  ],
+) {
+  const env = e.ctx.createGain();
+  env.gain.setValueAtTime(0, at);
+  env.gain.linearRampToValueAtTime(gain, at + 0.006);
+  env.gain.exponentialRampToValueAtTime(0.0001, at + decay);
+  env.connect(dest);
+  const voices: [number, number][] = [[1, 1], ...overtones.map(([r, g]) => [r, g] as [number, number])];
+  for (const [ratio, level] of voices) {
+    const osc = e.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = pitch * ratio;
+    const g = e.ctx.createGain();
+    // Overtones die sooner than the note itself, like a real bell.
+    g.gain.setValueAtTime(level, at);
+    if (ratio !== 1) g.gain.exponentialRampToValueAtTime(0.0001, at + decay * 0.4);
+    osc.connect(g).connect(env);
+    osc.start(at);
+    osc.stop(at + decay + 0.05);
+  }
+}
+
+/** Send a cue voice both straight out and a little into the echo. */
+function cueBus(e: Engine, x: Extras, echoAmount: number = CUES.echo): GainNode {
+  const g = e.ctx.createGain();
+  g.connect(x.cues);
+  const send = e.ctx.createGain();
+  send.gain.value = echoAmount;
+  g.connect(send).connect(x.echo);
+  return g;
+}
+
+/** Play a recording once through the given chain. */
+function playBuffer(
+  e: Engine,
+  buffer: AudioBuffer,
+  dest: AudioNode,
+  at: number,
+  opts: { gain: number; speed?: number; pitch?: number; pan?: number },
+) {
+  const src = e.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.playbackRate.value = opts.speed ?? 1;
+  const soft = e.ctx.createBiquadFilter();
+  soft.type = "lowpass";
+  soft.frequency.value = opts.pitch ?? 8000;
+  const g = e.ctx.createGain();
+  g.gain.value = opts.gain;
+  let node: AudioNode = src.connect(soft).connect(g);
+  if (opts.pan) {
+    const p = e.ctx.createStereoPanner();
+    p.pan.value = opts.pan;
+    node = node.connect(p);
+  }
+  node.connect(dest);
+  src.start(at, soundStart(buffer));
+}
+
+// ---------------------------------------------------------------- ambience
+
+type Loop = { src: AudioBufferSourceNode; filter: BiquadFilterNode; gain: GainNode };
+
+let ambienceWanted = false;
+let ambienceVolume: number = AMBIENCE.volume;
+let ambienceTimer: ReturnType<typeof setInterval> | null = null;
+let ambienceStopTimer: ReturnType<typeof setTimeout> | null = null;
+let ambienceHiddenListener = false;
+let loops: { wind: Loop | null; fire: Loop | null } = { wind: null, fire: null };
+const nextAt = { gust: 0, chime: 0, bird: 0 };
+
+function startLoop(
+  e: Engine,
+  x: Extras,
+  buffer: AudioBuffer,
+  length: number,
+  gain: number,
+  pitch: number,
+  pan = 0,
+): Loop {
+  const src = e.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.loop = true;
+  const start = soundStart(buffer);
+  src.loopStart = start;
+  src.loopEnd = Math.min(buffer.duration, start + length);
+  const filter = e.ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = pitch;
+  filter.Q.value = 0.4;
+  const g = e.ctx.createGain();
+  g.gain.value = gain;
+  let node: AudioNode = src.connect(filter).connect(g);
+  if (pan) {
+    const p = e.ctx.createStereoPanner();
+    p.pan.value = pan;
+    node = node.connect(p);
+  }
+  node.connect(x.bed);
+  // Start somewhere in the loop so two visits never begin the same way.
+  src.start(e.ctx.currentTime + 0.02, start + Math.random() * (src.loopEnd - start));
+  return { src, filter, gain: g };
+}
+
+function fadeBedTo(target: number, seconds: number) {
+  if (!engine || !extras) return;
+  const g = extras.bed.gain;
+  const now = engine.ctx.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(g.value, now);
+  g.linearRampToValueAtTime(target, now + seconds);
+}
+
+function gust(at: number) {
+  const loop = loops.wind;
+  if (!loop) return;
+  const w = AMBIENCE.wind;
+  const swell = 1 + w.gustDepth * (0.4 + 0.6 * Math.random());
+  const rise = pick(w.gustRise);
+  const fall = pick(w.gustFall);
+  const g = loop.gain.gain;
+  const f = loop.filter.frequency;
+  g.cancelScheduledValues(at);
+  f.cancelScheduledValues(at);
+  g.setTargetAtTime(w.gain * swell, at, rise / 3);
+  f.setTargetAtTime(lerp(w.pitch, w.gustPitch, swell - 1), at, rise / 3);
+  g.setTargetAtTime(w.gain, at + rise, fall / 3);
+  f.setTargetAtTime(w.pitch, at + rise, fall / 3);
+}
+
+function distantSend(e: Engine, x: Extras): GainNode {
+  const g = e.ctx.createGain();
+  g.connect(x.bed);
+  const send = e.ctx.createGain();
+  send.gain.value = AMBIENCE.echo;
+  g.connect(send).connect(x.echo);
+  return g;
+}
+
+function chimes(e: Engine, x: Extras, at: number) {
+  const c = AMBIENCE.chimes;
+  const dest = distantSend(e, x);
+  const soft = e.ctx.createBiquadFilter();
+  soft.type = "lowpass";
+  soft.frequency.value = c.pitch;
+  const pan = e.ctx.createStereoPanner();
+  pan.pan.value = (Math.random() * 2 - 1) * 0.6;
+  soft.connect(pan).connect(dest);
+  const count = Math.round(pick(c.count));
+  let t = at;
+  for (let i = 0; i < count; i++) {
+    const note = c.notes[Math.floor(Math.random() * c.notes.length)];
+    // Tube chimes ring with uneven overtones.
+    bell(e, soft, t, note, c.gain * (0.6 + 0.4 * Math.random()), c.decay, [
+      [2.76, 0.18],
+      [5.4, 0.06],
+    ]);
+    t += pick(c.stagger);
+  }
+}
+
+function ambienceTick() {
+  const e = live();
+  if (!e || !extras || !ambienceWanted) return;
+  const x = extras;
+  const now = e.ctx.currentTime;
+  const ahead = now + 0.3;
+
+  if (nextAt.gust < ahead) {
+    gust(Math.max(now, nextAt.gust));
+    nextAt.gust = now + pick(AMBIENCE.wind.gustEvery);
+  }
+  if (nextAt.chime < ahead) {
+    const at = Math.max(now, nextAt.chime);
+    nextAt.chime = now + pick(AMBIENCE.chimes.every);
+    if (Math.random() < AMBIENCE.bells.share) {
+      void extraBuffer(e, "bells").then((b) => {
+        if (b && ambienceWanted)
+          playBuffer(e, b, distantSend(e, x), at, {
+            gain: AMBIENCE.bells.gain,
+            pitch: AMBIENCE.bells.pitch,
+            pan: (Math.random() * 2 - 1) * 0.5,
+          });
+      });
+    } else chimes(e, x, at);
+  }
+  if (nextAt.bird < ahead) {
+    const at = Math.max(now, nextAt.bird);
+    nextAt.bird = now + pick(AMBIENCE.bird.every);
+    void extraBuffer(e, "bird").then((b) => {
+      if (b && ambienceWanted)
+        playBuffer(e, b, distantSend(e, x), at, {
+          gain: AMBIENCE.bird.gain,
+          speed: 1 + (Math.random() * 2 - 1) * AMBIENCE.bird.speedSpread,
+          pitch: AMBIENCE.bird.pitch,
+          pan: (Math.random() * 2 - 1) * 0.7,
+        });
+    });
+  }
+}
+
+function resumeAmbience(e: Engine) {
+  const x = extrasFor(e);
+  if (ambienceStopTimer) {
+    clearTimeout(ambienceStopTimer);
+    ambienceStopTimer = null;
+  }
+  fadeBedTo(ambienceVolume, AMBIENCE.fadeIn);
+  if (!loops.wind && !loops.fire) {
+    void Promise.all([extraBuffer(e, "wind"), extraBuffer(e, "fire")]).then(([wind, fire]) => {
+      if (!ambienceWanted || loops.wind || loops.fire) return;
+      const w = AMBIENCE.wind;
+      const f = AMBIENCE.fire;
+      if (wind) loops.wind = startLoop(e, x, wind, w.loop, w.gain, w.pitch);
+      if (fire) loops.fire = startLoop(e, x, fire, f.loop, f.gain, f.pitch, f.pan);
+    });
+  }
+  if (!ambienceTimer) {
+    const now = e.ctx.currentTime;
+    // The first chime and bird come a little while after the bed, never at once.
+    nextAt.gust = now + pick(AMBIENCE.wind.gustEvery);
+    nextAt.chime = now + pick(AMBIENCE.chimes.every) * 0.5;
+    nextAt.bird = now + pick(AMBIENCE.bird.every) * 0.5;
+    ambienceTimer = setInterval(ambienceTick, 250);
+  }
+}
+
+function pauseAmbience() {
+  if (ambienceTimer) {
+    clearInterval(ambienceTimer);
+    ambienceTimer = null;
+  }
+  fadeBedTo(0, AMBIENCE.fadeOut);
+  if (ambienceStopTimer) clearTimeout(ambienceStopTimer);
+  ambienceStopTimer = setTimeout(() => {
+    loops.wind?.src.stop();
+    loops.fire?.src.stop();
+    loops = { wind: null, fire: null };
+    ambienceStopTimer = null;
+  }, AMBIENCE.fadeOut * 1000 + 100);
+}
+
+/** Pause the ambience while the tab is hidden, and bring it back when it returns. */
+function watchAmbienceVisibility() {
+  if (ambienceHiddenListener || typeof document === "undefined") return;
+  ambienceHiddenListener = true;
+  document.addEventListener("visibilitychange", () => {
+    if (!ambienceWanted || !engine) return;
+    if (document.hidden) pauseAmbience();
+    else resumeAmbience(engine);
+  });
+}
+
+/**
+ * Start the quiet village ambience with a slow fade in. Must run inside a user
+ * gesture the first time (it unlocks audio). Follows the sound-effects switch.
+ */
+export function startAmbience() {
+  if (!unlockAudio() || !engine) return;
+  ambienceWanted = true;
+  resumeAmbience(engine);
+  watchAmbienceVisibility();
+}
+
+/** Fade the ambience out and stop it. */
+export function stopAmbience() {
+  ambienceWanted = false;
+  pauseAmbience();
+}
+
+/** True while the ambience is wanted (playing or fading in). */
+export function isAmbiencePlaying(): boolean {
+  return ambienceWanted;
+}
+
+/** Ambience volume 0..1. Separate from the music and the effects. */
+export function setAmbienceVolume(volume: number) {
+  ambienceVolume = clamp01(volume);
+  if (ambienceWanted && ambienceTimer) fadeBedTo(ambienceVolume, 0.1);
+}
+
+/**
+ * Wait for the first touch, click or key press anywhere, then start the ambience.
+ * Returns a function that cancels the wait.
+ */
+export function startAmbienceOnFirstTouch(): () => void {
+  return unlockAudioOnFirstTouch(() => startAmbience());
+}
+
+// ---------------------------------------------------------------- cues
+
+/** The engine and the cue chain, if audio is unlocked. */
+function cueEngine(): { e: Engine; x: Extras; at: number } | null {
+  const e = live();
+  if (!e) return null;
+  return { e, x: extrasFor(e), at: e.ctx.currentTime + 0.01 };
+}
+
+/** Round start: a soft two-note chime. */
+export function playRoundStart() {
+  const c = cueEngine();
+  if (!c) return;
+  const r = CUES.roundStart;
+  const dest = cueBus(c.e, c.x);
+  r.notes.forEach((note, i) => bell(c.e, dest, c.at + i * r.gap, note, r.gain, r.decay));
+}
+
+/** Star pin hit: a tiny rising sparkle. */
+export function playStarHit() {
+  const c = cueEngine();
+  if (!c) return;
+  const s = CUES.starHit;
+  const dest = cueBus(c.e, c.x, CUES.echo * 1.6);
+  s.notes.forEach((note, i) => {
+    const wobble = 1 + (Math.random() * 2 - 1) * 0.01;
+    bell(c.e, dest, c.at + i * s.gap, note * wobble, s.gain * (1 - i * 0.1), s.decay, [[2, 0.12]]);
+  });
+}
+
+/** Near miss on the cat or a friend: a tiny surprised kitten mew. */
+export function playNearMiss() {
+  const c = cueEngine();
+  if (!c) return;
+  const n = CUES.nearMiss;
+  const asked = c.e.ctx.currentTime;
+  void extraBuffer(c.e, "mew").then((buffer) => {
+    const late = c.e.ctx.currentTime - asked;
+    if (late > 0.4) return; // too late to belong to the moment
+    if (buffer) {
+      playBuffer(c.e, buffer, cueBus(c.e, c.x, 0.1), c.e.ctx.currentTime + 0.01, {
+        gain: n.gain,
+        speed: pick(n.speed),
+        pitch: n.pitch,
+      });
+      return;
+    }
+    // Stand-in: a little rising-falling squeak.
+    const at = c.e.ctx.currentTime + 0.01;
+    const osc = c.e.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(700, at);
+    osc.frequency.exponentialRampToValueAtTime(1150, at + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(820, at + 0.32);
+    const g = c.e.ctx.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(0.2, at + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.36);
+    osc.connect(g).connect(cueBus(c.e, c.x, 0.1));
+    osc.start(at);
+    osc.stop(at + 0.4);
+  });
+}
+
+/** Full clear: a warm rising bell flourish that settles on a chord. */
+export function playFullClear() {
+  const c = cueEngine();
+  if (!c) return;
+  const f = CUES.fullClear;
+  const dest = cueBus(c.e, c.x, CUES.echo * 1.4);
+  f.notes.forEach((note, i) => bell(c.e, dest, c.at + i * f.gap, note, f.gain, f.decay));
+  const chordAt = c.at + f.notes.length * f.gap + 0.05;
+  f.chord.forEach((note) => bell(c.e, dest, chordAt, note, f.chordGain, f.chordDecay));
+  if (f.bells > 0) {
+    void extraBuffer(c.e, "bells").then((b) => {
+      if (b) playBuffer(c.e, b, dest, Math.max(c.e.ctx.currentTime, c.at), { gain: f.bells, pitch: 4000 });
+    });
+  }
+}
+
+/** End card win: a short happy music-box jingle. */
+export function playWin() {
+  const c = cueEngine();
+  if (!c) return;
+  const w = CUES.win;
+  const dest = cueBus(c.e, c.x);
+  for (const [note, when] of w.tune) bell(c.e, dest, c.at + when, note, w.gain, w.decay);
+  w.chord.forEach((note) => bell(c.e, dest, c.at + w.chordAt, note, w.chordGain, w.chordDecay));
+}
+
+/** Tie: a gentle two-note "ding-dong". */
+export function playTie() {
+  const c = cueEngine();
+  if (!c) return;
+  const t = CUES.tie;
+  const dest = cueBus(c.e, c.x);
+  t.notes.forEach((note, i) => bell(c.e, dest, c.at + i * t.gap, note, t.gain, t.decay));
+}
+
+/** Button tap: a soft paper tap. */
+export function playTap() {
+  const c = cueEngine();
+  if (!c) return;
+  const p = CUES.tap;
+  const dest = cueBus(c.e, c.x, 0);
+  const src = c.e.ctx.createBufferSource();
+  src.buffer = c.e.noise;
+  const band = c.e.ctx.createBiquadFilter();
+  band.type = "bandpass";
+  band.frequency.value = p.pitch * (0.9 + 0.2 * Math.random());
+  band.Q.value = 1.2;
+  const g = c.e.ctx.createGain();
+  g.gain.setValueAtTime(0, c.at);
+  g.gain.linearRampToValueAtTime(p.gain, c.at + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.at + p.length);
+  src.connect(band).connect(g).connect(dest);
+  src.start(c.at, Math.random() * (c.e.noise.duration - 0.2), p.length + 0.02);
+
+  const osc = c.e.ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(p.thump, c.at);
+  osc.frequency.exponentialRampToValueAtTime(p.thump * 0.6, c.at + 0.05);
+  const tg = c.e.ctx.createGain();
+  tg.gain.setValueAtTime(0, c.at);
+  tg.gain.linearRampToValueAtTime(p.thumpGain, c.at + 0.003);
+  tg.gain.exponentialRampToValueAtTime(0.0001, c.at + 0.06);
+  osc.connect(tg).connect(dest);
+  osc.start(c.at);
+  osc.stop(c.at + 0.08);
+}
