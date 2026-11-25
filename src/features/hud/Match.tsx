@@ -17,8 +17,8 @@ import { hudCss, styles } from "./hudStyles";
 
 const t = content.text;
 
-/** A paper note in the middle of the screen. */
-function Card({ label, children, seed }: { label: string; children: ReactNode; seed: number }) {
+/** A paper note in the middle of the screen (also the game's round rule card). */
+export function Card({ label, children, seed }: { label: string; children: ReactNode; seed: number }) {
   const evening = useEvening();
   const tint = Math.min(100, content.glass.tint + 18 + content.glass.evening * evening);
   return (
@@ -34,7 +34,8 @@ function Card({ label, children, seed }: { label: string; children: ReactNode; s
       >
         <PaperFill seed={seed} />
         <PencilFrame seed={seed} radius={28} />
-        {children}
+        {/* A tall card (the end card with the group board) scrolls inside its paper on a small phone. */}
+        <div className="relative -mx-2 max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain px-2 pt-1 pb-1">{children}</div>
       </section>
     </div>
   );
@@ -58,21 +59,116 @@ function Pick({ picked, onPick, children, seed }: { picked: boolean; onPick: () 
   );
 }
 
+/** One name field: the snowman's face, and a pencil-ringed paper pill to type in. */
+function NameField({
+  look,
+  value,
+  fallback,
+  max,
+  seed,
+  onChange,
+  onEnter,
+}: {
+  look: SnowmanLook;
+  value: string;
+  fallback: string;
+  max: number;
+  seed: number;
+  onChange: (v: string) => void;
+  onEnter: () => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+      <span className="shrink-0">
+        <SnowmanFace look={look} size={32} seed={seed} />
+      </span>
+      <div className="relative h-11 min-w-0 flex-1 rounded-full bg-paper">
+        <PencilFrame seed={seed + 19} radius={22} overshoot={5} />
+        <input
+          value={value}
+          onChange={(e) => onChange(Array.from(e.target.value).slice(0, max).join(""))}
+          onKeyDown={(e) => e.key === "Enter" && onEnter()}
+          placeholder={t.start.namePlaceholder(fallback)}
+          aria-label={t.start.nameLabel(fallback)}
+          autoComplete="nickname"
+          enterKeyHint="go"
+          spellCheck={false}
+          className={`relative size-full min-w-0 rounded-full bg-transparent px-3 text-center font-heading text-xl text-ink-deep placeholder:text-ink/45 ${styles.nameInput}`}
+        />
+      </div>
+    </div>
+  );
+}
+
 export type MatchStartProps = {
   /** Round counts to offer (the first is the default) and the current picks. */
   lengths: readonly number[];
   rounds: number;
   players: 1 | 2;
   onStart: (rounds: number, players: 1 | 2) => void;
+  /** The names as typed ("" = skipped), each snowman's cute default, and the longest name allowed. */
+  names: readonly [string, string];
+  fallbacks: readonly [string, string];
+  nameMax: number;
+  onNames: (names: readonly [string, string]) => void;
+  /** Both snowmen play whatever "who's playing" says (together mode): ask both names. */
+  together?: boolean;
+  /** Arrived from a friend's invite: "小美 在等你 / 小美 is waiting" over the title. */
+  greeting?: { zh: string; en: string } | null;
 };
 
-/** Before the first throw: how many rounds, and who is playing. */
-export function MatchStart({ lengths, rounds: startRounds, players: startPlayers, onStart }: MatchStartProps) {
+/** Before the first throw: your name, how many rounds, and who is playing. */
+export function MatchStart({
+  lengths,
+  rounds: startRounds,
+  players: startPlayers,
+  onStart,
+  names,
+  fallbacks,
+  nameMax,
+  onNames,
+  together,
+  greeting,
+}: MatchStartProps) {
   const [rounds, setRounds] = useState(startRounds);
   const [players, setPlayers] = useState<1 | 2>(startPlayers);
+  const two = together || players === 2;
+  const go = () => onStart(rounds, players);
   return (
     <Card label={t.start.title} seed={41}>
+      {greeting && (
+        <p className={`-mt-1 mb-1.5 font-heading text-2xl leading-tight font-bold text-berry-deep ${styles.greet}`}>
+          {greeting.zh}
+          <span className="block font-sans text-xs font-normal text-ink">{greeting.en}</span>
+        </p>
+      )}
       <p className="font-heading text-4xl leading-none font-bold text-ink-deep">{t.start.title}</p>
+      <p className="mt-3 font-heading text-xl leading-tight">
+        {two ? t.start.names.zh : t.start.name.zh}
+        <span className="ml-1.5 text-base opacity-80">· {two ? t.start.names.en : t.start.name.en}</span>
+      </p>
+      <div className="mt-2 flex gap-2">
+        <NameField
+          look="bucket"
+          value={names[0]}
+          fallback={fallbacks[0]}
+          max={nameMax}
+          seed={3}
+          onChange={(v) => onNames([v, names[1]])}
+          onEnter={go}
+        />
+        {two && (
+          <NameField
+            look="redHat"
+            value={names[1]}
+            fallback={fallbacks[1]}
+            max={nameMax}
+            seed={8}
+            onChange={(v) => onNames([names[0], v])}
+            onEnter={go}
+          />
+        )}
+      </div>
       <p className="mt-3 font-heading text-xl leading-tight">{t.start.rounds}</p>
       <div role="radiogroup" aria-label={t.start.rounds} className="mt-2 flex gap-2">
         {lengths.map((n, i) => (
@@ -100,8 +196,7 @@ export function MatchStart({ lengths, rounds: startRounds, players: startPlayers
       </div>
       <Button
         size="lg"
-        autoFocus
-        onClick={() => onStart(rounds, players)}
+        onClick={go}
         className="mt-5 h-12 w-full rounded-full bg-sky-blue font-heading text-2xl font-bold text-ink-deep hover:bg-sky-blue/80"
       >
         {t.start.go}
@@ -118,8 +213,12 @@ export type MatchEndProps = {
   solo?: { best: number | null } | null;
   /** The best single throw of the match, if worth a line: who, points, round (from 1). */
   bestThrow?: { name: string; points: number; round: number } | null;
+  /** Alone after a friend's invite: their score, for one kind line. */
+  rival?: { name: string; score: number } | null;
   onAgain: () => void;
   onChoose: () => void;
+  /** Under the totals, above "play again": the group board and its "pop it on" prompt, when there is a group. */
+  children?: ReactNode;
 };
 
 /** A snowman's face with its total, a crown when it won. */
@@ -149,7 +248,7 @@ function Finisher({ player, crown, seed }: { player: EndPlayer; crown: boolean; 
 }
 
 /** After the last round: the totals, a crown and a cheer, and "play again". Never "you lose". */
-export function MatchEnd({ players, solo, bestThrow, onAgain, onChoose }: MatchEndProps) {
+export function MatchEnd({ players, solo, bestThrow, rival, onAgain, onChoose, children }: MatchEndProps) {
   const [a, b] = players;
   const tie = !solo && a.total === b.total;
   const winner = solo ? null : a.total > b.total ? 0 : b.total > a.total ? 1 : null;
@@ -176,7 +275,17 @@ export function MatchEnd({ players, solo, bestThrow, onAgain, onChoose }: MatchE
         {!solo && <Finisher player={b} crown={tie || winner === 1} seed={8} />}
       </div>
       <p className="mt-2 font-heading text-xl leading-tight">{sub}</p>
+      {solo && rival && (
+        <p className="mt-1 font-heading text-xl leading-tight font-bold text-berry-deep">
+          {a.total > rival.score
+            ? t.end.beatRival(rival.name, rival.score)
+            : a.total === rival.score
+              ? t.end.tiedRival(rival.name)
+              : t.end.underRival(rival.name, rival.score)}
+        </p>
+      )}
       {bestThrow && <p className="mt-1 font-heading text-base leading-tight opacity-80">{t.end.bestThrow(bestThrow.name, bestThrow.points, bestThrow.round)}</p>}
+      {children && <div className="mt-3 flex flex-col items-center gap-3">{children}</div>}
       <Button
         size="lg"
         autoFocus

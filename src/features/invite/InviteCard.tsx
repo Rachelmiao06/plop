@@ -6,7 +6,7 @@
  * the flap folds back, the seal pops, a soft bell rings (only after a tap: browsers allow sound after one),
  * and the card slides out and comes to the front: "{name} 邀请你来打一局雪仗", the score if one was shared,
  * and one big "接受挑战 / Play" button to the game (`/?g=<group>&from=<name>`). Chinese first, English beneath in
- * small text. Under the message there is an empty, marked slot for the group leaderboard.
+ * small text. Under the message, when the link has a group, that group's board (`<GroupBoard>`).
  *
  * Hand-drawn bits (envelope, card edge, button edge) are fixed uneven paths in token colours, like the share
  * button's; the characters and the fairy lights are Rachel's cut-outs used as they are.
@@ -15,6 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
+import { GroupBoard } from "@/features/leaderboard";
 import { useLoaded } from "@/features/loading";
 import { SHARE, WeChatHint } from "@/features/share";
 import { playStarHit, playTie, unlockAudio } from "@/lib/audio";
@@ -318,12 +319,12 @@ export function InviteCard({ group, name, score }: Invite) {
                 />
               </p>
             )}
-            {/*
-              LEADERBOARD SLOT: "this group's top scores" goes here, under the message and above the button.
-              Mount it only when there is a group, e.g. `{group && <GroupBoard group={group} limit={5} />}`
-              (from `@/features/leaderboard`, PR #73). It renders nothing for now; the wrapper below is the spot.
-            */}
-            <div data-leaderboard-slot={group ?? undefined} className="relative empty:hidden" />
+            {/* This group's top scores (from the leaderboard feature), only when the link has a group. */}
+            {group && (
+              <div data-leaderboard-slot={group} className="relative mt-4 flex justify-center text-left">
+                <GroupBoard group={group} limit={INVITE.board.limit} className="w-full" />
+              </div>
+            )}
             <Link
               href={gamePath(name, group)}
               className="plop-invite-btn relative mx-auto mt-6 block w-[min(70vw,250px)] px-6 py-3 text-ink-deep outline-none focus-visible:ring-2 focus-visible:ring-ring"

@@ -17,6 +17,12 @@ export type PlayerSpec = {
 
 export type MatchLength = 3 | 5;
 
+export type RuleWords = {
+  big: { zh: string; en: string };
+  line: { zh: (points: number) => string; en: (points: number) => string };
+  chip: { zh: string; en: string };
+};
+
 export const GAME = {
   /** Player 1 (bucket snowman) on the left of the score panel, player 2 (red-hat snowman) on the right. */
   players: [
@@ -34,6 +40,26 @@ export const GAME = {
    * scenery's `throwingView` (0.45, 0.4, 0.15, 2.05).
    */
   phoneView: { maxAspect: 0.8, lookAtShare: 0.5, lookAtHeight: 0.35, pathAt: 0.04, distance: 2.4 },
+
+  /**
+   * The players' names (`names.ts`): typed on the start card, remembered on this device under `key`. Skipped, a
+   * player is their snowman's cute default (`players[i].name`), so a name is never empty anywhere.
+   */
+  names: { key: "plop.names" },
+
+  /** The group board on the end card (when there is a group): how many rows. */
+  board: { limit: 5 },
+
+  /**
+   * Each round's rule card (`RuleCard.tsx`): it shows when a round starts and stays until the player pulls, taps
+   * or presses "got it" (no auto-hide). `pop` is its spring in (seconds). The scene marker over the special card
+   * (`RuleMarker.tsx`): `lift` above the card's top (scene units), a bounce of `bounce` units every `bounceFor`
+   * seconds, and its size in pixels.
+   */
+  rule: {
+    pop: 0.55,
+    marker: { lift: 0.22, bounce: 0.09, bounceFor: 1.1, size: 54 },
+  },
 
   score: {
     /** Points for each cut-out knocked down. */
@@ -169,8 +195,6 @@ export const GAME = {
     turnNoteFor: 1.6,
     /** The first-time hint fades out over this long after the first throw. */
     hintFade: 0.9,
-    /** The "star friend" / "let the bunny be" hint shows this long the first time each appears (or until the throw). */
-    specialHintFor: 7,
     /** After the last throw is counted, the end card comes this long after the pins stand again. */
     endCardAfter: 0.4,
   },
@@ -192,10 +216,43 @@ export const TEXT = {
   hintTogetherTouch: "each drag your own snowman back",
   together: "roll together!",
   mode: { label: "How do you play?", turns: "take turns", together: "together" },
-  special: {
-    star: "a star friend: +2 when it falls",
-    friend: "let the bunny be: +2 if it stays up",
-  },
+  /** Someone arrived from an invite: the start card greets them, and alone the panel shows the score to beat. */
+  waiting: { zh: (name: string) => `${name} 在等你`, en: (name: string) => `${name} is waiting` },
+  rival: (name: string) => `${name}`,
+  /**
+   * Each round's rule (by round set id, the pins' `ROUND_SETS`): `big` a few big words on the rule card, `line` the
+   * one plain line under the picture (`points` is the bonus from the pins' `SPECIALS`, or the full-clear bonus),
+   * `chip` two words on the reminder beside the score panel. Chinese first, English under it.
+   */
+  rules: {
+    "round-strike": {
+      big: { zh: "全部打倒！", en: "Strike!" },
+      line: { zh: (p: number) => `一球全倒，额外 +${p}`, en: (p: number) => `Knock them all down: +${p} extra` },
+      chip: { zh: "全倒", en: "strike" },
+    },
+    "round-star": {
+      big: { zh: "打倒星星朋友", en: "Hit the star" },
+      line: { zh: (p: number) => `头顶有星星的那位：倒下就 +${p}`, en: (p: number) => `The friend with a star: +${p} when it falls` },
+      chip: { zh: "打星星", en: "hit star" },
+    },
+    "round-bunny": {
+      big: { zh: "别打倒小兔子", en: "Leave the bunny" },
+      line: { zh: (p: number) => `别打倒小兔子：它站着就 +${p}`, en: (p: number) => `Leave the bunny standing: +${p}` },
+      chip: { zh: "别碰小兔", en: "spare bunny" },
+    },
+    "round-mound": {
+      big: { zh: "小雪堆", en: "Little mound" },
+      line: { zh: () => "软软的雪堆会让球变慢：绕开它", en: () => "Soft snow slows the ball: roll around it" },
+      chip: { zh: "绕开雪堆", en: "mind mound" },
+    },
+    "round-cat": {
+      big: { zh: "别吵醒小猫", en: "Sleepy cat" },
+      line: { zh: (p: number) => `别碰长椅上的小猫：它睡着就 +${p}`, en: (p: number) => `Don't wake the cat: +${p} if it sleeps on` },
+      chip: { zh: "别吵小猫", en: "shh, cat" },
+    },
+  } as Record<string, RuleWords>,
+  ruleGotIt: { zh: "知道啦", en: "got it" },
+  ruleTurn: (name: string) => `${name} first`,
   cancel: "Put it down",
   cancelTitle: "Cancel this pull (Esc)",
 };

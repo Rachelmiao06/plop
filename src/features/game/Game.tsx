@@ -9,6 +9,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { MatchEnd, MatchStart, ScoreHud } from "@/features/hud";
+import { cleanName, cleanScore, INVITE } from "@/features/invite";
+import { GroupBoard, SubmitScore } from "@/features/leaderboard";
+// The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
+// feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
+import { getGroupId } from "@/features/share/group";
 import { createPins, formationById, PinsPopup, PinsStage, softSnowFor } from "@/features/pins";
 import { PaperFinish } from "@/features/look";
 import { Village } from "@/features/scenery";
@@ -25,21 +30,23 @@ import {
   subscribeAudioSettings,
 } from "@/lib/audio";
 
-import { GAME, type MatchLength } from "./content";
+import { GAME, TEXT, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
 import { createLink, GameBridge } from "./GameBridge";
-import { CancelPull, GameHint, ModePick, SpecialHint, TurnNote } from "./GameOverlay";
+import { CancelPull, GameHint, ModePick, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
+import { readNames, saveNames, savePlayerOne, serverNames, shownName, subscribeNames } from "./names";
+import { RuleCard, ruleFor, ruleIcon } from "./RuleCard";
+import { RuleMarker } from "./RuleMarker";
 import { createGame } from "./rules";
 import { ThrowingView } from "./ThrowingView";
 
-/** Thrower id → name, for "N down!" per player in together mode. */
-const throwerNames = Object.fromEntries(GAME.players.map((p) => [p.thrower, p.name]));
+const fallbacks = [GAME.players[0].name, GAME.players[1].name] as const;
 
-const players = [
-  { name: GAME.players[0].name, look: GAME.players[0].look },
-  { name: GAME.players[1].name, look: GAME.players[1].look },
-] as const;
+/** The page's address, read once in the browser (an invite brings `?from=<name>&score=<n>`). */
+const noSubscribe = () => () => {};
+const readSearch = () => window.location.search;
+const readGroup = () => getGroupId();
 
 /** Playing alone, the best total for each match length is kept on this device (never required: storage may fail). */
 function readBest(rounds: MatchLength): number | null {
@@ -67,6 +74,28 @@ export function Game() {
   /** Playing alone: the best total before this match started (the end card compares with it). */
   const [bestBefore, setBestBefore] = useState<number | null>(null);
   const saved = useRef(false);
+
+  // The names typed on the start card (remembered on this device), shown everywhere; never empty.
+  const typed = useSyncExternalStore(subscribeNames, readNames, serverNames);
+  const names = useMemo(() => [shownName(0, typed[0]), shownName(1, typed[1])] as const, [typed]);
+  const players = useMemo(
+    () => [
+      { name: names[0], look: GAME.players[0].look },
+      { name: names[1], look: GAME.players[1].look },
+    ] as const,
+    [names],
+  );
+  /** Thrower id → name, for "N down!" per player in together mode. */
+  const throwerNames = useMemo(() => Object.fromEntries(GAME.players.map((p, i) => [p.thrower, names[i]])), [names]);
+
+  // Arrived from a friend's invite: who is waiting, and (alone) their score to beat.
+  const search = useSyncExternalStore(noSubscribe, readSearch, () => "");
+  const invite = useMemo(() => {
+    const q = new URLSearchParams(search);
+    return { name: cleanName(q.get("from")), score: cleanScore(q.get("score")) };
+  }, [search]);
+  // The group board: the invite's group, or the one this device made when it sent an invite.
+  const group = useSyncExternalStore(noSubscribe, readGroup, () => null);
 
   const together = state.mode === "together";
   // Each bowling stage hands its game to the bridge, by slot (one in turns mode, two side by side together).
@@ -151,6 +180,8 @@ export function Game() {
     const pick = !b || solo || (a && a.points >= b.points) ? (a ? { p: 0, ...a } : null) : { p: 1, ...b };
     return pick && pick.points > 0 ? { name: players[pick.p].name, points: pick.points, round: pick.round + 1 } : null;
   })();
+  const rival = solo && invite.name && invite.score !== null ? { name: invite.name, score: invite.score } : null;
+  const rule = state.phase === "playing" ? ruleFor(game.setFor(state.round)) : null;
 
   return (
     <main className={`relative h-dvh w-full overflow-hidden ${styles.root}`}>
@@ -188,15 +219,17 @@ export function Game() {
           <BowlingStage key="solo" pinRing={false} softAt={softAt} onGame={onSolo} />
         )}
         <PinsStage pins={pins} />
+        <RuleMarker game={game} pins={pins} />
         <GameBridge game={game} pins={pins} link={link} />
         {/* Together: no filmed chase; the throwing view frames both throws and the set. */}
         {!together && <CameraDirector pins={pins} link={link} />}
       </SnowScene>
       <PaperFinish />
-      <GameHint game={game} />
-      <SpecialHint game={game} pins={pins} />
-      <TurnNote game={game} pins={pins} />
-      <PinsPopup pins={pins} names={throwerNames} />
+      <GameHint game={game} names={names} />
+      <TurnNote game={game} names={names} />
+      <div className={`contents ${styles.result}`}>
+        <PinsPopup pins={pins} names={throwerNames} />
+      </div>
       <ScoreHud
         players={[
           { ...players[0], total: state.scores[0] },
@@ -209,7 +242,14 @@ export function Game() {
         gain={state.gain}
         round={state.phase === "choosing" ? null : { now: state.round + 1, of: state.rounds }}
         soloBest={solo ? (state.phase === "over" ? Math.max(bestBefore ?? 0, state.scores[0]) : bestBefore) : undefined}
+        rival={rival}
+        rule={
+          rule
+            ? { icon: ruleIcon(rule), words: `${rule.words.chip.zh} · ${rule.words.chip.en}`, label: `${rule.words.big.en}: ${rule.words.line.en(rule.points)}` }
+            : null
+        }
       />
+      <RuleCard game={game} names={names} />
       <CancelPull game={game} link={link} />
       {/* The start and end cards: every button there gives a soft paper tap (the cards are the hud's; the sound is the game's). */}
       <div
@@ -220,10 +260,19 @@ export function Game() {
       >
       {state.phase === "choosing" && (
         <MatchStart
+          // Remounts once the address is read in the browser, so an invite's "just me" default applies.
+          key={invite.name ?? ""}
           lengths={GAME.match.lengths}
           rounds={state.rounds}
-          players={state.players}
+          // A friend's invite is a challenge: alone against their score, unless the player picks "two friends".
+          players={invite.name && state.turnId === 0 ? 1 : state.players}
           onStart={(rounds, playing) => begin(rounds as MatchLength, playing, false)}
+          names={typed}
+          fallbacks={fallbacks}
+          nameMax={INVITE.link.nameMax}
+          onNames={(next) => saveNames(next)}
+          together={together}
+          greeting={invite.name ? { zh: TEXT.waiting.zh(invite.name), en: TEXT.waiting.en(invite.name) } : null}
         />
       )}
       {state.phase === "choosing" && (
@@ -237,12 +286,38 @@ export function Game() {
           ]}
           solo={solo ? { best: bestBefore } : null}
           bestThrow={bestThrow}
+          rival={rival}
           onAgain={() => begin(state.rounds, state.players, true)}
           onChoose={() => {
             game.choose();
             if (getTimeOfDay() > 0) easeTimeOfDay(0, GAME.evening.back);
           }}
-        />
+        >
+          {group && (
+            <>
+              {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
+              <SubmitScore
+                group={group}
+                score={state.scores[0]}
+                rounds={state.rounds}
+                mode={state.mode}
+                defaultName={typed[0] || undefined}
+                onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
+              />
+              {!solo && (
+                <SubmitScore
+                  group={group}
+                  score={state.scores[1]}
+                  rounds={state.rounds}
+                  mode={state.mode}
+                  defaultName={typed[1] || undefined}
+                  remember={false}
+                />
+              )}
+              <GroupBoard group={group} me={typed[0] || undefined} limit={GAME.board.limit} />
+            </>
+          )}
+        </MatchEnd>
       )}
       </div>
     </main>

@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * "Invite a friend": a small hand-drawn paper sheet above the share button. It asks for your name (optional, at
- * most 12 characters) and, once you have finished a match alone on this device, offers to include your best score.
+ * "Invite a friend": a small hand-drawn paper sheet above the share button. Its title says whose name the invite
+ * carries ("邀请朋友，署名：小美", the name from the start card, or the snowman's default when none was typed, so an
+ * invite never goes out unsigned) with "改名字 / change" to change it, and, once you have finished a match alone on
+ * this device, it offers to include your best score.
  * Then it makes a short link to the invite card, `/invite?g=<group>&from=<name>&score=<n>` (the group id from
  * `ensureGroupId`, so all of one person's invites share a leaderboard), and shares it:
  *
@@ -11,11 +13,12 @@
  * - with the Web Share API: the system share sheet;
  * - otherwise: copies the link and says so.
  *
- * Nothing else about you goes in the link. The name is remembered on this device only, for next time.
+ * Nothing else about you goes in the link. The name is the game's (`readNames` / `savePlayerOne`), remembered on this
+ * device only, so the start card, the score panel and the board say the same.
  */
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 
-import { GAME } from "@/features/game";
+import { GAME, readNames, savePlayerOne, serverNames, shownName, subscribeNames } from "@/features/game";
 import { cleanName, INVITE, invitePath } from "@/features/invite";
 
 import { copy, isWeChat, store, systemShare } from "./actions";
@@ -49,7 +52,11 @@ type Props = {
 
 export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
   const id = useId();
-  const [name, setName] = useState(() => store.get("local", words.nameKey) ?? "");
+  const typed = useSyncExternalStore(subscribeNames, readNames, serverNames)[0];
+  /** What is in the field while changing the name (null = not changing). Nothing typed yet: the field is open. */
+  const [editing, setEditing] = useState<string | null>(() => (readNames()[0] ? null : ""));
+  const name = editing ?? typed;
+  const signed = shownName(0, name);
   const [best] = useState(readBest);
   const [withScore, setWithScore] = useState(true);
 
@@ -61,8 +68,9 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
 
   const send = async () => {
     const clean = cleanName(name);
-    store.set("local", words.nameKey, clean ?? "");
-    const path = invitePath({ group: ensureGroupId(), name: clean, score: best !== null && withScore ? best : null });
+    if (clean && clean !== typed) savePlayerOne(clean);
+    // Never unsigned: no name typed means the snowman's cute default.
+    const path = invitePath({ group: ensureGroupId(), name: signed, score: best !== null && withScore ? best : null });
     const url = window.location.origin + path;
 
     if (isWeChat()) {
@@ -72,7 +80,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
       window.location.assign(path);
       return;
     }
-    const text = clean ? words.text.replace("{name}", clean) : words.textNoName;
+    const text = words.text.replace("{name}", signed);
     const result = await systemShare({ title: "Plop!", text, url });
     if (result === "unavailable") onNote((await copy(url)) ? words.copied.zh : SHARE.copyFailed);
     if (result !== "closed") onClose();
@@ -97,22 +105,35 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
           ×
         </button>
         <h2 id={`${id}-title`} className="pr-6 text-xl leading-tight">
-          {words.title.zh}
-          <span className="block font-sans text-xs">{words.title.en}</span>
+          {words.title.zh.replace("{name}", signed)}
+          <span className="block font-sans text-xs">{words.title.en.replace("{name}", signed)}</span>
         </h2>
 
-        <label htmlFor={`${id}-name`} className="mt-3 block text-sm">
-          {words.name.zh} <span className="text-xs opacity-80">· {words.name.en}</span>
-        </label>
-        <input
-          id={`${id}-name`}
-          value={name}
-          onChange={(e) => setName(Array.from(e.target.value).slice(0, INVITE.link.nameMax).join(""))}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          autoComplete="nickname"
-          enterKeyHint="send"
-          className="mt-1 w-full rounded-2xl border-2 border-ink bg-paper px-3 py-1.5 font-heading text-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
+        {editing === null ? (
+          <button
+            type="button"
+            onClick={() => setEditing(typed)}
+            className="mt-1 text-sm underline decoration-wavy underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {words.change.zh} · <span className="text-xs">{words.change.en}</span>
+          </button>
+        ) : (
+          <>
+            <label htmlFor={`${id}-name`} className="mt-3 block text-sm">
+              {words.name.zh} <span className="text-xs opacity-80">· {words.name.en}</span>
+            </label>
+            <input
+              id={`${id}-name`}
+              value={editing}
+              placeholder={shownName(0, null)}
+              onChange={(e) => setEditing(Array.from(e.target.value).slice(0, INVITE.link.nameMax).join(""))}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+              autoComplete="nickname"
+              enterKeyHint="send"
+              className="mt-1 w-full rounded-2xl border-2 border-ink bg-paper px-3 py-1.5 font-heading text-xl outline-none placeholder:text-ink/45 focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </>
+        )}
 
         {best !== null && (
           <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">

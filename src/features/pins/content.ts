@@ -539,11 +539,12 @@ export const TEXT = {
   none: "Missed!",
   fullClear: "All down!",
   /** Small lines under "N down!" for the special cut-outs. */
-  star: (points: number) => `star friend +${points}`,
+  /** The round's rule outcome, in a few plain words (the game draws them big under "N down!"). */
+  star: (points: number) => `Star friend down! +${points}`,
   /** Per friend cut-out (the rabbit's words when one is not listed). */
   friend: {
-    rabbit: { safe: (points: number) => `bunny's still cosy +${points}`, bumped: "oops, sorry bunny!" },
-    "bench-cat": { safe: (points: number) => `kitty's still asleep +${points}`, bumped: "oops, kitty woke up!" },
+    rabbit: { safe: (points: number) => `Bunny still standing! +${points}`, bumped: "oops, the bunny fell" },
+    "bench-cat": { safe: (points: number) => `Kitty still asleep! +${points}`, bumped: "oops, kitty woke up" },
   } as Partial<Record<PropId, { safe: (points: number) => string; bumped: string }>>,
   count: (down: number, total: number) => `${down} / ${total} down`,
   reset: "Reset",

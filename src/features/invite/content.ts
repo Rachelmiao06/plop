@@ -12,6 +12,9 @@ export const INVITE = {
     groupLength: 8,
   },
 
+  /** The group's board on the card (when the link has a group): how many rows. */
+  board: { limit: 5 },
+
   meta: {
     /** `{name}` is replaced. Also the WeChat chat card title. */
     title: "{name} 邀请你来打雪仗 · Plop!",
