@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { DoubleSide, Group, MeshDepthMaterial, RGBADepthPacking, SphereGeometry, Vector3, type Texture } from "three";
 
@@ -27,6 +27,11 @@ type Props = {
   baseY?: number;
   /** Draw the stand-in paper mound at the base. Off on the real snow, which heaps its own. Default true. */
   mound?: boolean;
+  /**
+   * Extra things fixed to the drawing (a lamp's glow, icicles on an eave), in the art's own space: origin at the
+   * bottom centre, x across the drawing as drawn (mirrored with `flip`), y up. They turn and sway with the prop.
+   */
+  children?: ReactNode;
 };
 
 /** The fixed drawing light all paper shading comes from (see standee3d.shading). */
@@ -37,7 +42,7 @@ const drawingLight = new Vector3(...standee3d.shading.from).normalize();
  * soft pillow normal map, true-silhouette shadow, sunk into a small snow mound, half-turning toward
  * the camera, swaying and wobbling. Every part can be switched off (see treatment.ts).
  */
-export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, target, baseY = 0, mound = true }: Props) {
+export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, target, baseY = 0, mound = true, children }: Props) {
   const t = useTreatment();
   const paper = usePaper();
   const spawnFlecks = useFlecks();
@@ -187,6 +192,7 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
             castShadow={t.shadow && !thickOn}
             customDepthMaterial={cardDepth}
           />
+          {children}
           </group>
         </group>
       </group>

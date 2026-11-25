@@ -11,7 +11,9 @@ import { backdrop, propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
 import { Backdrop } from "./Backdrop";
 import { Flecks } from "./Flecks";
-import { ChimneySmoke, LampGlow, Tracks } from "./Life";
+import { Tracks } from "./Life";
+// Real light, smoke and ice (three/effects/README.md): these replace the doodle smoke and the painted lamp glow.
+import { ChimneySmoke, FootBank, IceBeds, IceChunks, Icicles, WarmLights } from "./effects/EffectsLayer";
 import { useReducedMotion } from "./motion";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
@@ -40,6 +42,9 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
   return (
     <PaperContext value={paper}>
       <Flecks>
+        {/* Effects: snow heaped before anything suspends, so the pins' physics ground already includes it. */}
+        <FootBank lane={lane} />
+        <IceBeds lane={lane} />
         <Suspense fallback={null}>
           <Standees lane={lane} pivot={pivot} />
         </Suspense>
@@ -57,7 +62,9 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
 
 function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, number] }) {
   const snow = useSnow();
-  const placed = useMemo(() => villageLayout(lane).filter((p) => hasOutline(p.id)), [lane]);
+  // A phone held upright gets the few cut-outs placed for its narrow frame (`view: "portrait"` in the layout).
+  const portrait = useThree((s) => s.size.width / s.size.height < village.portraitAspect);
+  const placed = useMemo(() => villageLayout(lane, portrait).filter((p) => hasOutline(p.id)), [lane, portrait]);
   const ids = useMemo(() => [...new Set(placed.map((p) => p.id))], [placed]);
   const urls = useMemo(() => Object.fromEntries(ids.map((id) => [id, propSrc(id)])), [ids]);
   const textures = useTexture(urls) as Record<string, Texture>;
@@ -105,11 +112,15 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
           target={target}
           baseY={bases[i]}
           mound={false}
-        />
+        >
+          {/* Effects fixed to the drawing: warm glow and icicles, from the prop's effect tags. */}
+          <WarmLights id={p.id} width={p.width} height={p.height} />
+          <Icicles id={p.id} width={p.width} height={p.height} />
+        </ThickStandee>
         </Mover>
       ))}
       <ChimneySmoke placed={withBases} />
-      <LampGlow placed={withBases} />
+      <IceChunks lane={lane} />
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
   );
@@ -175,14 +186,15 @@ function Mover({ id, x, z, inward, children }: { id: PropId; x: number; z: numbe
 /** Development only: once the camera has settled in its default view, list anything in the lane or the sight line. */
 function SightCheck({ lane }: { lane: GameLane }) {
   const camera = useThree((s) => s.camera);
+  const portrait = useThree((s) => s.size.width / s.size.height < village.portraitAspect);
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const problems = villageProblems(lane, camera.position);
+      const problems = villageProblems(lane, camera.position, portrait);
       if (problems.length > 0) console.warn("Village layout:", problems);
       else console.info("Village layout: lane clear, pins in sight.");
     }, 1500);
     return () => window.clearTimeout(timer);
-  }, [lane, camera]);
+  }, [lane, camera, portrait]);
   return null;
 }
 

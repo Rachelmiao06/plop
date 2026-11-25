@@ -124,3 +124,13 @@ pop-up and score bounces become fades).
 | A card flops | Soft flop tick (rate-limited in big chains), the card squashes in the snow | `0.14` | `PINS.flop` |
 | "N down!" / "All down!" | Pops in tall, lands squashed wide, settles; a pop sound, or a little chime and a celebration buzz on a full clear | `0.16` / `0.24` · `0.6` / `0.8` s | `PINS.popup.squash`, `bounceIn`, `chime` |
 | Score "+1" and the bar | "+1" lands squashed in the bar, the bar bumps, the total pops with squash-and-stretch | `0.22` · `420` ms | `src/features/hud/content.ts` · `bump`, `pop` |
+
+## Light, smoke, ice and shadows (scene polish, #45 / #51)
+
+| What you see | Number(s) today | Where |
+|---|---|---|
+| **How long and dark the shadows are.** Higher sun = shorter shadows; strength = how much sun a shadow takes away. Raise the sun and lower `sunStrength` together, or flat snow gets brighter. | `sunElevation 42`° · `sunStrength 3.1` · `shade.strength 0.65` | snow-scene `content.ts` · `light`, `shade` |
+| **The lamp's warm pool on the snow and its halo.** Point-light intensity (candela; the sun is about 3) and reach; crayon halo on the glass and behind the lamp. | `2.6` · `3.6` units · front `0.55` / behind `1.6` across | scenery `three/effects/effects.ts` · `lights` (`styles.lamp`, `pointLights`) |
+| **Chimney smoke.** How long a puff lives, how high it rises, how far the wind takes it, how big it grows, how visible. | `6.5` s · `1.05` · `0.55` · `0.16` → `0.72` · `0.85` | `effects.ts` · `smoke` |
+| **Ice.** How see-through, the bright edge, the sun glint, the sparkles. | `body 0.45` · `edge 0.85` · `glint 1.6` · `sparkle 0.18` | `effects.ts` · `ice` |
+| **Snow banked at the hills' foot** (hides the low view's line; too tall shows as a ring from high up). | `height 0.11` · `radiusZ 1.3` · `arcShare 0.3` | `effects.ts` · `footBank` |
