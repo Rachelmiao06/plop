@@ -13,7 +13,8 @@ pins, the village and the paper sky all follow it.
 
 - `content.ts` every feel number, named and explained, and the page text. Tune here, never in the logic.
 - `simulation.ts` the rules (`Bowling`): slide, pull, grow, charge, cancel, throw, roll, stop. Plain TypeScript, no drawing.
-- `roll.ts` `planRoll` works out a whole roll (direction, start speed, where it stops, how long) and `stepRoll` advances one. The aim line and the real roll both use them with the same fixed step, so the ball follows the line it showed and stops at its end.
+- `roll.ts` `planRoll` works out a whole roll (direction, start speed, where it bounces off the back wall, where it stops, how long) and `stepRoll` advances one. The aim line and the real roll both use them with the same fixed step, so the ball follows the line it showed (bounce included) and stops at its end.
+- `wall.ts` the back wall, a plain module with no imports: the scenery's `Backdrop` says where its paper wall stands (`setBackWall`) and listens for hits (`onWallHit`) to wobble; the stage reads it into the ground (`Ground.wall`) and tells it about hits (`emitWallHit`). No backdrop on the page = no wall.
 - `keyboard.ts` A / D or ← / → slide; hold Space to pull (A / D or ← / → turn the aim); release to throw.
 - `pointer.ts` mouse, trackpad and touch: press the thrower, drag sideways to slide or back to pull, let go to throw.
 - `feedback.ts` sound (through `src/lib/audio.ts`) and vibration (through the shared `src/lib/haptics.ts`): a pat and a tap on press, crunch ticks while pulling that quicken as the ball grows (`FEEL.beats`), a clunk and a pulse at full charge, the whoosh and a launch pulse. It counts the ticks (`beats.ticks`) so the stage squashes the ball in step.
@@ -56,6 +57,7 @@ snow scene's play view (see "Camera" below).
   set's mounds). `<BowlingStage pinRing={false} />` hides the dashed ring at the pin spot (the game's sets move).
 - Release shorter than `pull.cancelBelow` cancels (the ball crumbles).
 - Roll: start speed from size (small = quick, big = slow) times pull strength; it slows in fresh snow and runs further on packed tracks (`roll.dragOnPacked`); big balls plough on (`roll.dragBigShare`). Stops below `roll.stopSpeed`, rests `roll.restTime`, then is removed.
+- The back wall (`FEEL.wall`): when the ball's edge reaches `wall.inset` in front of the paper it bounces back inside the wall's circle, keeping `bounce` of its speed straight off and `slide` along it (`ball.direction` is its way now; `plan.direction` stays the way it was thrown; `plan.bounces` lists where). The `bounced` event (where, how hard) gives a soft thump, a squash, a puff off the bank and the paper's wobble.
 - Who is throwing is just a name: `bowling.setThrower("two")` between throws. Turns are #26.
   The drawing follows it: `"two"` shows the red-hat snowman, anything else the bucket snowman.
   Or pass `<BowlingStage thrower="one" | "two" />` (applied as soon as the thrower is ready); test pages take `?thrower=two`.
@@ -86,12 +88,12 @@ Presses anywhere else turn the camera as usual. The snow scene does not listen t
 ### What to read each frame
 
 - `game.thrower`: `x`, `foot`, `phase`, `lean` (0..1), `hopHeight`, `ball` (while pulling: `position`, `radius`, `size`, `charged`, `trembleOffset`, `rolled` / `rollDirection` for spin, `velocity`, `dwell`), and `aim` (the roll letting go would make: draw the aim line from `aim.start` along `aim.direction` to `aim.stop`).
-- `game.balls`: each rolling or resting ball: `position`, `speed`, `velocity`, `rolled`, `rolling`, `restAge`, `bursting` (seconds since `burst()`, or null), and its `plan` (radius, size, direction).
+- `game.balls`: each rolling or resting ball: `position`, `speed`, `velocity`, `direction` (its way now, after any bounce), `bounces`, `rolled`, `rolling`, `restAge`, `bursting` (seconds since `burst()`, or null), and its `plan` (radius, size, the direction it was thrown).
 
 ### Events
 
 `game.subscribe(event => …)`: `pressed`, `charged`, `launched` (with the roll `plan`),
-`cancelled` (`reason`: `short` or `interrupted`), `stopped` (where, radius, size), `burst` (where, radius, velocity), `removed`.
+`cancelled` (`reason`: `short` or `interrupted`), `stopped` (where, radius, size), `bounced` (where it met the back wall, how hard, its way back), `burst` (where, radius, velocity), `removed`.
 Pins (#7) will listen to the balls' positions each frame and to `stopped`.
 
 ## Driving the snow

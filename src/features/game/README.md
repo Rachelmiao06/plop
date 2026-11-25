@@ -52,17 +52,21 @@ appears, a tiny note says what it is worth (`SpecialHint`).
 ## Files
 
 - `content.ts` players, points, timings of the loop, the words. Tune here.
+- `camera.ts` the camera's follow of a throw (chase, settle, together mode).
 - `rules.ts` `createGame()`: turns, scores, and when a throw may start. Plain TypeScript, no drawing, no timers.
 - `GameBridge.tsx` inside the canvas: feeds bowling and pins events into the rules, runs the timers on the scene
   clock, locks the throw, swaps the thrower.
 - `bowlingLink.ts` everything taken from the bowling feature that its public API lacks (see below).
 - `CameraDirector.tsx` films each throw through the snow scene's camera shots: **aim** (the player's view eases
-  lower and closer as the pull loads), **launch** (a push forward and a lens kick, times the power), **chase**
-  (the camera pushes in part of the way but never past the snowman, Rachel's rule, and follows the ball by
-  zooming in), **impact** (from behind the line, a little to the side, zoomed in on the pins while they fall,
-  held through "N down!") and **return** (a calm glide home when the
-  pins pop back). Any drag, scroll or key during the chase or impact hands the view back; the next throw is filmed
-  again. "Reduce motion" keeps only a gentle lean after the ball. Numbers: `GAME.camera` in `content.ts`.
+  lower and closer as the pull loads), **launch** (a push forward and a lens kick, times the power), **chase** (the
+  view really follows the ball, gently: the look-at point rides on it to the back wall and back, the camera rises a
+  little and glides in, never past the snowman, whose head sits at the bottom edge while the ball is at the pins),
+  **settle** (once the ball has stopped or poofed, the look eases onto the pins, held through "N down!") and
+  **return** (a calm glide home when the pins pop back). "Together" mode gets a gentle shared follow of both balls
+  (look leaning toward their middle) that no key ends. Any drag, scroll or key during a solo chase or settle hands the
+  view back; the next throw is filmed again. "Reduce motion" keeps only a gentle lean. Numbers: `camera.ts`
+  (chase, settle, together) and `GAME.camera` in `content.ts` (aim, launch, return, reduce motion; its old `chase`
+  and `impact` are no longer read).
 - `GameOverlay.tsx` the hint, the special cut-outs' note, the turn / round note and the cancel button. `gameStyles.ts` their small scoped stylesheet.
 - `ThrowingView.tsx` the default camera view: the scenery's `throwingView` on wide screens, `GAME.phoneView` on a
   phone held upright (#46).

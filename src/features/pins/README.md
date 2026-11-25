@@ -89,13 +89,15 @@ Formation ids and exports are fixed; the game imports them.
   small paper-snow heap (the scenery's mound look, `rest.heap`). Drawing only: the physics card lies flat and the
   count does not change. It eases back down as the card pops up again. No "x x" dizzy face: the art has none, and
   art is never drawn here (add one when Rachel or the image model draws it).
-- **The ball never parks on the cards (#47):** once a ball of the throw has rolled past every card's foot, or slows
-  below `burst.slowSpeed` among them, the pins call the bowling game's `burst(ballId)` and it poofs into snow. From
-  the low impact camera even a ball resting behind the set covers the cards lying in the snow.
-- **Counting:** a card is down when tilted past `down.tiltDegrees`. The `result` event (and "N down!") comes as soon
-  as the count is certain: no ball of the throw can reach a card any more (it has burst) and every card has been
-  still for `down.settleHold` (a card already lying in the snow may still slide a little, `down.lyingShare`), or
-  `down.timeoutAfterClear` after the ball is through. It no longer waits for the ball to stop.
+- **The ball never parks on the cards (#47), but rolls to the back first:** a ball of the throw rolls on through the
+  pins to the paper wall and back (bowling's `FEEL.wall`). It poofs (`burst(ballId)`) when it slows below
+  `burst.slowSpeed` among the cards on its way out, or, once it has been past them all or bounced, when it is nearly
+  still (`FEEL.wall.poofBelow`). On its way back it can knock more cards; they count.
+- **Counting:** a card is down when tilted past `down.tiltDegrees`. The `result` event (and "N down!") comes once
+  no ball of the throw can reach a card any more (it has poofed or stopped) and every card has been still for
+  `down.settleHold` (a card already lying in the snow may still slide a little, `down.lyingShare`), or
+  `down.timeoutAfterClear` after that, and at the latest bowling's `FEEL.wall.countWithin` (3.5 s) after the ball
+  first met a card (or rolled past them all); a ball still rolling then poofs, so nothing falls after the count.
 - **Reset:** after `reset.delayAfterResult`, every card is held still (kinematic) and the moved ones hop back in a
   little wave, landing with a boing; then all return to the physics together. After a full clear (or "next set")
   the set ducks into the snow, fresh snow settles on the spot, and the next set hops in from further down the lane.
