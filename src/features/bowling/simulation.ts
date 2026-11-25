@@ -527,15 +527,23 @@ export class Bowling {
     }
     ball.track = next;
 
-    // Growth: only while reaching farther than before, and less over packed snow.
+    // Growth: a share from pulling farther than before, the rest from holding the charge; less over packed snow.
     const max = Math.max(1e-6, feel.pull.max);
     const pulledBy = distance(next, t.foot);
     const reach = Math.min(pulledBy, max);
+    const freshness = lerp(1, feel.ball.growthOnPacked, packed);
+    const sizeBefore = ball.size;
     if (reach > ball.reach) {
-      const freshness = lerp(1, feel.ball.growthOnPacked, packed);
-      ball.size = clamp01(ball.size + ((reach - ball.reach) / max) * freshness);
+      ball.size = clamp01(ball.size + ((reach - ball.reach) / max) * feel.ball.growByPull * freshness);
       ball.reach = reach;
     }
+    // Held: it keeps rolling bigger the longer you charge (faster the farther it is pulled), once past the cancel distance.
+    if (pulledBy >= feel.pull.cancelBelow) {
+      const share = lerp(feel.ball.heldFloor, 1, clamp01(reach / max));
+      const timed = (1 - feel.ball.growByPull) / Math.max(1e-6, feel.ball.growSeconds);
+      ball.size = clamp01(ball.size + timed * share * freshness * dt);
+    }
+    const grown = ball.size - sizeBefore;
     ball.radius = lerp(feel.ball.radiusSmall, feel.ball.radiusBig, Math.pow(ball.size, feel.ball.growthCurve));
 
     // Beside the feet: to the side of the pull line, easing in as the pull starts, wider for a bigger ball.
@@ -548,7 +556,8 @@ export class Bowling {
     // Rolling.
     const move = sub(drawn, ball.position);
     const moved = length(move);
-    ball.rolled += moved;
+    // Growing while held also turns it a little, as if being rolled bigger on the spot.
+    ball.rolled += moved + Math.max(0, grown) * feel.ball.rollWhileGrowing;
     if (moved > 1e-6) ball.rollDirection = scale(move, 1 / moved);
     const instant = dt > 0 ? scale(move, 1 / dt) : { x: 0, z: 0 };
     ball.velocity = add(ball.velocity, scale(sub(instant, ball.velocity), ease(20, dt)));
@@ -558,7 +567,7 @@ export class Bowling {
     ball.dwell = moved / Math.max(dt, 1e-9) < feel.ball.stillSpeed ? ball.dwell + dt : 0;
 
     const wasCharged = ball.charged;
-    ball.charged = ball.reach >= max * 0.999;
+    ball.charged = ball.reach >= max * 0.999 && ball.size >= 0.999;
     if (ball.charged && !wasCharged) this.emit({ type: "charged", thrower: t.id, at: { ...next } });
     const c = feel.charge;
     ball.tremble = ball.charged ? Math.min(1, ball.tremble + dt / Math.max(0.01, c.trembleFadeIn)) : 0;

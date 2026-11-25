@@ -94,6 +94,17 @@ export const FEEL = {
      */
     growthCurve: 1.8,
     /**
+     * The longer you charge, the bigger it gets (Rachel). Pulling back farther than before gives `growByPull` of the
+     * growth (a quick yank is a small ball); the rest comes with time while it is held: a full pull grows it to full in
+     * about `growSeconds`, a shorter pull more slowly (never below `heldFloor` as fast). The held ball turns a little as
+     * it grows (`rollWhileGrowing` units of roll per full growth), so it reads as being rolled bigger. Both slow down
+     * over packed snow (`growthOnPacked`). Full size, not just full pull, is "charged" (the clunk and the tremble).
+     */
+    growByPull: 0.35,
+    growSeconds: 2.0,
+    heldFloor: 0.3,
+    rollWhileGrowing: 1.6,
+    /**
      * Growth needs fresh snow. On a fully packed track the ball grows only this share
      * as fast, so pulling back over your own old groove grows it less.
      */

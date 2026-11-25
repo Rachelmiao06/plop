@@ -42,15 +42,28 @@ export function runBowlingChecks(): string[] {
     const half = game.thrower.ball!.radius;
     game.setTarget({ x: 0, z: lineZ + 0.3 });
     run(game, 1, 1 / 60);
-    check(game.thrower.ball!.radius === half, "easing back does not shrink the ball");
+    check(game.thrower.ball!.radius >= half, "easing back does not shrink the ball");
     check(!game.thrower.ball!.charged, "not at the limit before full pull");
     game.setTarget({ x: 0, z: lineZ + 5 });
-    run(game, 1.5, 1 / 60);
+    run(game, FEEL.ball.growSeconds + 0.5, 1 / 60);
     const ball = game.thrower.ball!;
-    check(ball.charged, "at the limit after a full pull");
+    check(ball.charged, "at the limit after a full pull held long enough");
     check(Math.abs(ball.radius - FEEL.ball.radiusBig) < 1e-9, "full size after a full pull on fresh snow");
     const pulled = distance(ball.track, game.thrower.foot);
     check(pulled > FEEL.pull.max && pulled <= FEEL.pull.max + FEEL.pull.rubberBand + 1e-9, "rubber band gives a little and stops");
+  }
+
+  // The longer the charge, the bigger the ball (Rachel): a quick full pull is not yet full size; holding grows it.
+  {
+    const game = new Bowling(copyFeel());
+    game.press();
+    game.setTarget({ x: 0, z: lineZ + 5 });
+    run(game, 0.6, 1 / 60);
+    const quick = game.thrower.ball!;
+    check(quick.size < 0.8 && !quick.charged, "a quick full pull is not yet full size");
+    const early = quick.radius;
+    run(game, 1, 1 / 60);
+    check(game.thrower.ball!.radius > early, "holding the charge longer grows the ball");
   }
 
   // Packed snow grows the ball less.
@@ -112,11 +125,11 @@ export function runBowlingChecks(): string[] {
 
   // Packed tracks run further; small balls are quicker than big ones.
   {
-    const throwOn = (ground: Ground | undefined, pullBack: number) => {
+    const throwOn = (ground: Ground | undefined, pullBack: number, held = 2) => {
       const game = new Bowling(copyFeel(), ground);
       game.press();
       game.setTarget({ x: 0, z: lineZ + pullBack });
-      run(game, 2, 1 / 60);
+      run(game, held, 1 / 60);
       return game.thrower.aim!;
     };
     // The same ball (a full pull grows a smaller ball on packed snow, so compare the roll itself).
@@ -131,7 +144,7 @@ export function runBowlingChecks(): string[] {
       !!walled && walled.bounces.length > 0 && out < wall.radius - FEEL.wall.inset && walled.stop.z > walled.bounces[0].z,
       "a full throw bounces off the back wall and rolls back",
     );
-    check(throwOn(undefined, 0.5).startSpeed > throwOn(undefined, 1.6).startSpeed, "a small ball starts faster than a big one");
+    check(throwOn(undefined, 0.5, 0.6).startSpeed > throwOn(undefined, 1.6, 4).startSpeed, "a small ball starts faster than a big one");
     // The sweet spot: a full pull is heavy (slower than its size alone would make it) and its aim sways.
     const sweetAt = sweetPull(FEEL);
     const full = throwOn(undefined, 1.6);
