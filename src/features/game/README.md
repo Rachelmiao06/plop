@@ -14,6 +14,16 @@ for the winner (or two for a tie) and "play again". Alone, the best total per le
 `lastOfRound`, `passTurn` (next player, next round, or over), and each throw's points (`pointsFor`: per card,
 full clear, and the pins' special bonus) flying into the total (`gain`).
 
+## Evening and sounds
+
+The light follows the match (`GAME.evening`, `dayFor` in rules.ts): afternoon at round 1, spread evenly to `lastRound`
+by the last round, `endCard` behind the end card. `GameBridge` eases it (snow-scene `easeTimeOfDay`) after a round's
+last throw is counted, so it glides during "N down!" and the set change; "play again" and "3 or 5 rounds?" fade back
+to afternoon. Sounds come from `src/lib/audio.ts`: `playRoundStart` with each round's note, `playWin` / `playTie` on the
+end card, `playTap` on every button of the start and end cards (caught around the hud's cards here), and the ambience
+(`startAmbienceOnFirstTouch`, `GAME.sound` volumes, lower while the music plays). The pins play the star sparkle, the
+bunny's near-miss mew (`SPECIALS.friend.nearMiss`) and the full-clear bells.
+
 ## Measuring the shots (`measure/`)
 
 `node src/features/game/measure/measure.mjs [rounds | old | set ids…]` throws a grid of shots (5 spots on the line,
