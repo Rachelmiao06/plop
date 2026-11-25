@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   BufferAttribute,
@@ -13,6 +13,7 @@ import {
 import { content } from "./content";
 import { sunDirection } from "./layout";
 import { sharedUniforms } from "./sharedUniforms";
+import { SnowContext } from "./snowContext";
 
 // Everything around the snow: sun, sky light, the foggy backdrop and the
 // falling flakes. The camera is in CameraRig.tsx.
@@ -119,16 +120,25 @@ export function Backdrop() {
 }
 
 // Changed every frame, so it lives outside the component.
-const flakeClock = { uTime: { value: 0 } };
+const flakeClock = { uTime: { value: 0 }, uHeavy: { value: 0 } };
 
-/** Light snowfall. The flakes are moved on the graphics card, not in script. */
+/**
+ * Light snowfall. The flakes are moved on the graphics card, not in script.
+ * During a fresh snowfall extra, bigger flakes fade in on top (they are only
+ * drawn while it lasts).
+ */
 export function Snowfall() {
   const s = content.snowfall;
+  const f = content.freshSnow;
+  const field = useContext(SnowContext);
 
   const geometry = useMemo(() => {
+    const total = s.count + f.heavyCount;
     // Position holds three random numbers per flake, not a place in the scene.
-    const seeds = new Float32Array(s.count * 3);
-    const extra = new Float32Array(s.count);
+    const seeds = new Float32Array(total * 3);
+    const extra = new Float32Array(total);
+    // 1 for the extra flakes of a fresh snowfall.
+    const heavy = new Float32Array(total);
     let v = 1234.5;
     const random = () => {
       v = Math.sin(v * 12.9898 + 78.233) * 43758.5453;
@@ -141,11 +151,21 @@ export function Snowfall() {
       seeds[i * 3 + 2] = random();
       extra[i] = random();
     }
+    // The fresh-snowfall flakes come after, so the light snow is unchanged.
+    for (let i = s.count; i < total; i++) {
+      seeds[i * 3] = random();
+      seeds[i * 3 + 1] = random();
+      seeds[i * 3 + 2] = random();
+      extra[i] = random();
+      heavy[i] = 1;
+    }
     const g = new BufferGeometry();
     g.setAttribute("position", new BufferAttribute(seeds, 3));
     g.setAttribute("aExtra", new BufferAttribute(extra, 1));
+    g.setAttribute("aHeavy", new BufferAttribute(heavy, 1));
+    g.setDrawRange(0, s.count);
     return g;
-  }, [s.count]);
+  }, [s.count, f.heavyCount]);
 
   const material = useMemo(
     () =>
@@ -161,6 +181,8 @@ export function Snowfall() {
           // fall speed, sideways drift, flake size, opacity
           uFlake: { value: [s.fallSpeed, s.drift, s.size, s.opacity] },
           uColor: { value: new Color(content.colors.snowflake) },
+          // how much bigger and faster the fresh-snowfall flakes are
+          uHeavyLook: { value: [f.heavySize, f.heavySpeed] },
         },
         vertexShader: /* glsl */ `
           uniform float uTime;
@@ -169,10 +191,13 @@ export function Snowfall() {
           uniform vec3 uArea;
           uniform float uCenterZ;
           uniform vec4 uFlake;
+          uniform float uHeavy;
+          uniform vec2 uHeavyLook;
           attribute float aExtra;
+          attribute float aHeavy;
           varying float vAlpha;
           void main() {
-            float speed = uFlake.x * (0.6 + 0.8 * aExtra);
+            float speed = uFlake.x * (0.6 + 0.8 * aExtra) * mix(1.0, uHeavyLook.y, aHeavy);
             float fall = fract(position.y - uTime * speed / uArea.y);
             vec3 p = vec3(
               (position.x - 0.5) * uArea.x,
@@ -183,9 +208,13 @@ export function Snowfall() {
             p.z += cos(uTime * 0.5 + aExtra * 23.0) * uFlake.y * 0.6;
             vec4 mv = viewMatrix * vec4(p, 1.0);
             gl_Position = projectionMatrix * mv;
-            gl_PointSize = uFlake.z * (0.6 + 0.8 * fract(aExtra * 7.0)) * uPixelsPerUnit / -mv.z;
-            // Fade in at the top and out just above the snow.
-            vAlpha = uFlakeFade * uFlake.w * smoothstep(0.0, 0.06, fall) * (1.0 - smoothstep(0.85, 1.0, fall));
+            gl_PointSize = uFlake.z * (0.6 + 0.8 * fract(aExtra * 7.0)) * mix(1.0, uHeavyLook.x, aHeavy)
+              * uPixelsPerUnit / -mv.z;
+            // Fade in at the top and out just above the snow. Extra flakes
+            // each appear at their own moment as the snowfall thickens.
+            float heavyOn = smoothstep(aExtra * 0.7, aExtra * 0.7 + 0.3, uHeavy);
+            vAlpha = uFlakeFade * uFlake.w * smoothstep(0.0, 0.06, fall) * (1.0 - smoothstep(0.85, 1.0, fall))
+              * mix(1.0, heavyOn, aHeavy);
           }
         `,
         fragmentShader: /* glsl */ `
@@ -199,11 +228,15 @@ export function Snowfall() {
           }
         `,
       }),
-    [s],
+    [s, f],
   );
 
   useFrame((state) => {
     flakeClock.uTime.value = state.clock.elapsedTime;
+    const heavy = field?.heaviness() ?? 0;
+    flakeClock.uHeavy.value = heavy;
+    // The extra flakes cost nothing while no fresh snowfall is on.
+    geometry.setDrawRange(0, heavy > 0 ? s.count + f.heavyCount : s.count);
     const fov = (content.camera.fieldOfView * Math.PI) / 180;
     sharedUniforms.uPixelsPerUnit.value =
       sharedUniforms.uResolution.value.y / (2 * Math.tan(fov / 2));

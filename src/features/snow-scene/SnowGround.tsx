@@ -436,8 +436,11 @@ export function SnowGround() {
     [parts],
   );
 
-  useFrame((state) => {
+  useFrame((state, seconds) => {
     state.gl.getDrawingBufferSize(sharedUniforms.uResolution.value);
+
+    // Fresh snowfall: refill a step, before the changed rows are sent below.
+    field.stepFresh(seconds);
 
     // New tiles: make their meshes and tell the plain snow to step aside.
     const fresh = field.takeNewTiles();
@@ -449,6 +452,20 @@ export function SnowGround() {
         mesh.raycast = () => {};
         parts.meshes.set(tile, mesh);
         parts.group.add(mesh);
+      }
+      resend(parts.tiles);
+    }
+
+    // Freed tiles (smooth again after a fresh snowfall): the plain snow takes
+    // over, with exactly the same shape, so nothing changes on screen.
+    const freed = field.takeFreedTiles();
+    if (freed.length > 0) {
+      for (const tile of freed) {
+        const mesh = parts.meshes.get(tile);
+        if (!mesh) continue;
+        parts.group.remove(mesh);
+        mesh.geometry.dispose();
+        parts.meshes.delete(tile);
       }
       resend(parts.tiles);
     }

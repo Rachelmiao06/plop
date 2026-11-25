@@ -304,6 +304,41 @@ export const content = {
     opacity: 0.85,
   },
 
+  // Fresh snowfall: the snow falls harder for a moment and every dent
+  // settles back to smooth, untouched snow (button, the N key, or
+  // freshSnowfall()). Times are in seconds.
+  freshSnow: {
+    buttonLabel: "Fresh snow",
+    // Whole thing, from the first heavy flakes to smooth snow.
+    duration: 3,
+    // The snow gets heavier first; the dents start filling after this.
+    settleDelay: 0.45,
+    // How quickly the heavy snow comes in, and how slowly it eases off
+    // once the snow has settled.
+    heavyRise: 0.5,
+    heavyFall: 1.4,
+    // Extra flakes that only show during a fresh snowfall, how much bigger
+    // and faster than the light snow they are.
+    heavyCount: 1100,
+    heavySize: 1.35,
+    heavySpeed: 1.6,
+    // Pits fill from the bottom like snow settling into a hollow: the
+    // deepest allowed point rises from this depth to the surface, faster
+    // near the end (higher curve = deep pits fill earlier).
+    fillFromDepth: 1.3,
+    fillCurve: 2.2,
+    // Shallow dents and rims fade evenly as well; rims go a little faster.
+    rimFade: 1.6,
+    // How much the settling snow rounds off sharp walls and rims over the
+    // whole refill (relaxation steps, spread over the time).
+    soften: 5,
+    // A local refill (freshSnowfallAt) fades out over the outer share of its radius.
+    localEdge: 0.35,
+    // Most grid points refilled per frame, so a field full of tiles never
+    // drops frames; extra tiles simply catch up a frame later.
+    pointsPerFrame: 260_000,
+  },
+
   // TEMPORARY: the drag-to-dent test hook.
   tempDrag: {
     ballRadius: 0.28,
