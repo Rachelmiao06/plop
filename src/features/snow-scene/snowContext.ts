@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useMemo } from "react";
 import { useThree } from "@react-three/fiber";
 import { getLayout, type SnowLayout } from "./layout";
 import { groundPoint } from "./pointers";
-import type { SnowApi } from "./snowField";
+import { baseHeightAt, type SnowApi } from "./snowField";
 import type { SnowField } from "./snowField";
 
 export const SnowContext = createContext<SnowField | null>(null);
@@ -31,6 +31,8 @@ export function useSnowLayout(): SnowLayout {
 /**
  * Gives a function that turns a screen position (clientX, clientY from a
  * pointer event) into the point on the snow under it, or null for the sky.
+ * It aims at the snow as it was before any pressing, so the point moves
+ * smoothly with the finger and does not jump when crossing a pit or rim.
  * Use inside anything rendered as a child of <SnowScene>.
  */
 export function useSnowPoint(): (
@@ -44,10 +46,10 @@ export function useSnowPoint(): (
     (clientX, clientY) => {
       const out = { x: 0, z: 0 };
       const { gl, camera } = get();
-      return groundPoint(clientX, clientY, gl.domElement, camera, field.heightAt, out)
+      return groundPoint(clientX, clientY, gl.domElement, camera, baseHeightAt, out)
         ? out
         : null;
     },
-    [field, get],
+    [get],
   );
 }

@@ -23,12 +23,12 @@ Inside `<SnowScene>`, these are available:
   - `heightAt(x, z)` returns the height of the snow surface there, so things can sit on it.
   - `packedAt(x, z)` returns how packed the snow is there, 0 (untouched) to 1 (pressed hard). Use it for resistance: fresh snow should feel heavier than a packed track.
 - `useSnowLayout()` gives `spots`: where the left and right characters stand for the current screen shape.
-- `useSnowPoint()` gives a function that turns a pointer event's `clientX, clientY` into the point on the snow under it. (Pointer rays skip the snow mesh on purpose; it is a big grid.)
+- `useSnowPoint()` gives a function that turns a pointer event's `clientX, clientY` into the point on the snow under it. It aims at the snow as it was before any pressing, so the point glides with the finger and never jumps at a pit or rim. (Pointer rays skip the snow mesh on purpose; it is a big grid.)
 - `claimSnowPointer(pointerId)`: call it in your pointer-down handler when a finger starts dragging one of your things (a character, for the slingshot). A claimed finger never turns or zooms the view. It is released by itself when the finger lifts. Fingers nobody claimed are "on empty snow": one turns the view, two pinch to zoom.
 
 The deeper the snow is pressed, the darker and bluer it gets and the taller its rim. Dents stay. Dust and small clumps fly by themselves whenever snow is pressed or hit; nothing to call.
 
-The view is part of the scene: one finger or a mouse drag on empty snow turns it (25 degrees up to nearly top-down, 60 degrees left and right, never behind), pinch / wheel / trackpad pinch zooms, and the "Reset view" button brings back the start. The view pulls back by itself when needed so both character spots stay in frame, so `useSnowLayout()` spots are valid at every angle and zoom. Things you place must be real 3D (the view turns).
+The view is part of the scene: one finger or a mouse drag on empty snow turns it (25 degrees up to nearly top-down, 60 degrees left and right, never behind), pinch / wheel / trackpad pinch zooms, and the "Reset view" button brings back the start. Zooming out past the full scene flies up to a high, steep view (`zoom.farthest`, `zoom.highPitch`) where the play area looks small; it stops short of straight down, so upright cut-out scenery never looks flat. The view pulls back by itself when needed so both character spots stay in frame, so `useSnowLayout()` spots are valid at every angle and zoom. Things you place must be real 3D (the view turns).
 
 Snow is everywhere: the play area (`ground.sizeX` by `ground.sizeZ`, centred on 0, 0) is the part that can be pressed; around it one big cheap surface runs out to a soft haze. The two share the same height function (`baseHeightAt`), the same material and the same points along their meeting line, so there is no seam. Toward the edge of the play area the snow gives less and less (`ground.edgeLock`), so a dent never shows where the pressable part ends. `heightAt` works anywhere; pressing only does something inside the play area.
 
@@ -59,3 +59,12 @@ Always:
 - `?fps` in the address: frame rate replaces the hint text
 
 The header of that file lists exactly what to delete.
+
+## Feel notes for whoever builds the snowball drag
+
+Measured on the press test, these made dragging feel smooth instead of stuttery:
+
+- Follow the finger with an eased share of the gap per frame (`1 - exp(-rate * seconds)`), so it feels the same at any frame rate.
+- Ease the rate itself when resistance changes (fresh snow to packed track), or the point jerks.
+- Cap how far the point may trail (`tempDrag.maxTrail`), so weight never reads as dropped input.
+- Aim with `useSnowPoint()` (untouched surface), not at the dented surface.

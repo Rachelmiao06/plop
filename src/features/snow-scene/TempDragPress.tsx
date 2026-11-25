@@ -31,10 +31,16 @@ type Finger = {
   x: number;
   z: number;
   placed: boolean;
+  // How quickly the point is following right now (eased, so it never jerks).
+  follow: number;
   touch: boolean;
   // Seconds since it touched down.
   age: number;
 };
+
+// For measuring only: how far the pressed point trails the finger, and how
+// much its speed changes from one frame to the next.
+const tempTrail = { gap: 0, speed: 0, jolt: 0 };
 
 // One entry per finger. Mouse and touch both count as fingers.
 const fingers = new Map<number, Finger>();
@@ -53,6 +59,7 @@ export function TempDragPress() {
         x: 0,
         z: 0,
         placed: false,
+        follow: content.tempDrag.followFresh,
         touch: e.pointerType !== "mouse",
         age: 0,
       });
@@ -147,14 +154,20 @@ export function TempDragPress() {
       const aheadX = far > 0 ? finger.x + (toX / far) * radius : finger.x;
       const aheadZ = far > 0 ? finger.z + (toZ / far) * radius : finger.z;
       const packed = snow.packedAt(aheadX, aheadZ);
-      const follow = t.followFresh + (t.followPacked - t.followFresh) * packed;
-      const share = 1 - Math.exp(-follow * seconds);
-
-      const moveX = toX * share;
-      const moveZ = toZ * share;
-      const distance = Math.hypot(moveX, moveZ);
+      const wanted = t.followFresh + (t.followPacked - t.followFresh) * packed;
+      finger.follow +=
+        (wanted - finger.follow) * (1 - Math.exp(-t.followSmoothing * seconds));
+      // Close a share of the gap each frame (the same feel at any frame
+      // rate), and never fall further behind than maxTrail.
+      const share = 1 - Math.exp(-finger.follow * seconds);
+      const distance = Math.max(far * share, far - t.maxTrail);
+      const moveX = far > 0 ? (toX / far) * distance : 0;
+      const moveZ = far > 0 ? (toZ / far) * distance : 0;
       const stamps = Math.max(Math.ceil(distance / step), 1);
       const speed = distance / seconds;
+      tempTrail.gap = far - distance;
+      tempTrail.jolt = Math.abs(speed - tempTrail.speed);
+      tempTrail.speed = speed;
       const digging = Math.max(1 - speed / t.digStopSpeed, 0);
       const options = {
         dig: (t.digRate * digging * seconds) / stamps,
@@ -215,7 +228,7 @@ export function TempFps() {
   useEffect(() => {
     if (!show) return;
     // For measuring the cost of one frame when the page cannot animate freely.
-    const bench = (frames: number) => {
+    const bench = (frames: number, waitForGraphics = true) => {
       const { advance, gl } = get();
       const context = gl.getContext();
       const pixel = new Uint8Array(4);
@@ -223,7 +236,9 @@ export function TempFps() {
       for (let n = 0; n < frames; n++) {
         advance(performance.now() / 1000);
         // Reading a pixel back makes the graphics card finish the frame.
-        context.readPixels(0, 0, 1, 1, context.RGBA, context.UNSIGNED_BYTE, pixel);
+        if (waitForGraphics) {
+          context.readPixels(0, 0, 1, 1, context.RGBA, context.UNSIGNED_BYTE, pixel);
+        }
       }
       return (performance.now() - start) / frames;
     };
@@ -231,12 +246,18 @@ export function TempFps() {
     const w = window as unknown as {
       __plopBench?: typeof bench;
       __plopCamera?: typeof camera;
+      __plopTrail?: () => typeof tempTrail;
+      __plopSharpness?: (ratio: number) => void;
     };
     w.__plopBench = bench;
     w.__plopCamera = camera;
+    w.__plopTrail = () => tempTrail;
+    w.__plopSharpness = (ratio: number) => get().setDpr(ratio);
     return () => {
       delete w.__plopBench;
       delete w.__plopCamera;
+      delete w.__plopTrail;
+      delete w.__plopSharpness;
     };
   }, [show, get]);
 

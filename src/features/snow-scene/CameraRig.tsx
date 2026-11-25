@@ -6,7 +6,9 @@ import type { Camera } from "three";
 import { content } from "./content";
 import { cameraDistance, getLayout } from "./layout";
 import { groundPoint, snowPointers, snowView } from "./pointers";
+import { sharedUniforms } from "./sharedUniforms";
 import { SnowContext } from "./snowContext";
+import { baseHeightAt } from "./snowField";
 
 // The diorama camera. One finger (or the mouse) on empty snow turns the view
 // within limits; two fingers or the wheel zoom. It never goes behind or
@@ -19,8 +21,9 @@ class CameraView {
   // Zoom: 1 = a character is a fifth of the screen height; smaller = closer.
   private level = 1;
   private goalLevel = 1;
-  // True while the view is zoomed all the way out, so it stays that way when turned.
-  private atFull = true;
+  // True while the view is at its "home" zoom (both characters just in
+  // frame), so it stays that way when turned.
+  private atHome = true;
   // The point on the ground the camera looks at.
   private x = 0;
   private z = 0;
@@ -43,10 +46,10 @@ class CameraView {
   }
 
   /**
-   * The furthest zoom-out for the current turn: far enough that both
-   * character spots stay in frame, never closer than the normal full view.
+   * The "home" zoom for the current turn: far enough that both character
+   * spots stay in frame, never closer than the normal full view.
    */
-  private fullLevel(): number {
+  private homeLevel(): number {
     const layout = getLayout(this.aspect);
     const cos = Math.cos(this.goalYaw * RAD);
     const sin = Math.sin(this.goalYaw * RAD);
@@ -65,20 +68,20 @@ class CameraView {
   }
 
   private refit(): void {
-    const full = this.fullLevel();
-    this.goalLevel = this.atFull ? full : Math.min(this.goalLevel, full);
+    if (this.atHome) this.goalLevel = this.homeLevel();
     this.keepInBounds();
   }
 
   /** Zoom by `factor` (below 1 = closer), keeping this ground point in place on screen. */
   zoomAbout(px: number, pz: number, factor: number): void {
-    const full = this.fullLevel();
-    const next = clamp(this.goalLevel * factor, content.zoom.closest, full);
+    const z = content.zoom;
+    const home = this.homeLevel();
+    const next = clamp(this.goalLevel * factor, z.closest, Math.max(z.farthest, home));
     const ratio = next / this.goalLevel;
     this.goalX = px + (this.goalX - px) * ratio;
     this.goalZ = pz + (this.goalZ - pz) * ratio;
     this.goalLevel = next;
-    this.atFull = next >= full * 0.995;
+    this.atHome = Math.abs(next - home) < home * 0.005;
     this.keepInBounds();
   }
 
@@ -109,15 +112,15 @@ class CameraView {
     this.spinPitch = 0;
     this.goalX = 0;
     this.goalZ = 0;
-    this.atFull = true;
-    this.goalLevel = this.fullLevel();
+    this.atHome = true;
+    this.goalLevel = this.homeLevel();
   }
 
-  // The closer the view, the further it may wander; at full view it is centred.
+  // The closer the view, the further it may wander; from the home zoom outward it is centred.
   private keepInBounds(): void {
     const z = content.zoom;
-    const full = this.fullLevel();
-    const room = clamp((full - this.goalLevel) / (full - z.closest), 0, 1);
+    const home = this.homeLevel();
+    const room = clamp((home - this.goalLevel) / (home - z.closest), 0, 1);
     this.goalX = clamp(this.goalX, -z.panX * room, z.panX * room);
     this.goalZ = clamp(this.goalZ, -z.panZFar * room, z.panZNear * room);
   }
@@ -145,8 +148,19 @@ class CameraView {
 
   apply(camera: Camera, time: number): void {
     const c = content.camera;
+    const z = content.zoom;
     const d = cameraDistance() * this.level;
-    const pitch = this.pitch * RAD;
+    // Flying out past the home zoom also tips the view up, in one glide.
+    const home = this.homeLevel();
+    const out = clamp((this.level - home) / Math.max(z.farthest - home, 0.01), 0, 1);
+    const lift = out * out * (3 - 2 * out);
+    const pitch = (this.pitch + (z.highPitch - this.pitch) * lift) * RAD;
+    const thin = clamp(
+      (this.level - z.flakeFadeStart) / (z.flakeFadeEnd - z.flakeFadeStart),
+      0,
+      1,
+    );
+    sharedUniforms.uFlakeFade.value = 1 - thin;
     const yaw = this.yaw * RAD;
     const flat = d * Math.cos(pitch);
     // A tiny slow sway so sparkles glint; smaller when close so it never swims.
@@ -176,7 +190,7 @@ export function CameraRig() {
 
     const point = { x: 0, z: 0 };
     const onSnow = (clientX: number, clientY: number) =>
-      groundPoint(clientX, clientY, canvas, get().camera, field.heightAt, point);
+      groundPoint(clientX, clientY, canvas, get().camera, baseHeightAt, point);
 
     // Mouse wheel, and trackpad pinch (which browsers report as ctrl + wheel).
     const wheel = (e: WheelEvent) => {

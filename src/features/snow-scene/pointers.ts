@@ -39,7 +39,9 @@ const hit = new Vector3();
 /**
  * Where on the snow a screen position points. Writes x and z into `out` and
  * returns false if it points at the sky. Aims at a flat plane first, then
- * once more at the snow's real height there (the mesh itself is not ray-tested).
+ * once more at the height given for that spot (the mesh itself is not
+ * ray-tested). Pass the untouched height (baseHeightAt) for a point that
+ * moves smoothly; the dented height makes it jump at every pit and rim.
  */
 export function groundPoint(
   clientX: number,

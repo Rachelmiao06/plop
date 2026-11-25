@@ -6,7 +6,7 @@ import { NeutralToneMapping } from "three";
 import { content } from "./content";
 import { cameraHome } from "./layout";
 import { CameraRig } from "./CameraRig";
-import { Backdrop, Lights, Snowfall } from "./SceneLook";
+import { Backdrop, Lights, Sharpness, Snowfall } from "./SceneLook";
 import { SnowContext } from "./snowContext";
 import { SnowField } from "./snowField";
 import { SnowGround } from "./SnowGround";
@@ -36,6 +36,7 @@ export default function SnowCanvas({ children }: { children?: ReactNode }) {
       style={{ touchAction: "none" }}
     >
       <SnowContext value={field}>
+        <Sharpness />
         <CameraRig />
         <Backdrop />
         <Lights />

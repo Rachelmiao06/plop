@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -16,6 +16,22 @@ import { sharedUniforms } from "./sharedUniforms";
 
 // Everything around the snow: sun, sky light, the foggy backdrop and the
 // falling flakes. The camera is in CameraRig.tsx.
+
+/**
+ * Keeps the number of pixels drawn within a budget: full sharpness on phones
+ * and small windows, slightly softer on a big retina window.
+ */
+export function Sharpness() {
+  const width = useThree((s) => s.size.width);
+  const height = useThree((s) => s.size.height);
+  const setDpr = useThree((s) => s.setDpr);
+  useEffect(() => {
+    const device = Math.min(window.devicePixelRatio || 1, content.maxPixelRatio);
+    const budget = Math.sqrt(content.maxPixels / Math.max(width * height, 1));
+    setDpr(Math.max(1, Math.min(device, budget)));
+  }, [width, height, setDpr]);
+  return null;
+}
 
 /** Low warm sun plus a cool sky fill, so shadows read soft blue. */
 export function Lights() {
@@ -139,6 +155,7 @@ export function Snowfall() {
         uniforms: {
           ...flakeClock,
           uPixelsPerUnit: sharedUniforms.uPixelsPerUnit,
+          uFlakeFade: sharedUniforms.uFlakeFade,
           uArea: { value: new Vector3(s.areaX, s.height, s.areaZ) },
           uCenterZ: { value: content.ground.centerZ },
           // fall speed, sideways drift, flake size, opacity
@@ -148,6 +165,7 @@ export function Snowfall() {
         vertexShader: /* glsl */ `
           uniform float uTime;
           uniform float uPixelsPerUnit;
+          uniform float uFlakeFade;
           uniform vec3 uArea;
           uniform float uCenterZ;
           uniform vec4 uFlake;
@@ -167,7 +185,7 @@ export function Snowfall() {
             gl_Position = projectionMatrix * mv;
             gl_PointSize = uFlake.z * (0.6 + 0.8 * fract(aExtra * 7.0)) * uPixelsPerUnit / -mv.z;
             // Fade in at the top and out just above the snow.
-            vAlpha = uFlake.w * smoothstep(0.0, 0.06, fall) * (1.0 - smoothstep(0.85, 1.0, fall));
+            vAlpha = uFlakeFade * uFlake.w * smoothstep(0.0, 0.06, fall) * (1.0 - smoothstep(0.85, 1.0, fall));
           }
         `,
         fragmentShader: /* glsl */ `

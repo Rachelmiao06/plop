@@ -37,10 +37,10 @@ export const content = {
   // The snow beyond the play area: it only has to look right, never be pressed.
   surround: {
     // How far the snow reaches from the middle, in every direction.
-    reach: 52,
+    reach: 92,
     // Grid squares grow by this factor per step away from the play area, up to this size.
     growth: 1.09,
-    maxStep: 1.8,
+    maxStep: 3,
     // The far grid is too coarse to draw small shapes, so detail hands over
     // with distance from the middle: ripples fade first, then the small
     // drifts, while medium drifts and then big mounds take over. Low views
@@ -63,8 +63,8 @@ export const content = {
 
   // Far away, the snow melts into the soft sky between these distances from the middle.
   haze: {
-    start: 20,
-    end: 46,
+    start: 44,
+    end: 88,
   },
 
   press: {
@@ -203,6 +203,17 @@ export const content = {
   zoom: {
     // Closest view, as a share of the full-scene camera distance.
     closest: 0.36,
+    // Furthest view: this many times the full-scene distance. From there
+    // the play area looks small, like looking down on a tiny village.
+    farthest: 5.5,
+    // Pulling out past the full scene also tips the view up toward this
+    // angle (degrees). Steep, but short of straight down, so upright
+    // cut-out scenery never looks flat.
+    highPitch: 76,
+    // The falling snow thins out between these zoom levels, so it never
+    // shows as a small cloud over the middle from high up.
+    flakeFadeStart: 1.5,
+    flakeFadeEnd: 3,
     // Wheel and trackpad-pinch sensitivity.
     wheelSpeed: 0.0015,
     trackpadPinchSpeed: 0.012,
@@ -267,10 +278,20 @@ export const content = {
     digStopSpeed: 0.8,
     // Friction: how quickly the pressed point catches up with the finger,
     // in fresh snow (slow, heavy) and along a packed track (quick).
-    followFresh: 6,
-    followPacked: 20,
+    followFresh: 16,
+    followPacked: 30,
+    // How quickly the resistance itself changes (per second), so crossing an
+    // old track speeds the point up smoothly instead of jerking it.
+    followSmoothing: 8,
+    // The pressed point is never allowed to fall further behind than this
+    // (scene units), so resistance never reads as dropped input.
+    maxTrail: 0.35,
   },
 
-  // Sharpest the picture is drawn at, in device pixels per CSS pixel.
+  // Sharpest the picture is drawn at, in device pixels per CSS pixel, and
+  // the most pixels drawn in total. Nearly all the work is filling pixels,
+  // so on a big retina window the picture is drawn slightly less sharp to
+  // keep slower computers smooth. Phones are below the limit.
   maxPixelRatio: 2,
+  maxPixels: 3_200_000,
 } as const;
