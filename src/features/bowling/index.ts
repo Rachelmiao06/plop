@@ -1,20 +1,18 @@
-// Public surface of the slingshot feature. Import from "@/features/slingshot" only.
-export { FEEL, copyFeel, type Feel } from "./content";
-export { type Arc, arcPoint, computeArc } from "./arc";
+// Public surface of the bowling feature. Import from "@/features/bowling" only.
+export { FEEL, TEXT, copyFeel, type Feel } from "./content";
+export { FRESH_SNOW, ROLL_STEP, planRoll, stepRoll, type Ground, type RollPlan } from "./roll";
 export {
-  createSlingshot,
-  PLAYER_IDS,
-  Slingshot,
-  type FlyingBall,
-  type Phase,
-  type PlayerId,
-  type PlayerState,
+  Bowling,
+  type BowlEvent,
+  type BowlListener,
   type PulledBall,
-  type SlingEvent,
-  type SlingListener,
+  type RollingBall,
+  type Thrower,
+  type ThrowerPhase,
 } from "./simulation";
-export { createKeyboardInput, KEYS, type KeyboardInput } from "./keyboard";
+export { createKeyboardInput, type KeyboardInput } from "./keyboard";
 export { createPointerInput, type PointerInput, type PointerInputOptions } from "./pointer";
 export { connectFeedback, type Feedback } from "./feedback";
 export type { Vec2 } from "./vec";
-export { FlatSlingshot } from "./flat/FlatSlingshot";
+export { BowlingStage } from "./stage/BowlingStage";
+export { BowlingHint } from "./stage/BowlingHint";

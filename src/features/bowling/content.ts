@@ -117,11 +117,11 @@ export const FEEL = {
     spacing: 0.25,
     /** And never more than this (scene units), or the groove shows stripes. */
     maxStep: 0.075,
-    /** How fast a ball sitting still digs down (units per second). */
+    /**
+     * How fast a ball sitting still digs down (units per second). A moving ball never digs:
+     * its groove depth comes from its size, and digging while moving would stack up to hard ground.
+     */
     digResting: 0.25,
-    /** How deep a rolling ball digs per unit rolled, for the smallest and biggest ball. */
-    digSmall: 0.006,
-    digBig: 0.03,
   },
 
   /** Pointer drags on the thrower. */
@@ -155,3 +155,10 @@ export type Feel = typeof FEEL;
 export function copyFeel(feel: Feel = FEEL): Feel {
   return JSON.parse(JSON.stringify(feel)) as Feel;
 }
+
+/** Words on the test page. */
+export const TEXT = {
+  title: "Plop! · bowling test",
+  keys: "A / D or ← / → slide · hold Space to pull back (A / D aim) · let go to roll",
+  pointer: "Or press the snowman card: drag sideways to slide, drag back to pull, let go to roll.",
+};
