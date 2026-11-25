@@ -567,7 +567,8 @@ export function IceBeds({ lane }: { lane: GameLane }) {
 
 /** A chunk of ice: a faceted, slightly squashed lump (flat-shaded so each facet catches light on its own). */
 function chunkGeometry(seed: number): IcosahedronGeometry {
-  const g = new IcosahedronGeometry(0.5, 1).toNonIndexed() as IcosahedronGeometry;
+  // Already non-indexed (each face has its own corners), so facets shade flat.
+  const g = new IcosahedronGeometry(0.5, 1);
   const pos = g.attributes.position;
   const rand = seeded(seed);
   // Move shared corners together (same position = same push), so the lump stays closed.

@@ -18,10 +18,10 @@ import {
   Vector3,
 } from "three";
 
-import { useSnow } from "@/features/snow-scene";
+// The match's time of day is one shared value, owned by the snow scene (the game eases it between rounds).
+import { getTimeOfDay, useSnow } from "@/features/snow-scene";
 
 import { backdrop, effectPx, effectSrc, propPx, propSettings, propSrc, type TokenMix } from "../content";
-import { getTimeOfDay } from "../timeOfDay";
 import { useReducedMotion } from "./motion";
 import { usePaper } from "./treatment";
 

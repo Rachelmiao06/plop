@@ -169,7 +169,7 @@ Files: `village.ts` (fitting, blockers, checks, throwing view; no drawing), `thr
 The throwing view looks about 13° below the horizon at the top of the screen, so the real horizon never shows and
 the snow used to run on, empty, behind the village. Now the scene is built in layers like a paper theatre:
 
-- **The street lamp** stands part way down the left of the lane, with a warm `--butter` light: a halo just behind its glass and a warm patch on the snow, laid in crayon-like bands with paper grain, breathing gently (`LampGlow` in `three/Life.tsx`, `village.lampGlow`). The crayon fence is no longer placed (it clashed with the doodle set); pines and bushes frame the near corners.
+- **The street lamp** stands part way down the left of the lane, with a warm `--butter` light: crayon-band halos on and behind its glass and a real light that warms the snow round its foot, brighter toward evening (`WarmLights` in `three/effects/`, from its `emitsLight` tag). The crayon fence is no longer placed (it clashed with the doodle set); pines and bushes frame the near corners.
 - **Sky and far hills (`three/Backdrop.tsx`, `backdrop` in `content.ts`):** a curved paper wall stands just behind the
   village (radius 9.6 round the throwing view's look-at point on a 5.6-unit lane, `backdrop.laneLength`; on a longer
   lane `Village` passes a `reach` so the wall moves back with the pins; 220° of arc), `--paper` blending toward `--snow-shadow`
@@ -182,7 +182,7 @@ the snow used to run on, empty, behind the village. Now the scene is built in la
   show under the score panel. No change to the snow scene was needed.
 - **Village:** the red cottage, cocoa stall and fairy lights join the home cluster and the far end; the snowman family
   watches from the lane's edge by the igloo; chimney smoke (Rachel's puff doodle) rises from both cottages
-  (`ChimneySmoke` in `three/Life.tsx`, chimney spots in `village.chimneys`).
+  (`ChimneySmoke` in `three/effects/`, from each prop's `chimneyAt` tag).
 - **Middle:** frozen pond by the sliding penguin, a snowy stump with the red bird on it (`lift`), the rabbit by the
   bush, a snowball pile near the line. The calm snow behind the pins is unchanged.
 - **Near corners:** short pines and bushes low and wide of the thrower (desktop only; a phone held upright is too
@@ -217,12 +217,11 @@ keeps them small, so no pine). The red mailbox stays a spare (the penguins' post
   village any more, and `scripts/trace_standees.py` has no `EXTRA` left.
 - **Effect tags** (optional fields on a prop in `props`, for the light, smoke and ice effects): `emitsLight` (points of
   lamp glass, lanterns, lit windows, bulbs), `chimneyAt` (top of a chimney) and `icicleEdge` (eave lines
-  `[x0, y0, x1, y1]`). Points are shares of the drawing's width from the left and height from the foot, like
-  `village.chimneys`, and flip with the drawing. Tagged: the street lamp, the café lantern, the mice's lantern, the red
+  `[x0, y0, x1, y1]`). Points are shares of the drawing's width from the left and height from the foot, and flip
+  with the drawing. Tagged: the street lamp, the café lantern, the mice's lantern, the red
   and snow cottages' windows and the fairy-light bulbs (`emitsLight`); the blue, red and snow cottages (`chimneyAt`);
-  the snow cottage's eave and the igloo's window and door tops (`icicleEdge`). Nothing reads them yet; the lamp glow
-  and chimney smoke still use `village.lampGlow` and `village.chimneys` (the snow cottage has its own drawn smoke
-  curl, so it is not in `village.chimneys`).
+  the snow cottage's eave and the igloo's window and door tops (`icicleEdge`). The effects in `three/effects/` read them (see its README); the snow
+  cottage's real smoke rises from the top of its own drawn smoke curl.
 
 ### Tileable far hills
 

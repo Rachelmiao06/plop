@@ -6,8 +6,11 @@ A cute, calm stress-relief toy: **paper bowling on snow.** A paper snowman stand
 of Rachel's hand-drawn cut-outs. Pull back and the snowball at its feet rolls and grows; let go and it rolls through
 a little crowd of paper friends and knocks them over. Plop!
 
-Two snowmen (Bucket and Red Hat) take turns. One point per card down, a small bonus for a full clear. Nothing to
-win, nothing to sign up for: it is about how it feels in the hand.
+A short match of 3 or 5 rounds: two friends take turns (Bucket and Red Hat), roll **together** at the same time, or
+play **just me** against your own best. Each round brings a new set of cut-outs that asks a different shot, and the
+light moves from afternoon to a cosy lamp-lit evening by the last round. One point per card down, a bonus for a
+full clear, +2 for the star friend, +2 for leaving the bunny standing; a kind end card, never "you lose". Nothing to
+sign up for: it is about how it feels in the hand.
 
 **Play it:** https://plop-two.vercel.app
 
@@ -21,11 +24,15 @@ win, nothing to sign up for: it is about how it feels in the hand.
 | **Touch** | same as mouse | same as mouse | let go |
 | **Keyboard** | A / D or ← / → | hold Space (the pull grows while held); A / D or ← / → aim | release Space |
 
+- **Together mode:** Bucket uses A / D and holds W (or Space); Red Hat uses ← / → and holds ↑ (or Enter). On a
+  phone or trackpad, each player drags their own snowman.
+- **The sweet spot:** two small pencil ticks beside the ball mark it; pulling past it makes the ball heavy and the aim sway.
 - **Escape** or the "Put it down" button cancels a pull (it does not count as a throw).
 - **Look around:** drag on empty snow to turn and tilt, scroll or pinch to rise and pull back. "Reset view" returns
   to the throwing view.
 - **Fresh snow** (button or **N**): new snow falls and smooths every groove away.
-- The corner buttons switch the music and the sound effects on and off.
+- The corner buttons switch the music and the sound effects on and off. Sound (music, the quiet village ambience
+  and the little cue sounds) starts after the first tap, as browsers require.
 
 ## Sharing in WeChat
 
@@ -68,6 +75,8 @@ Small pages for checking one part at a time. Not linked from the game and hidden
 | [`/dev/hud`](https://plop-two.vercel.app/dev/hud) | The floating score panel and the music / sound switches with test buttons. |
 | [`/dev/look`](https://plop-two.vercel.app/dev/look) | The real game with the paper finish (grain, soft edge) and before / after switches. |
 | [`/dev/audio`](https://plop-two.vercel.app/dev/audio) | Every sound effect with a play button. |
+| [`/dev/time`](https://plop-two.vercel.app/dev/time) | The village from afternoon to evening with a time-of-day slider (`?t=0.5`, `?play`). |
+| [`/dev/sky`](https://plop-two.vercel.app/dev/sky) | The paper sky and far hills through the day, with a slider. |
 | [`/dev/music`](https://plop-two.vercel.app/dev/music) | The background music player. |
 | [`/dev/tokens`](https://plop-two.vercel.app/dev/tokens) | The design tokens: colours, fonts and corner radius. |
 
