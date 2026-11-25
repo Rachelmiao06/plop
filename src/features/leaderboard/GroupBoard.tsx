@@ -100,6 +100,7 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
                   <span className="block font-sans text-[11px] leading-tight opacity-70">
                     {TEXT.rounds(s.bestRounds)}
                     {s.bestMode === "together" && ` · ${TEXT.together}`}
+                    {s.bestMode === "team" && ` · ${TEXT.team}`}
                     {s.plays > 1 && ` · ${TEXT.latest(s.latest)}`}
                   </span>
                 </span>

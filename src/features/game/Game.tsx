@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, INVITE } from "@/features/invite";
-import { GroupBoard, SubmitScore } from "@/features/leaderboard";
+import { GroupBoard, SubmitScore, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
 import { getGroupId } from "@/features/share/group";
@@ -327,26 +327,40 @@ export function Game() {
         >
           {group && (
             <>
-              {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
-              <SubmitScore
-                group={group}
-                score={state.scores[0]}
-                rounds={state.rounds}
-                mode={state.mode}
-                defaultName={typed[0] || undefined}
-                onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
-              />
-              {!solo && (
+              {together ? (
+                // Team up: one entry for the team, both names ("小美 & 阿雪") and the points added up.
                 <SubmitScore
                   group={group}
-                  score={state.scores[1]}
+                  score={state.scores[0] + state.scores[1]}
                   rounds={state.rounds}
-                  mode={state.mode}
-                  defaultName={typed[1] || undefined}
+                  mode="team"
+                  defaultName={teamName(names[0], names[1])}
                   remember={false}
                 />
+              ) : (
+                <>
+                  {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
+                  <SubmitScore
+                    group={group}
+                    score={state.scores[0]}
+                    rounds={state.rounds}
+                    mode={state.mode}
+                    defaultName={typed[0] || undefined}
+                    onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
+                  />
+                  {!solo && (
+                    <SubmitScore
+                      group={group}
+                      score={state.scores[1]}
+                      rounds={state.rounds}
+                      mode={state.mode}
+                      defaultName={typed[1] || undefined}
+                      remember={false}
+                    />
+                  )}
+                </>
               )}
-              <GroupBoard group={group} me={typed[0] || undefined} limit={GAME.board.limit} />
+              <GroupBoard group={group} me={together ? teamName(names[0], names[1]) : typed[0] || undefined} limit={GAME.board.limit} />
             </>
           )}
         </MatchEnd>

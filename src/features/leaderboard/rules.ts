@@ -7,7 +7,12 @@ import { ROUND_SETS, SPECIALS } from "@/features/pins/content";
 import { BOARD } from "./content";
 
 export type Rounds = 3 | 5;
-export type MatchMode = "turns" | "together";
+/**
+ * "turns" (versus) and "together" (each player's own score, kept for older rows) are one player's score each;
+ * "team" is one entry for a team-up match: both names ("小美 & 阿雪") and the two players' points added up.
+ */
+export type MatchMode = "turns" | "together" | "team";
+const MODES: readonly unknown[] = ["turns", "together", "team"];
 
 export type Submission = { group: string; name: string; score: number; rounds: Rounds; mode: MatchMode };
 
@@ -84,11 +89,21 @@ export function nameKey(name: string) {
   return cleanName(name).toLowerCase();
 }
 
-export function checkName(raw: unknown): Checked<string> {
+/** A team's board name: both nicknames joined ("小美 & 阿雪"). */
+export function teamName(a: string, b: string) {
+  return `${cleanName(a)} & ${cleanName(b)}`;
+}
+
+/** The most a submission of this mode may score: a team adds two players' points. */
+export function maxFor(rounds: Rounds, mode: MatchMode) {
+  return mode === "team" ? 2 * maxScore(rounds) : maxScore(rounds);
+}
+
+export function checkName(raw: unknown, max: number = BOARD.nameMax): Checked<string> {
   if (typeof raw !== "string") return { ok: false, error: "bad_name" };
   const name = cleanName(raw);
   const length = Array.from(name).length;
-  if (length < 1 || length > BOARD.nameMax) return { ok: false, error: "bad_name" };
+  if (length < 1 || length > max) return { ok: false, error: "bad_name" };
   if (isRude(name)) return { ok: false, error: "rude_name" };
   return { ok: true, value: name };
 }
@@ -98,13 +113,14 @@ export function checkSubmission(body: unknown): Checked<Submission> {
   if (!body || typeof body !== "object") return { ok: false, error: "bad_json" };
   const b = body as Record<string, unknown>;
   if (!isGroup(b.group)) return { ok: false, error: "bad_group" };
-  const name = checkName(b.name);
+  if (!MODES.includes(b.mode)) return { ok: false, error: "bad_mode" };
+  const mode = b.mode as MatchMode;
+  const name = checkName(b.name, mode === "team" ? BOARD.teamNameMax : BOARD.nameMax);
   if (!name.ok) return name;
   if (b.rounds !== 3 && b.rounds !== 5) return { ok: false, error: "bad_rounds" };
-  if (b.mode !== "turns" && b.mode !== "together") return { ok: false, error: "bad_mode" };
   const score = b.score;
-  if (typeof score !== "number" || !Number.isInteger(score) || score < 0 || score > maxScore(b.rounds)) {
+  if (typeof score !== "number" || !Number.isInteger(score) || score < 0 || score > maxFor(b.rounds, mode)) {
     return { ok: false, error: "bad_score" };
   }
-  return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode: b.mode } };
+  return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode } };
 }

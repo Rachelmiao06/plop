@@ -36,11 +36,13 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
   const [typed, setTyped] = useState<string | null>(null);
   const [state, setState] = useState<State>({ status: "asking" });
   const id = useId();
+  // A team's name is both nicknames joined, so it may be longer.
+  const nameMax = mode === "team" ? BOARD.teamNameMax : BOARD.nameMax;
   const name = typed ?? (defaultName || remembered);
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    const checked = checkName(name);
+    const checked = checkName(name, nameMax);
     if (!checked.ok) return setState({ status: "asking", error: checked.error });
     setState({ status: "sending" });
     const answer = await postScore({ group, name: checked.value, score, rounds, mode });
@@ -81,7 +83,7 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
             id={id}
             value={name}
             onChange={(e) => setTyped(e.target.value)}
-            maxLength={BOARD.nameMax * 2}
+            maxLength={nameMax * 2}
             placeholder={TEXT.submit.placeholder}
             autoComplete="nickname"
             enterKeyHint="done"

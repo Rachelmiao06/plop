@@ -176,7 +176,8 @@ lets go, and the ball rolls through a crowd of paper cut-outs and knocks down as
 - **Team up** (2026-11-25, Rachel: taking turns is a PK, rolling at the same time is a team): the panel shows both
   faces with one team total, each throw's points fly into it, and the end card says "Team total!" with both snowmen
   crowned and "lovely teamwork, Bucket & Red Hat"; no winner, no tie. Underneath the game still counts each
-  snowman's own points (7d), and the group board still takes each player's own score.
+  snowman's own points (7d); the group board gets one entry for the team, both names ("小美 & 阿雪") and the
+  points added up.
 - **The end card:** both snowmen's faces with their totals, a crown doodle and "hooray!" for the winner and a kind
   word for the other ("lovely rolling, Bucket"), or "A snowy tie! two crowns today". Alone: your total, and
   "a new best!" (with the crown) or your best so far. A line names the best single roll of the match. "Play again"
