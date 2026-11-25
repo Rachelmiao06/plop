@@ -1,0 +1,201 @@
+{
+  "_help": "One entry per sticker sheet in this folder. grid is columns x rows; names are read left to right, top row first. Optional per sheet: close_gap (px, default 3), pocket_max (px, default 600), holes ({name: [[x, y], ...]} points on fully fenced-in see-through gaps), keep ({name: [[x, y, r], ...]} circles forced solid), min_piece (px, default 60), erase ([{box}] paint over drawn blue ground shadows), target (\"effects\" = source in art-source/effects/, output public/assets/effects/). The doodle-* sheets are the current set; the sheet-* crayon sheets are spares. Run: python3 scripts/slice_scenery.py",
+  "sheets": [
+    {
+      "file": "doodle-1-friends-tree.png",
+      "grid": "2x2",
+      "names": [
+        "penguin-bag",
+        "girl-earmuffs",
+        "boy-snowman",
+        "tree-snowmen"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-2-flag-log-igloo-wind.png",
+      "grid": "2x2",
+      "names": [
+        "flag-blue",
+        "log-music",
+        "igloo-friends",
+        "wind-swirl"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-3-skier-bench-sign-cottage.png",
+      "grid": "2x2",
+      "names": [
+        "skier",
+        "bench-snowmen",
+        "signpost-snowman",
+        "cottage-blue"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-4-snowman-pine-penguin-reader.png",
+      "grid": "2x2",
+      "names": [
+        "snowman-bucket-hat",
+        "pine-walking",
+        "penguin-slide",
+        "snowman-newspaper"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "doodle-5-forest-fillers.png",
+      "grid": "2x2",
+      "names": [
+        "pine-snow-tall",
+        "pine-snow-short",
+        "mound-snow",
+        "bush-snow"
+      ],
+      "min_piece": 15
+    },
+    {
+      "file": "thrower-1-bucket-turnaround.png",
+      "grid": "4x1",
+      "names": [
+        "thrower-bucket"
+      ],
+      "min_piece": 200,
+      "erase": [
+        {
+          "box": [
+            60,
+            640,
+            384,
+            720
+          ]
+        }
+      ]
+    },
+    {
+      "file": "thrower-2-redhat-turnaround.png",
+      "grid": "4x1",
+      "names": [
+        "thrower-redhat"
+      ],
+      "min_piece": 200,
+      "erase": [
+        {
+          "box": [
+            60,
+            690,
+            384,
+            745
+          ]
+        }
+      ]
+    },
+    {
+      "file": "effects-1-marks.png",
+      "grid": "3x2",
+      "names": [
+        "surprise-lines",
+        "star",
+        "snow-puff",
+        "music-notes",
+        "snow-ring",
+        "wind-curl"
+      ],
+      "min_piece": 15,
+      "target": "effects"
+    },
+    {
+      "file": "sheet-1-buildings-trees.png",
+      "grid": "3x2",
+      "names": [
+        "tree-bare",
+        "cottage",
+        "igloo",
+        "pine-tall",
+        "pine-medium",
+        "pine-small"
+      ]
+    },
+    {
+      "file": "sheet-2-village-props.png",
+      "grid": "3x2",
+      "names": [
+        "signpost",
+        "flag",
+        "bench",
+        "log-hollow",
+        "street-lamp",
+        "fence"
+      ],
+      "holes": {
+        "bench": [
+          [
+            1344,
+            304
+          ]
+        ],
+        "fence": [
+          [
+            1228,
+            854
+          ],
+          [
+            1335,
+            852
+          ]
+        ]
+      }
+    },
+    {
+      "file": "sheet-3-small-props.png",
+      "grid": "3x2",
+      "names": [
+        "berry-bush",
+        "snow-mound",
+        "snowball-pile",
+        "bucket",
+        "radio",
+        "sled"
+      ],
+      "holes": {
+        "sled": [
+          [
+            1173,
+            832
+          ],
+          [
+            1364,
+            855
+          ],
+          [
+            1235,
+            886
+          ]
+        ]
+      },
+      "keep": {
+        "sled": [
+          [
+            1178,
+            834,
+            6
+          ]
+        ]
+      }
+    },
+    {
+      "file": "sheet-4-friends.png",
+      "grid": "3x2",
+      "names": [
+        "snowman-sitting",
+        "snowman-reading",
+        "snowman-waving",
+        "penguin-standing",
+        "penguin-sliding",
+        "mailbox"
+      ]
+    }
+  ]
+}
