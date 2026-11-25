@@ -119,16 +119,16 @@ export const FEEL = {
 
   /**
    * The roll down the long lane after letting go (Rachel: it should go further, with more force, all the way to the
-   * back). A light ball reaches the pins in about 0.95 s, a full one in about 1 s; a medium or full pull carries on
-   * to the paper wall at the back (`wall`) and bounces back, a full ball rolling back through the pins' spot; only
-   * the tiniest pull stops short of the snow bank (`docs/TUNING.md`).
+   * back). A light ball reaches the pins in about 0.85 s, a full one in about 1 s, and every throw carries on to the
+   * paper wall at the back (`wall`): a light one just taps it, a medium one bounces back behind the pins, a full one
+   * rolls back through the pins' spot (`docs/TUNING.md`).
    */
   roll: {
     /** Top speed of the smallest and the biggest ball (at full pull), reached right after the snap. */
     speedSmall: 15.5,
     speedBig: 11.5,
     /** A weak pull starts this share as fast as a full one. */
-    weakPull: 0.62,
+    weakPull: 0.75,
     /** Letting go is a snap: the ball leaves at `from` of its top speed and reaches it within `time` seconds. */
     snap: { from: 0.35, time: 0.09 },
     /** Early in the roll the snow slows it only `dragShare` as much, easing to full drag over `time` seconds. */

@@ -4,7 +4,7 @@
  * in development and prints the result in the browser console.
  */
 import { FEEL, copyFeel } from "./content";
-import { pastSweet, sweetPull, type Ground } from "./roll";
+import { pastSweet, planRoll, sweetPull, type Ground } from "./roll";
 import { type BowlEvent, Bowling } from "./simulation";
 import { distance } from "./vec";
 
@@ -119,7 +119,18 @@ export function runBowlingChecks(): string[] {
       run(game, 2, 1 / 60);
       return game.thrower.aim!;
     };
-    check(throwOn(PACKED, 1.6).distance > throwOn(undefined, 1.6).distance, "a packed track runs further");
+    // The same ball (a full pull grows a smaller ball on packed snow, so compare the roll itself).
+    const big = throwOn(undefined, 1.6);
+    const onPacked = planRoll(big.start, { x: 0, z: 1.6 }, big.size, big.radius, FEEL, PACKED);
+    check(!!onPacked && onPacked.distance > big.distance, "a packed track runs further");
+    // The back wall: a full throw meets it, bounces back toward the lane and stops inside it.
+    const wall = { cx: 0, cz: FEEL.lane.pinSpot.z * 0.45, radius: 11 };
+    const walled = planRoll(big.start, { x: 0, z: 1.6 }, big.size, big.radius, FEEL, { packedAt: () => 0, wall });
+    const out = walled ? Math.hypot(walled.stop.x - wall.cx, walled.stop.z - wall.cz) : Infinity;
+    check(
+      !!walled && walled.bounces.length > 0 && out < wall.radius - FEEL.wall.inset && walled.stop.z > walled.bounces[0].z,
+      "a full throw bounces off the back wall and rolls back",
+    );
     check(throwOn(undefined, 0.5).startSpeed > throwOn(undefined, 1.6).startSpeed, "a small ball starts faster than a big one");
     // The sweet spot: a full pull is heavy (slower than its size alone would make it) and its aim sways.
     const sweetAt = sweetPull(FEEL);

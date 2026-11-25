@@ -82,7 +82,9 @@ export function CameraDirector({ pins, link }: { pins: Pins; link: GameLink }) {
     [pins],
   );
 
-  useFrame(({ size }, delta) => {
+  useFrame(({ size, camera }, delta) => {
+    // Handy from the browser console while tuning (development only): window.__camera.position
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __camera?: unknown }).__camera = camera;
     const c = GAME.camera;
     // On a tall phone screen the width is the narrow side: keep `frame` units across it, not up it.
     const narrow = Math.min(1, size.width / Math.max(size.height, 1));
