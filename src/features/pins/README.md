@@ -34,6 +34,14 @@ const [pins] = useState(() => createPins());          // formation id optional
 
 Wiring the HUD later: on `knocked` pass `down`/`total` and a new `knock` id; on `result` add the score.
 
+## Formations
+
+Five to eight small friends per set, airy enough to read from the throwing view (Rachel: the first sets were one
+clump): about 1.5 card widths apart in a row, the row behind staggered into the gaps, rows 0.55 to 1 apart so a
+falling card still reaches the next, short ones in front. Never in a formation: the throwers (`snowman-bucket-hat`,
+the red-hat snowman) and the props that look like they are moving (`penguin-slide`, `skier`, now village decoration).
+Formation ids and exports are fixed; the game imports them.
+
 ## How it works
 
 - **Ground:** the snow scene's `heightAt` is sampled once (14 by 14 units around `lane.pinSpot`, 0.25 apart)
@@ -62,6 +70,10 @@ Wiring the HUD later: on `knocked` pass `down`/`total` and a new `knock` id; on 
 ## Files
 
 - `content.ts` every feel number, the formations (#25) and the text. Tune here.
+- `overlap.ts`, `OverlapCheck.tsx` the readability check: each formation's cards projected through the live
+  throwing-view camera; no card may hide more than `OVERLAP.maxHidden` (15%) of another. `/dev/pins` logs a table
+  in development (or anywhere with `?overlap`, so a Vercel preview can be checked), and again when the window
+  changes shape. Run it at a desktop size and a phone size after changing a formation.
 - `controller.ts` `createPins`: state, events, commands. No drawing.
 - `layout.ts` the sampled ground and each pin's size, colliders and home spot. No drawing.
 - `PinsStage.tsx` the physics world, the ball colliders, landing, counting, reset and set changes.
