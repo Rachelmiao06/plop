@@ -40,7 +40,7 @@ const fade = { uOpacity: { value: 1 } };
  * arc it spreads (units); `fall`: how quickly it fades up the wall (units); `waves` per second, `travel` (waves per
  * unit along the arc), `damping` per second, gone after `time` seconds. Its sound and the snow puff are bowling's.
  */
-const WOBBLE = { slots: 3, lift: 0.09, push: 0.18, width: 2.2, fall: 2.4, waves: 3.2, travel: 1.1, damping: 2.6, time: 1.6 };
+const WOBBLE = { slots: 3, lift: 0.2, push: 0.22, width: 3.2, fall: 2.6, waves: 2.6, travel: 0.9, damping: 2.2, time: 1.9 };
 // One set of uniforms shared by the wall and the hills band, so both move as one sheet of paper.
 const wobble = {
   // Per hit: angle on the wall's circle (radians, as `atan(x, z)` from its middle), age (s, < 0 = empty), strength.

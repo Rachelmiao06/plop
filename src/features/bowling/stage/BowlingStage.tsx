@@ -295,6 +295,8 @@ export function BowlingStage({
     if (process.env.NODE_ENV !== "production") {
       // Handy from the browser console while tuning: window.__bowling.thrower
       (window as unknown as { __bowling?: Bowling }).__bowling = game;
+      // And a wall hit without a throw, to look at the paper's wobble: window.__wallHit({ x: 0, z: -13, strength: 1 })
+      (window as unknown as { __wallHit?: typeof emitWallHit }).__wallHit = emitWallHit;
       void import("../checks").then(({ runBowlingChecks }) => {
         const failed = runBowlingChecks();
         if (failed.length) console.error("Bowling checks failed:", failed);

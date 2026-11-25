@@ -643,8 +643,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         f.wentPast.add(ball.id);
         if (f.reachedAt === null) f.reachedAt = f.clock;
       }
-      const slow = ball.speed < B.slowSpeed;
-      if (slow && (near || f.wentPast.has(ball.id))) game.burst(ball.id);
+      // Slow among the cards: poof now. Back from the wall: once it is nearly still (or has stopped).
+      const settled = !ball.rolling || ball.speed < FEEL.wall.poofBelow;
+      if ((near && ball.speed < B.slowSpeed) || (f.wentPast.has(ball.id) && settled)) game.burst(ball.id);
       else if (ball.rolling) clear = false;
     }
     return clear;

@@ -164,8 +164,20 @@ export const FEEL = {
    * and a wobble of the paper (the backdrop's).
    * The long roll back must not hold up the score: the pins count the throw at the latest `countWithin` seconds after
    * the ball first meets a card (or first rolls past them all, on a miss), and any ball still rolling then poofs.
+   * A ball that has been past the pins rolls back from the wall until it is nearly still (`poofBelow` units per
+   * second), then poofs into snow so it never parks over the fallen cards.
    */
-  wall: { inset: 0.55, bounce: 0.5, slide: 0.8, most: 2, thump: 0.22, thumpPerSize: 0.3, fullSpeed: 7, countWithin: 3.5 },
+  wall: {
+    inset: 0.55,
+    bounce: 0.5,
+    slide: 0.8,
+    most: 2,
+    thump: 0.22,
+    thumpPerSize: 0.3,
+    fullSpeed: 7,
+    countWithin: 3.5,
+    poofBelow: 0.8,
+  },
 
   /** How the ball presses the snow (passed to the snow scene's `pressGroove`). */
   groove: {
