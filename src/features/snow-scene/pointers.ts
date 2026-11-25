@@ -19,12 +19,45 @@ export const snowPointers = {
 
 /** Lets buttons outside the 3D scene ask the camera for things. */
 export const snowView: {
-  /** Glide back to the play view. Set by the camera. */
+  /** Glide back to the default view (the play view unless a feature set one). Set by the camera. */
   reset: () => void;
   /** For measuring: where the camera is on its path and how far it is turned. */
-  state?: () => { path: number; goalPath: number; yaw: number; goalYaw: number };
+  state?: () => {
+    path: number;
+    goalPath: number;
+    yaw: number;
+    goalYaw: number;
+    homePath: number;
+    homeYaw: number;
+  };
 } = {
   reset: () => {},
+};
+
+/**
+ * A feature's default view (see `useSnowCameraView`): the point the camera
+ * looks at, where on its path it starts, and an optional turn and distance.
+ * "Reset view" returns here.
+ */
+export type SnowViewSettings = {
+  /** The point the camera looks at, in scene units. */
+  lookAt: [number, number, number];
+  /** Where on the camera path it starts: 0 = low end, 1 = high end (the play view is `cameraPath.playAt`). */
+  pathAt: number;
+  /** Starting turn in degrees (positive = swung to the right), within the turn limit. Default 0. */
+  turn?: number;
+  /**
+   * Distance at the default point, times what the path would give there
+   * (default 1). It blends back to 1 toward the high end, so the highest
+   * view and every limit stay as they are.
+   */
+  distance?: number;
+};
+
+/** The default view the camera reads every frame. `version` changes on every set. */
+export const snowCameraHome: { view: SnowViewSettings | null; version: number } = {
+  view: null,
+  version: 0,
 };
 
 /**

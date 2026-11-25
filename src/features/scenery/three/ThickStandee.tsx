@@ -23,6 +23,10 @@ type Props = {
   normal: Texture;
   /** Where the orbit camera looks; the half-turn follows the camera's swing around this point. */
   target: Vector3;
+  /** Height of the snow under the prop (the real snow scene's heightAt). Default 0 (flat test snow). */
+  baseY?: number;
+  /** Draw the stand-in paper mound at the base. Off on the real snow, which heaps its own. Default true. */
+  mound?: boolean;
 };
 
 /** The fixed drawing light all paper shading comes from (see standee3d.shading). */
@@ -33,7 +37,7 @@ const drawingLight = new Vector3(...standee3d.shading.from).normalize();
  * soft pillow normal map, true-silhouette shadow, sunk into a small snow mound, half-turning toward
  * the camera, swaying and wobbling. Every part can be switched off (see treatment.ts).
  */
-export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, target }: Props) {
+export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, target, baseY = 0, mound = true }: Props) {
   const t = useTreatment();
   const paper = usePaper();
   const spawnFlecks = useFlecks();
@@ -160,11 +164,12 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
     if (!t.life) return;
     e.stopPropagation();
     wobblePending.current = true;
-    const top = new Vector3(x, (t.sink ? -settings.sink : 0) + height * 0.85, z + depth);
+    const top = new Vector3(x, baseY + (t.sink ? -settings.sink : 0) + height * 0.85, z + depth);
     spawnFlecks(top, width * 0.7, standee3d.wobble.flecks);
   };
 
-  const y = t.sink ? -settings.sink * scale : 0;
+  const sunk = t.sink ? -settings.sink * scale : 0;
+  const y = baseY + sunk;
   const thickOn = t.thick && body;
 
   return (
@@ -185,12 +190,12 @@ export function ThickStandee({ id, x, z, scale = 1, flip = false, art, normal, t
           </group>
         </group>
       </group>
-      {t.sink && (
+      {t.sink && mound && (
         <mesh
           geometry={moundGeometry}
           material={moundMaterial}
           scale={[(width * standee3d.mound.widthShare) / 2, standee3d.mound.height, standee3d.mound.depth / 2]}
-          position-y={-y * 0.15}
+          position-y={-sunk * 0.15}
         />
       )}
     </group>

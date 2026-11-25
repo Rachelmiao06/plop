@@ -84,8 +84,7 @@ Start from `props`, `lane` and `layout`; nothing else is needed. Use `propSrc(id
 7. `layoutProblems()` returns plain-language problems (prop in the lane, something tall in front of the
    thrower, outside the map, not a frame prop). Run it in a dev check after editing the layout.
 
-Ideas for later, not done: a pale blue blob shadow (`--snow-shadow`) under each prop; a small sway on the flag
-and pines; snow piling up at the base where the prop meets the ground.
+Done on the real snow (see the village section below): real shadows, sway on the pines, snow heaped at the base.
 
 ## Thick standees in 3D (`/dev/scenery-3d`)
 
@@ -126,3 +125,38 @@ Files: `three/materials.ts` (the drawn-style shaders), `three/standeeGeometry.ts
 `three/VillageCanvas.tsx` (scene, lights, camera), `three/Village3D.tsx` (page UI), `three/treatment.ts` (switches).
 The sun direction copies the snow scene in PR #17; keep it in step until part 2 moves this into it.
 Re-run `python3 scripts/trace_standees.py` whenever the slicer re-cuts the art.
+
+## The village on the real snow (`<Village />`, `/dev/village`)
+
+`import { Village, throwingView, villageBlockers } from "@/features/scenery"` (the folder's `index.ts`).
+
+```tsx
+<SnowScene>
+  <SnowCameraView {...throwingView(FEEL.lane)} />   {/* the throwing view, from the snow scene */}
+  <Village lane={FEEL.lane} />                       {/* the bowling feature's lane fits as is */}
+  <BowlingStage />
+</SnowScene>
+```
+
+- **Fitted to the game's lane:** `villageLayout(lane)` stretches the drawn layout's depth so its line (z = 0) and pin zone
+  (z = -6.5) land on the lane's line and pin spot, and moves the left and right props out by the thrower's extra slide
+  room. The layout itself is not changed. Only `frame` props are placed; the friend cut-outs stay for the pins feature
+  (so the blue flag, a pin, is not in the village and has no sway here).
+- **Standing in the snow:** each base sits on the lowest snow along its bottom edge (`heightAt`), sunk by its manifest
+  `sink`, in a soft heap of **real snow** made with the snow scene's `heapSnow` (`village.mound`). The heap is part of
+  the snow: same shading, sparkles and shadows, it takes grooves and craters, and fresh snowfall settles back to it.
+  The stand-in paper mound of the test page is off here (`ThickStandee mound={false}`).
+- **Look:** the thick standee renderer from `three/` unchanged: art exactly as drawn, paper edge with an uneven ink
+  line, the half-turn toward the camera around the throwing view's look-at point, gentle sway on the trees.
+  Shadows are the snow scene's real sun shadows; while the village is shown they are lightened to
+  `village.shadowStrength` (0.55) so they read pale blue next to paper instead of deep violet. This touches the scene's
+  sun at run time only and is put back when the village goes.
+- **Clear lane and sight line:** `villageProblems(lane, cameraPosition?)` lists any prop in the roll lane (the slide
+  width plus the drawn margin, from in front of the line to past the pins) or standing taller than the line of sight
+  from the camera to the pins. In development the page logs the result once the camera has settled.
+- **Blockers:** `villageBlockers(lane)` gives `{ name, x, z, radius }` for the buildings, the big tree and the pines
+  (`village.blockers`: radius = a third of the drawn width), so a ball can burst on them later. Nothing uses them yet.
+- **Throwing view:** `throwingView(lane)` (numbers in `village.view`).
+
+Files: `village.ts` (fitting, blockers, checks, throwing view; no drawing), `three/Village.tsx` (the component),
+`index.ts` (what other features import). Screenshots: `review/village-*.webp`.
