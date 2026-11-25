@@ -9,6 +9,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { BowlingStage, FEEL } from "@/features/bowling";
 import { ScoreHud } from "@/features/hud";
 import { createPins, PinsPopup, PinsStage } from "@/features/pins";
+import { PaperFinish } from "@/features/look";
 import { throwingView, Village } from "@/features/scenery";
 import { SnowCameraView, SnowScene } from "@/features/snow-scene";
 
@@ -55,6 +56,8 @@ export function Game() {
         <GameBridge game={game} pins={pins} link={link} />
         <CameraFollow pins={pins} link={link} />
       </SnowScene>
+      {/* Paper grain and a soft paper edge over the picture, under all UI (src/features/look). */}
+      <PaperFinish />
       <GameHint game={game} />
       <TurnNote game={game} />
       <PinsPopup pins={pins} />
