@@ -60,6 +60,31 @@ not let a page open its share menu by itself).
 
 None of this was tested inside WeChat itself (it cannot be run here); it follows WeChat's known webview rules.
 
+## Add to home screen
+
+Plop can sit on a phone's home screen like an app and open full-screen, with the bucket-hat snowman as its icon.
+
+- **iPhone (Safari):** tap the Share button, then **Add to Home Screen**.
+- **Android (Chrome):** tap the **⋮** menu, then **Add to Home screen** (or **Install app**).
+- Inside WeChat this is not offered: open the link in the phone's browser first (··· → Open in Browser).
+
+There is no offline mode yet: the game still needs the internet each time it opens (no service worker, nothing
+cached on purpose). The icons are the existing snowman cut-out on paper (`public/icons/`), not new art.
+
+## Privacy
+
+Plop counts visits so Rachel can see whether people play and where they come from, and nothing more.
+
+- **Vercel Web Analytics and Speed Insights**, no cookies and nothing saved on your phone. Vercel tells visitors
+  apart with a hash that resets every day, so no one can be followed from one day to the next.
+- **No names, no accounts, no personal data.** Page addresses are sent without their extra parts: an invite link
+  like `/invite?from=…&score=…` is counted only as `/invite`, so the nickname, group and score in it are never sent.
+- **What is counted:** pages opened, the website or app that sent you (the referrer), country, browser and device
+  type, page speed, and a few game moments (a match starts or ends, an invite is made or opened, the share button
+  is tapped) with the number of rounds and the mode. Each moment also says whether you came from WeChat, from the
+  home-screen icon or a normal browser (read from the browser's name, not from you).
+- Only members of the Vercel project can see the numbers, in its dashboard (Project → Analytics, Speed Insights).
+
 ## Test pages (`/dev/*`)
 
 Small pages for checking one part at a time. Not linked from the game and hidden from search engines.

@@ -331,9 +331,10 @@ export const layout: Placement[] = [
   { prop: "cocoa-stall", x: -6.2, z: -10.95, side: "far" },
   { prop: "fairy-lights", x: -3.3, z: -9.15, scale: 0.9, side: "far" },
   // queuing for cocoa at the tree-stump café, side by side and touching its base (Rachel: small characters never
-  // stand alone in open snow; each is a little moment beside the thing it belongs with)
-  { prop: "mug-cocoa", x: -4.95, z: -10.0, scale: 1.25, flip: true, side: "far" },
-  { prop: "otter-cocoa", x: -4.4, z: -9.95, scale: 1.25, flip: true, side: "far" },
+  // stand alone in open snow; each is a little moment beside the thing it belongs with). They stand at the café's two
+  // edges, not in front of its window, so the rabbit serving cocoa stays visible (Rachel).
+  { prop: "mug-cocoa", x: -5.45, z: -10.05, scale: 1.25, flip: true, side: "far" },
+  { prop: "otter-cocoa", x: -3.65, z: -9.9, scale: 1.25, flip: true, side: "far" },
   { prop: "tree-snowmen", x: 4.0, z: -10.6, side: "far" },
   { prop: "pine-snow-short", x: 5.7, z: -9.6, flip: true, side: "far" },
   { prop: "pine-snow-tall", x: 6.6, z: -11.3, scale: 0.9, side: "far" },
