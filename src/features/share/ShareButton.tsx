@@ -12,6 +12,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
+import { track } from "@/lib/analytics";
+
 import { copy, isWeChat, systemShare } from "./actions";
 import { SHARE } from "./content";
 import { InviteSheet } from "./InviteSheet";
@@ -80,7 +82,10 @@ export function ShareButton() {
           aria-label={SHARE.button.label}
           title={SHARE.button.label}
           aria-expanded={sheet}
-          onClick={() => setSheet((v) => !v)}
+          onClick={() => {
+            if (!sheet) track("share_tapped");
+            setSheet((v) => !v);
+          }}
           className="plop-share-btn plop-share-glass relative size-10 rounded-full text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <svg viewBox="0 0 40 40" className="absolute inset-0 size-full" aria-hidden>

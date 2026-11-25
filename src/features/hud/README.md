@@ -22,13 +22,21 @@ import { ScoreHud } from "@/features/hud";
 - A match adds `round={{ now, of }}` (a small "round 2 / 3" tag under the panel), `gain={{ id, player, points }}`
   (the throw's points fly up into that total, which counts up when they land) and, playing alone,
   `soloBest={n | null}` (the right side shows your best with a little crown).
-- `MatchStart` (the "3 or 5 rounds / two friends or just me" card) and `MatchEnd` (totals, crown, cheer, tie card,
-  "play again") in `Match.tsx`. The crown is a pencil stand-in in `Doodles.tsx` until Rachel draws one.
+- `MatchStart` (the name field or fields, "3 or 5 rounds / two friends or just me", and a greeting when someone
+  arrives from an invite: props `names`, `fallbacks`, `nameMax`, `onNames`, `together`, `greeting`) and `MatchEnd`
+  (totals, crown, cheer, tie card, a line against an inviter's score `rival`, anything passed as `children` such as
+  the group board, "play again") in `Match.tsx`. `PaperCard` is the same paper note for other cards (the game's rule
+  card).
+- The panel shows each player's name over their total. `rule={{ icon, words, label }}` adds a chip with the round's
+  rule beside the round tag; `rival={{ name, score }}` playing alone shows a friend's score "to beat" instead of your
+  best. The crown is a pencil stand-in in `Doodles.tsx` until Rachel draws one.
 - A burst (star and surprise lines) plays whenever `down` reaches `total`.
 - Put it inside a `relative` box that also holds `<SnowScene>`; it floats at the top and never covers the lane.
 - The corner toggles start the music after the first touch anywhere (if its switch is on). Music and the
   switches live in `src/lib/audio.ts`.
 - Feel numbers (spring, wobble, glass blur, timings) are in `content.ts`.
+
+`PaperFill`, `PencilFrame`, `SnowmanFace` and `StarDoodle` are exported from the index for other features.
 
 Files: `ScoreHud` (layout), `ProgressBar`, `CornerToggles`, `Doodles` (faces, star, icons, pencil frame, paper fill, halo),
 `pencil.ts` (wobbly line maths), `hudStyles.ts` (keyframes, rendered as a scoped `<style>` because this

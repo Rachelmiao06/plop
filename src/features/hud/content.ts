@@ -19,6 +19,8 @@ export const content = {
     round: (now: number, of: number) => `round ${now} / ${of}`,
     roundLabel: (now: number, of: number) => `Round ${now} of ${of}`,
     soloBest: "best",
+    /** Arrived from an invite, playing alone: the right side shows the inviter's score to beat. */
+    toBeat: "to beat",
     gain: (points: number) => `+${points}`,
     start: {
       title: "Plop!",
@@ -28,6 +30,12 @@ export const content = {
       two: "two friends",
       one: "just me",
       go: "Let's roll!",
+      /** The name field(s): asked once here, used everywhere (score panel, end card, board, invites). */
+      name: { zh: "你叫什么？", en: "Your name" },
+      names: { zh: "你们叫什么？", en: "Your names" },
+      /** Shown inside an empty field: the snowman's cute default, used if it stays empty. */
+      namePlaceholder: (fallback: string) => fallback,
+      nameLabel: (fallback: string) => `${fallback}'s name`,
     },
     end: {
       label: "Match over",
@@ -40,6 +48,10 @@ export const content = {
       newBest: "a new best!",
       best: (n: number) => `best so far: ${n}`,
       bestThrow: (name: string, points: number, round: number) => `best roll: ${name}, +${points} in round ${round}`,
+      /** Alone after a friend's invite: how it went against their score (kind either way). */
+      beatRival: (name: string, score: number) => `you beat ${name}'s ${score}!`,
+      tiedRival: (name: string) => `just like ${name}!`,
+      underRival: (name: string, score: number) => `${name} has ${score} · so close!`,
       again: "Play again",
       choose: "3 or 5 rounds?",
       points: (n: number) => `${n} points`,

@@ -14,8 +14,10 @@
  * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
  *    taken and then listed, a rude nickname and an impossible score are refused. The test page `/dev/leaderboard`
  *    is one of the pages in step 3.
- * 8. Fetches a page that does not exist: it must answer 404.
- * 9. Fails if the server printed an error while doing all this.
+ * 8. The web app manifest ("add to home screen"): the home page links `/manifest.webmanifest`, it answers JSON
+ *    named "Plop!" with `display: standalone`, and each of its icons (192, 512 and a maskable one) loads as an image.
+ * 9. Fetches a page that does not exist: it must answer 404.
+ * 10. Fails if the server printed an error while doing all this.
  *
  * It does NOT run the page in a browser: client-side JavaScript errors, WebGL, the 3D scene, the loading screen
  * fading out and any interaction are not covered. It only proves the server can render every page.
@@ -230,6 +232,36 @@ async function main() {
     await expect("GET lists it", await get(`${base}/api/scores?g=${group}`), 200, (j) => j.scores?.[0]?.name === "Smoke");
     await expect("POST rude name", await post({ ...good, name: "傻逼" }), 400, (j) => j.error === "rude_name");
     await expect("POST impossible score", await post({ ...good, score: 9999 }), 400, (j) => j.error === "bad_score");
+
+    console.log("\nWeb app manifest (add to home screen):");
+    try {
+      if (!/<link[^>]+rel="manifest"[^>]+href="\/manifest\.webmanifest"/.test(home))
+        fail("the home page has no <link rel=\"manifest\" href=\"/manifest.webmanifest\">");
+      const res = await get(base + "/manifest.webmanifest");
+      const type = res.headers.get("content-type") ?? "";
+      const manifest = await res.json().catch(() => null);
+      if (res.status !== 200) fail(`/manifest.webmanifest answered ${res.status}`);
+      else if (!manifest) fail(`/manifest.webmanifest is not JSON (${type})`);
+      else if (manifest.name !== "Plop!" || manifest.display !== "standalone")
+        fail(`/manifest.webmanifest: name "${manifest.name}", display "${manifest.display}"`);
+      else {
+        pass(`/manifest.webmanifest "${manifest.name}", ${manifest.display} (${type})`);
+        const icons = manifest.icons ?? [];
+        for (const need of ["192x192", "512x512"])
+          if (!icons.some((i) => i.sizes === need && (i.purpose ?? "any").includes("any"))) fail(`manifest has no ${need} icon`);
+        if (!icons.some((i) => (i.purpose ?? "").includes("maskable"))) fail("manifest has no maskable icon");
+        for (const icon of icons) {
+          const pic = await get(base + icon.src);
+          const picType = pic.headers.get("content-type") ?? "";
+          await pic.arrayBuffer();
+          if (pic.status !== 200) fail(`manifest icon ${icon.src} answered ${pic.status}`);
+          else if (!picType.startsWith("image/")) fail(`manifest icon ${icon.src} is not an image (${picType})`);
+          else pass(`${icon.src} ${icon.sizes} ${icon.purpose ?? "any"} (${picType})`);
+        }
+      }
+    } catch (e) {
+      fail(`/manifest.webmanifest did not answer (${e.message})`);
+    }
 
     console.log("\nMissing page:");
     const missing = await get(base + "/this-page-does-not-exist");

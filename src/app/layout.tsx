@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Gaegu, Geist_Mono, Nunito } from "next/font/google";
+import { PlopAnalytics } from "@/lib/analytics";
 import "./globals.css";
 
 // Headings: round handwritten. Small text: clean rounded sans.
@@ -30,10 +31,12 @@ export const metadata: Metadata = {
   applicationName: "Plop!",
   openGraph: { title: "Plop!", description, type: "website", siteName: "Plop!" },
   twitter: { card: "summary_large_image", title: "Plop!", description },
+  // iPhone "Add to Home Screen" opens full-screen; the paper-white status bar keeps dark text on the paper page.
+  appleWebApp: { capable: true, title: "Plop", statusBarStyle: "default" },
 };
 
 // --paper from globals.css (meta tags cannot read CSS variables).
-export const viewport: Viewport = { themeColor: "#fffdf8" };
+export const viewport: Viewport = { themeColor: "#ffffff" }; // --snow-white, like the white opening page
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -41,7 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${gaegu.variable} ${nunito.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <PlopAnalytics />
+      </body>
     </html>
   );
 }

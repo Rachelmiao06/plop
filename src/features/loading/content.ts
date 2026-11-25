@@ -6,15 +6,26 @@ export const LOADING = {
   title: "Plop!",
   /** Small line under the title while the scene loads. */
   note: "packing the snow…",
-  /** Rachel's bucket-hat thrower cut-out (scenery art, used as is). */
-  art: { src: "/assets/scenery/thrower-bucket.webp", width: 309, height: 421, alt: "" },
+  /**
+   * Rachel's little penguin sliding on its belly (scenery art, used as is), beside the title on the white page
+   * (Rachel, 2026-11-25: it is cute; it replaces the thrower and the invite's mouse).
+   */
+  art: { src: "/assets/scenery/penguin-slide.webp", width: 396, height: 232, alt: "" },
 
-  /** Gentle bob of the cut-out: how far it rises (px), how far it tips (deg), one full bob (s). */
-  bob: { rise: 7, tilt: 2.5, seconds: 2.4 },
+  /**
+   * Its little loop: slides `slide` px forward and back while it wobbles `tilt` degrees and hops `rise` px, one loop
+   * every `seconds`. Still for "reduce motion".
+   */
+  slide: { slide: 14, rise: 4, tilt: 4, seconds: 1.8 },
 
   timing: {
     /** Never flash: the screen stays at least this long (ms), even when everything is cached. */
     minShow: 900,
+    /**
+     * A page with no 3D scene (the invite): ready once the page and its fonts have loaded and at least this long has
+     * passed, so the snowball's roll still reads (ms).
+     */
+    minShowPage: 1700,
     /** Art must have stopped loading for this long (ms) before we call it ready (loads come in waves). */
     settle: 350,
     /** If the canvas is up and nothing has started loading after this long (ms), treat it as ready. */
@@ -65,14 +76,23 @@ export const LOADING = {
     },
   },
 
-  /** At 100 %: the ball bursts and a puff of snow clears the screen from where it burst. */
+  /**
+   * At 100 %: the ball bursts into a real puff of snow (`SnowPoof.tsx`) and the white screen either clears from that
+   * point into the game (`reveal: false`) or lets the page's own card pop out of it (`reveal: true`, the invite).
+   */
   burst: {
-    /** Rachel's snow-puff doodle, grown at the burst point. */
-    puff: { src: "/assets/effects/snow-puff.webp", width: 306, height: 235 },
     /** How long the clearing takes (ms). Reduced motion: a plain fade of `timing.fade`. */
     clear: 1000,
     /** Soft edge of the clearing hole (px). */
     soft: 90,
+    /** Reveal: the title, penguin and strip fade away over this long (ms) while the white stays. */
+    contentOut: 420,
+    /**
+     * The puff: `powder` fine flakes and `clumps` soft lumps thrown at up to `speed` px/s, pulled down by `gravity`
+     * px/s², slowed by `drag` per second, over a mist `mist` px wide; all within `reach` px of the burst, gone after
+     * `duration` ms.
+     */
+    poof: { powder: 70, clumps: 16, speed: 420, gravity: 620, drag: 2.4, mist: 70, reach: 190, duration: 1150 },
   },
 
   /** Name of the window event the game may dispatch once its first full frame is drawn (optional). */
