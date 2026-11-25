@@ -131,6 +131,8 @@ class SpraySim {
     this.clumpsOwed = Math.min(this.clumpsOwed - clumps, 1);
 
     const heading = Math.atan2(kick.velocityZ, kick.velocityX);
+    // A bigger dent throws bigger puffs and clumps.
+    const grow = Math.min(Math.max(kick.radius / s.baseRadius, 1), s.maxSizeScale);
     for (let n = 0; n < dust + clumps; n++) {
       // A crater throws all round; a moving press throws ahead and to the sides.
       const angle =
@@ -156,7 +158,7 @@ class SpraySim {
           s.dustRise * (0.4 + Math.random() * 0.8) * (kick.burst ? 1.6 : 1);
         this.dustVel[i * 3 + 2] = sin * out * 0.6;
         this.dustLife[i] = 1;
-        this.dustSize[i] = s.dustSize * (0.6 + Math.random() * 0.9);
+        this.dustSize[i] = s.dustSize * grow * (0.6 + Math.random() * 0.9);
       } else {
         const i = this.clumpNext;
         this.clumpNext = (i + 1) % s.clumpCount;
@@ -167,7 +169,7 @@ class SpraySim {
         this.clumpVel[i * 3 + 1] =
           s.clumpRise * (0.5 + Math.random() * 0.6) * (kick.burst ? 1.35 : 1);
         this.clumpVel[i * 3 + 2] = sin * out;
-        this.clumpSize[i] = s.clumpSize * (0.5 + Math.random());
+        this.clumpSize[i] = s.clumpSize * grow * (0.5 + Math.random());
         this.clumpState[i] = 1;
       }
     }

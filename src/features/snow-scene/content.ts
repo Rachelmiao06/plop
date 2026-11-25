@@ -16,15 +16,15 @@ export const content = {
   ground: {
     // Size of the play area: the part of the snow that can be pressed
     // (centred on 0, 0), and how round its corners are.
-    sizeX: 9,
-    sizeZ: 7.2,
+    sizeX: 24,
+    sizeZ: 18,
     centerZ: 0,
-    cornerRadius: 1.4,
+    cornerRadius: 3,
     // Toward the edge of the play area the snow gives less and less, so a
     // dent never shows where the pressable snow ends.
-    edgeLock: 0.7,
+    edgeLock: 1,
     // Width of one grid square. Smaller = finer dents, more work for the phone.
-    cell: 0.04,
+    cell: 0.05,
     // How far down the snow can be pressed before it hits hard ground.
     depth: 0.9,
     // Gentle drifts so the surface is not a flat sheet.
@@ -132,6 +132,10 @@ export const content = {
     clumpSize: 0.02,
     // How much the clumps glow with their own light, so they never look like stones.
     clumpGlow: 0.3,
+    // Puffs and clumps grow with the size of the dent that threw them: at
+    // this dent radius they are their normal size, at most this many times bigger.
+    baseRadius: 0.25,
+    maxSizeScale: 4,
     clumpRise: 2.4,
     clumpGravity: 7.5,
     // How long a landed clump stays before it melts into the snow.
@@ -153,6 +157,8 @@ export const content = {
     fogBottom: "#e3eaf5",
     snowflake: "#ffffff",
     snowDust: "#ffffff",
+    // TEMPORARY: outline of the pressable area, shown in "Press" mode.
+    tempAreaOutline: "#7f97c4",
     // TEMPORARY: stand-in blocks shown with ?guides in the address.
     tempGuide: "#e58a6b",
   },
@@ -168,7 +174,7 @@ export const content = {
     // Shadows: sharpness and softness.
     shadowMapSize: 2048,
     shadowSoftness: 5,
-    shadowArea: 7.5,
+    shadowArea: 12,
     shadowBias: -0.0004,
     shadowNormalBias: 0.05,
   },
@@ -296,8 +302,15 @@ export const content = {
   tempDrag: {
     ballRadius: 0.28,
     craterRadius: 0.5,
-    // Distance between stamps while dragging, as a share of the radius.
+    // The test press grows with camera distance, so a drag leaves a track of
+    // about the same size on screen near or far. Never smaller than above,
+    // never more than this many times bigger. (The real snowball will have a
+    // fixed size; this is only for the test press.)
+    maxScale: 3.5,
+    // Distance between stamps while dragging, as a share of the radius, and
+    // never more than this many grid squares (wider gaps show as stripes).
     spacing: 0.25,
+    maxStepCells: 1.5,
     // How fast holding still digs down, in units per second.
     digRate: 0.4,
     // A finger waits this long (seconds) before pressing, so a pinch leaves no dent.

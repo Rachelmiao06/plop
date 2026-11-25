@@ -20,7 +20,9 @@
 
 import { useEffect, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Vector3 } from "three";
 import { content } from "./content";
+import { cameraDistance } from "./layout";
 import { snowPointers, snowView } from "./pointers";
 import { useSnow, useSnowLayout, useSnowPoint } from "./snowContext";
 
@@ -41,6 +43,11 @@ type Finger = {
 // For measuring only: how far the pressed point trails the finger, and how
 // much its speed changes from one frame to the next.
 const tempTrail = { gap: 0, speed: 0, jolt: 0 };
+
+// How much bigger the test press is right now, from the camera distance.
+// Kept here so the double-tap crater can use it too.
+let pressScale = 1;
+const aim = new Vector3();
 
 // One entry per finger. Mouse and touch both count as fingers.
 const fingers = new Map<number, Finger>();
@@ -89,7 +96,7 @@ export function TempDragPress() {
       const near = Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
       if (near && e.timeStamp - lastTap.time < 350) {
         const p = pointOnSnow(e.clientX, e.clientY);
-        if (p) snow.punchCrater(p.x, p.z, content.tempDrag.craterRadius);
+        if (p) snow.punchCrater(p.x, p.z, content.tempDrag.craterRadius * pressScale);
         lastTap = { time: 0, x: 0, y: 0 };
       } else {
         lastTap = { time: e.timeStamp, x: e.clientX, y: e.clientY };
@@ -113,7 +120,11 @@ export function TempDragPress() {
 
   // The pressing itself happens once per frame, so that holding still keeps
   // digging and the pressed point can lag behind the finger.
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const c = content.camera;
+    const away = state.camera.position.distanceTo(aim.set(0, c.targetHeight, 0));
+    pressScale = Math.min(Math.max(away / cameraDistance(), 1), content.tempDrag.maxScale);
+
     // Two fingers on empty snow are a pinch-to-zoom, not two presses.
     let touching = 0;
     for (const [id, finger] of fingers) {
@@ -126,8 +137,11 @@ export function TempDragPress() {
 
     const t = content.tempDrag;
     const seconds = Math.min(delta, 0.05);
-    const radius = t.ballRadius;
-    const step = radius * t.spacing;
+    // Keep the press about the same size on screen, near or far: everything
+    // measured in scene units (size, lag, dig speed) grows with distance.
+    const radius = t.ballRadius * pressScale;
+    // Stamps close enough that the groove walls stay smooth, also for a big press.
+    const step = Math.min(radius * t.spacing, content.ground.cell * t.maxStepCells);
 
     for (const [id, finger] of fingers) {
       if (snowPointers.claimed.has(id)) continue;
@@ -160,7 +174,7 @@ export function TempDragPress() {
       // Close a share of the gap each frame (the same feel at any frame
       // rate), and never fall further behind than maxTrail.
       const share = 1 - Math.exp(-finger.follow * seconds);
-      const distance = Math.max(far * share, far - t.maxTrail);
+      const distance = Math.max(far * share, far - t.maxTrail * pressScale);
       const moveX = far > 0 ? (toX / far) * distance : 0;
       const moveZ = far > 0 ? (toZ / far) * distance : 0;
       const stamps = Math.max(Math.ceil(distance / step), 1);
@@ -168,9 +182,9 @@ export function TempDragPress() {
       tempTrail.gap = far - distance;
       tempTrail.jolt = Math.abs(speed - tempTrail.speed);
       tempTrail.speed = speed;
-      const digging = Math.max(1 - speed / t.digStopSpeed, 0);
+      const digging = Math.max(1 - speed / (t.digStopSpeed * pressScale), 0);
       const options = {
-        dig: (t.digRate * digging * seconds) / stamps,
+        dig: (t.digRate * pressScale * digging * seconds) / stamps,
         velocityX: moveX / seconds,
         velocityZ: moveZ / seconds,
       };

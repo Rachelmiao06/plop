@@ -220,6 +220,13 @@ function buildMaterial(): MeshStandardMaterial {
           2 * g.rippleHeight * g.rippleScale,
         ),
       },
+      // TEMPORARY: the pressable area's shape (half size x, half size z,
+      // corner radius, centre z), where to draw its outline, and its colour.
+      uArea: {
+        value: new Vector4(g.sizeX / 2, g.sizeZ / 2, g.cornerRadius, g.centerZ),
+      },
+      uAreaInset: { value: g.edgeLock * 0.5 },
+      uAreaColor: { value: new Color(content.colors.tempAreaOutline) },
       // where the far snow starts and finishes melting into the sky
       uHaze: {
         value: new Vector4(content.haze.start, content.haze.end, 0, content.ground.centerZ),
@@ -265,6 +272,10 @@ function buildMaterial(): MeshStandardMaterial {
         uniform vec2 uResolution;
         uniform vec4 uHaze;
         uniform vec4 uFarDrift;
+        uniform vec4 uArea;
+        uniform float uAreaInset;
+        uniform float uAreaOutline;
+        uniform vec3 uAreaColor;
         uniform vec4 uFarRipple;
         uniform vec4 uGrain;
         uniform vec4 uSparkle;
@@ -361,6 +372,14 @@ function buildMaterial(): MeshStandardMaterial {
       .replace(
         "#include <tonemapping_fragment>",
         /* glsl */ `#include <tonemapping_fragment>
+        // TEMPORARY: in press-test mode, a soft line shows where pressing works.
+        if (uAreaOutline > 0.0) {
+          vec2 areaQ = abs(vSnowPos.xz - vec2(0.0, uArea.w)) - (uArea.xy - uArea.z);
+          float areaD = length(max(areaQ, 0.0)) + min(max(areaQ.x, areaQ.y), 0.0) - uArea.z;
+          float areaPx = max(fwidth(areaD), 1e-4);
+          float areaLine = 1.0 - smoothstep(areaPx, areaPx * 2.5, abs(areaD + uAreaInset));
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, uAreaColor, areaLine * uAreaOutline * 0.6);
+        }
         // Far away the snow melts into the soft sky, like haze at a horizon.
         float haze = smoothstep(uHaze.x, uHaze.y, length(vSnowPos.xz - uHaze.zw));
         vec3 skyColor = mix(uFogBottom, uFogTop, gl_FragCoord.y / uResolution.y);

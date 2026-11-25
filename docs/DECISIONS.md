@@ -44,4 +44,7 @@ One line per decision: date, what, why.
 - 2026-11-24 · Scroll direction follows Mac natural scrolling like a map: fingers up (and pinch together) = rise and pull back. `cameraInput.invertScroll` swaps it.
 - 2026-11-24 · A trackpad swipe locks to its main axis after 6 pixels, so a mostly vertical swipe never spins the view. Mouse wheel notches are a fixed step (6% of the path) regardless of browser; trackpad deltas are capped at 60 px per event, so fast flicks glide instead of jumping. Input slows over the last 12% of the path and the turn, so the view eases into its limits.
 - 2026-11-24 · Camera control is never blocked while characters idle; a feature takes a pointer away from the camera with `claimSnowPointer`.
+- 2026-11-24 · The pressable play area is 24 by 18 units (was 9 by 7.2) at 0.05-unit grid squares, so from the high view most of the screen can be pressed. From high up, drags outside the old area did nothing, which felt broken (Rachel). Costs about 2 ms more per frame at the high view on an M5.
+- 2026-11-24 · The temporary test press grows with camera distance (up to 3.5 times) so its track stays visible from afar; the real snowball keeps a fixed size. In Press mode the pressable area is outlined on the snow.
+- 2026-11-24 · Kept the custom path camera instead of switching to drei CameraControls: a request to switch arrived, but Rachel then said the path camera feels good.
 
