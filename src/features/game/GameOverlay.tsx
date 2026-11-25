@@ -44,11 +44,12 @@ function Squiggle({ width }: { width: number }) {
   );
 }
 
-/** "hold Space or drag the snowman back": shown until the first throw, then fades. */
+/** "hold Space or drag the snowman back": shown until the first throw, then fades (also while pulling). */
 export function GameHint({ game }: { game: Game }) {
-  const { throws } = useGame(game);
+  const { throws, pulling } = useGame(game);
   const coarse = useSyncExternalStore(subscribeCoarse, () => window.matchMedia(coarseQuery).matches, () => false);
-  const gone = throws > 0;
+  // Out of the way while pulling (the growing ball sits right there); gone for good after the first throw.
+  const gone = throws > 0 || pulling;
   return (
     <div
       aria-hidden={gone}
