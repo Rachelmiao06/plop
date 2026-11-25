@@ -42,6 +42,8 @@ snow scene's play view (see "Camera" below).
 
 - `thrower.phase`: `"ready"` (may slide) → `"pulling"` → `"thrown"` (a little hop) → `"ready"`.
 - The ball is pulled back behind the thrower, never forward, and at most `pull.maxAimDegrees` to either side. Letting go rolls it the opposite way.
+- It grows beside the thrower's feet, not straight behind them (`pull.beside`, issue #52): `ball.track` is the point on the pull line (the pull is `track - foot`), and `ball.position` sits `beside` it, toward the middle of the lane, wider for a bigger ball. The aim and power come from the pull; the roll starts where the ball is, so it rolls past the snowman, not through it, and the snowman's face stays in view while pulling.
+- `game.burst(ballId)` poofs a ball into snow: it keeps rolling for `roll.burstTime` while it flattens and shrinks, with a puff (`LOOK.burst`), then `removed`. The pins call it once the ball is through them (#47).
 - Size only grows: by how much farther than before it is pulled, and less over packed snow (`ball.growthOnPacked`), so pulling back over your old groove grows it less. It reads the snow just ahead of the ball, because its own groove is under it.
 - At the pull limit it is `charged` and trembles; a little rubber-band give past the limit.
 - Release shorter than `pull.cancelBelow` cancels (the ball crumbles).
@@ -76,12 +78,12 @@ Presses anywhere else turn the camera as usual. The snow scene does not listen t
 ### What to read each frame
 
 - `game.thrower`: `x`, `foot`, `phase`, `lean` (0..1), `hopHeight`, `ball` (while pulling: `position`, `radius`, `size`, `charged`, `trembleOffset`, `rolled` / `rollDirection` for spin, `velocity`, `dwell`), and `aim` (the roll letting go would make: draw the aim line from `aim.start` along `aim.direction` to `aim.stop`).
-- `game.balls`: each rolling or resting ball: `position`, `speed`, `velocity`, `rolled`, `rolling`, `restAge`, and its `plan` (radius, size, direction).
+- `game.balls`: each rolling or resting ball: `position`, `speed`, `velocity`, `rolled`, `rolling`, `restAge`, `bursting` (seconds since `burst()`, or null), and its `plan` (radius, size, direction).
 
 ### Events
 
 `game.subscribe(event => …)`: `pressed`, `charged`, `launched` (with the roll `plan`),
-`cancelled` (`reason`: `short` or `interrupted`), `stopped` (where, radius, size), `removed`.
+`cancelled` (`reason`: `short` or `interrupted`), `stopped` (where, radius, size), `burst` (where, radius, velocity), `removed`.
 Pins (#7) will listen to the balls' positions each frame and to `stopped`.
 
 ## Driving the snow
