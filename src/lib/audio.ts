@@ -13,6 +13,15 @@
  *   playWhoosh(power)              launch
  *   playThump(size)                impact
  *
+ * Background music and the two on / off switches (remembered in localStorage):
+ *
+ *   startMusicOnFirstTouch()       music fades in quietly after the first touch, if it is on
+ *   toggleMusic() / setMusicOn(on) music on / off with a fade; call from a tap or click
+ *   setEffectsOn(on)               sound effects on / off (music keeps playing)
+ *   setMusicVolume(v)              music volume 0..1, separate from the effects
+ *   getAudioSettings()             { music, effects, musicPlaying }
+ *   subscribeAudioSettings(cb)     called whenever one of those changes
+ *
  * Browsers only allow sound after a user gesture, so every play function is a
  * silent no-op until audio has been unlocked.
  */
@@ -236,7 +245,10 @@ function live(): Engine | null {
 export function unlockAudio(): boolean {
   if (!engine) {
     engine = build();
-    if (engine) recordings = loadRecordings(engine);
+    if (engine) {
+      recordings = loadRecordings(engine);
+      applyEffectsSwitch();
+    }
   }
   if (!engine) return false;
   if (engine.ctx.state !== "running") void engine.ctx.resume();
@@ -519,4 +531,217 @@ export function playThump(size: number) {
     const fade = 1 - when / t.scatterTime;
     grain(e, at + 0.015 + when, s * 0.7, SOUND.crunch.gain * level * 0.7 * fade);
   }
+}
+
+// ---------------------------------------------------------------- music and switches
+
+/** Background music. The credit lives in docs/CREDITS.md. Tune here. */
+export const MUSIC = {
+  src: "/assets/music/japanese-lofi-jazz.mp3",
+  /** Music volume, 0..1, separate from the effects (SOUND.master). Quiet, so it sits under the snow. */
+  volume: 0.28,
+  /** Seconds to fade in when music starts, and to fade out when it is switched off. */
+  fadeIn: 3,
+  fadeOut: 0.9,
+  /** Seconds to fade the effects in or out when their switch flips. */
+  effectsFade: 0.15,
+} as const;
+
+/** localStorage keys for the two switches. */
+const STORAGE = { music: "plop.music", effects: "plop.effects" } as const;
+
+export type AudioSettings = {
+  /** The music switch (on = wanted; it may still be waiting for the first touch). */
+  music: boolean;
+  /** The sound effects switch. */
+  effects: boolean;
+  /** True while music is actually audible or fading in. */
+  musicPlaying: boolean;
+};
+
+function readSwitch(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) !== "off";
+  } catch {
+    return true; // private mode or blocked storage: default to on
+  }
+}
+
+function writeSwitch(key: string, on: boolean) {
+  try {
+    window.localStorage.setItem(key, on ? "on" : "off");
+  } catch {
+    // not remembered, still works for this visit
+  }
+}
+
+const SERVER_SETTINGS: AudioSettings = { music: true, effects: true, musicPlaying: false };
+let settings: AudioSettings | null = null;
+const listeners = new Set<() => void>();
+
+/** The current switches. Safe to call on the server (returns the defaults). */
+export function getAudioSettings(): AudioSettings {
+  if (typeof window === "undefined") return SERVER_SETTINGS;
+  if (!settings) {
+    settings = {
+      music: readSwitch(STORAGE.music),
+      effects: readSwitch(STORAGE.effects),
+      musicPlaying: false,
+    };
+  }
+  return settings;
+}
+
+/** Defaults used while rendering on the server. */
+export function getServerAudioSettings(): AudioSettings {
+  return SERVER_SETTINGS;
+}
+
+/** Calls back whenever the switches change. Returns an unsubscribe function. */
+export function subscribeAudioSettings(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+function update(patch: Partial<AudioSettings>) {
+  settings = { ...getAudioSettings(), ...patch };
+  listeners.forEach((cb) => cb());
+}
+
+// --- effects switch: fades the effects bus (engine.out); music has its own path.
+
+function applyEffectsSwitch() {
+  if (!engine) return;
+  const now = engine.ctx.currentTime;
+  const target = getAudioSettings().effects ? SOUND.master : 0;
+  engine.out.gain.cancelScheduledValues(now);
+  engine.out.gain.setTargetAtTime(target, now, MUSIC.effectsFade / 3);
+}
+
+/** Sound effects on or off. The music is not affected. */
+export function setEffectsOn(on: boolean) {
+  writeSwitch(STORAGE.effects, on);
+  update({ effects: on });
+  if (on) unlockAudio();
+  applyEffectsSwitch();
+}
+
+// --- music: an <audio> element routed through the engine, so fades and volume
+// work on iPhone too (where element.volume is read-only).
+
+let musicVolume: number = MUSIC.volume;
+let music: { el: HTMLAudioElement; gain: GainNode } | null = null;
+let musicStopTimer: ReturnType<typeof setTimeout> | null = null;
+let hiddenListener = false;
+
+function musicPath(e: Engine) {
+  if (music) return music;
+  const el = new Audio(MUSIC.src);
+  el.loop = true;
+  el.preload = "auto";
+  const gain = e.ctx.createGain();
+  gain.gain.value = 0;
+  e.ctx.createMediaElementSource(el).connect(gain).connect(e.ctx.destination);
+  music = { el, gain };
+  return music;
+}
+
+function fadeMusicTo(target: number, seconds: number) {
+  if (!engine || !music) return;
+  const g = music.gain.gain;
+  const now = engine.ctx.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(g.value, now);
+  g.linearRampToValueAtTime(target, now + seconds);
+}
+
+/** Start (or keep) the music with a fade in. Must run inside a user gesture the first time. */
+function playMusic() {
+  if (!unlockAudio() || !engine) return;
+  const m = musicPath(engine);
+  if (musicStopTimer) {
+    clearTimeout(musicStopTimer);
+    musicStopTimer = null;
+  }
+  if (m.el.paused) {
+    m.gain.gain.cancelScheduledValues(engine.ctx.currentTime);
+    m.gain.gain.setValueAtTime(0, engine.ctx.currentTime);
+    void m.el.play().catch(() => update({ musicPlaying: false }));
+  }
+  fadeMusicTo(musicVolume, MUSIC.fadeIn);
+  update({ musicPlaying: true });
+  watchTabVisibility();
+}
+
+/** Fade the music out, then pause it so it costs nothing. */
+function stopMusic() {
+  if (!music) return update({ musicPlaying: false });
+  fadeMusicTo(0, MUSIC.fadeOut);
+  if (musicStopTimer) clearTimeout(musicStopTimer);
+  const el = music.el;
+  musicStopTimer = setTimeout(() => {
+    el.pause();
+    musicStopTimer = null;
+  }, MUSIC.fadeOut * 1000 + 50);
+  update({ musicPlaying: false });
+}
+
+/** Pause the music while the tab is hidden, and bring it back (if it is on) when it returns. */
+function watchTabVisibility() {
+  if (hiddenListener || typeof document === "undefined") return;
+  hiddenListener = true;
+  document.addEventListener("visibilitychange", () => {
+    if (!music) return;
+    if (document.hidden) stopMusic();
+    else if (getAudioSettings().music) playMusic();
+  });
+}
+
+/** Music on or off, remembered for next time. Call from a tap or click. */
+export function setMusicOn(on: boolean) {
+  writeSwitch(STORAGE.music, on);
+  update({ music: on });
+  if (on) playMusic();
+  else stopMusic();
+}
+
+/**
+ * What the music button does. If music is on but still waiting for the first
+ * touch (silent), a tap starts it instead of switching it off.
+ */
+export function toggleMusic() {
+  const s = getAudioSettings();
+  if (s.music && !s.musicPlaying) setMusicOn(true);
+  else setMusicOn(!s.music);
+}
+
+/** Music volume 0..1. Separate from the sound effects. */
+export function setMusicVolume(volume: number) {
+  musicVolume = clamp01(volume);
+  if (getAudioSettings().musicPlaying) fadeMusicTo(musicVolume, 0.1);
+}
+
+/**
+ * Wait for the first touch, click or key press anywhere, then turn sound on and,
+ * if the music switch is on, fade the music in. Touches on elements marked
+ * `data-audio-toggle` are skipped: those buttons handle sound themselves.
+ * Returns a function that cancels the wait.
+ */
+export function startMusicOnFirstTouch(): () => void {
+  if (typeof window === "undefined") return () => {};
+  const events = ["pointerup", "touchend", "click", "keydown"] as const;
+  const remove = () =>
+    events.forEach((e) => window.removeEventListener(e, handler, true));
+  const handler = (event: Event) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-audio-toggle]")) {
+      remove();
+      return;
+    }
+    if (!unlockAudio()) return;
+    remove();
+    if (getAudioSettings().music) playMusic();
+  };
+  events.forEach((e) => window.addEventListener(e, handler, true));
+  return remove;
 }
