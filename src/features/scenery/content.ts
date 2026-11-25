@@ -19,8 +19,10 @@ export type PropGroup = "big" | "tree" | "mid" | "small" | "person" | "friend";
  * standee: upright cut-out in the snow (the default).
  * character: a reference for a 3D main character; shown on the page, never placed as scenery.
  * decal: a flat flourish (for example drifting in the air); not a standee.
+ * sky: a flat doodle on the paper sky (sun, clouds, bird); never in the snow. See `backdrop` below.
+ * backdrop: the far hills panorama, a thin band along the bottom of the paper sky. See `backdrop` below.
  */
-export type PropKind = "standee" | "character" | "decal";
+export type PropKind = "standee" | "character" | "decal" | "sky" | "backdrop";
 
 /**
  * What a standee does in paper bowling (docs/GAMEPLAY.md):
@@ -90,6 +92,29 @@ export const props = {
   "bench-snowmen": { label: "Two snowmen on a bench", height: 0.85, group: "mid", sink: 0.04, set: "doodle", role: "pin", pin: { footprint: [0.9, 0.35], weight: "heavy" } },
   "log-music": { label: "Hollow log with radio, snowman and penguin", height: 0.95, group: "mid", sink: 0.06, set: "doodle", role: "pin", pin: { footprint: [1.5, 0.45], weight: "heavy" } },
 
+  // Village additions (doodle-6): the red cottage, cocoa stall and fairy lights join the clusters; the family watches.
+  "cottage-red": { label: "Red cottage with two little pines", height: 1.35, group: "big", sink: 0.08, set: "doodle", role: "frame" },
+  "cocoa-stall": { label: "Cocoa stall", height: 1.15, group: "big", sink: 0.06, set: "doodle", role: "frame" },
+  "fairy-lights": { label: "Fairy lights on two posts", height: 0.8, group: "mid", sink: 0.06, set: "doodle", role: "frame" },
+  "snowman-family": { label: "Snowman family holding hands", height: 0.62, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
+
+  // Ground details and life (doodle-7).
+  "pond-frozen": { label: "Frozen pond", height: 0.34, group: "small", sink: 0.04, set: "doodle", role: "frame" },
+  "stump-snow": { label: "Snowy stump", height: 0.42, group: "small", sink: 0.04, set: "doodle", role: "frame" },
+  snowballs: { label: "Pile of three snowballs", height: 0.34, group: "small", sink: 0.03, set: "doodle", role: "frame" },
+  "bird-red": { label: "Red bird with a scarf", height: 0.24, group: "friend", sink: 0, set: "doodle", role: "frame", motion: "loop" },
+  rabbit: { label: "White rabbit", height: 0.34, group: "friend", sink: 0.02, set: "doodle", role: "frame", motion: "loop" },
+  "chimney-smoke": { label: "Chimney smoke puffs (decal, rises from the cottages)", height: 0.42, group: "small", sink: 0, set: "doodle", kind: "decal", motion: "loop" },
+
+  // The sky and the far hills (sky-1, far-1): flat paper layers, never standees.
+  "sky-sun": { label: "Sun", height: 0.5, group: "small", sink: 0, set: "doodle", kind: "sky" },
+  "sky-cloud": { label: "Cloud", height: 0.4, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
+  "sky-cloud-curl": { label: "Cloud with a curl", height: 0.4, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
+  "sky-cloud-smile": { label: "Smiling cloud", height: 0.36, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
+  "sky-bird": { label: "Flying bird", height: 0.22, group: "small", sink: 0, set: "doodle", kind: "sky", motion: "loop" },
+  "sky-moon": { label: "Crescent moon (for a night sky later)", height: 0.5, group: "small", sink: 0, set: "doodle", kind: "sky", spare: true },
+  "far-hills": { label: "Far hills, pines and tiny houses (panorama)", height: 0.95, group: "big", sink: 0, set: "doodle", kind: "backdrop" },
+
   // Not a standee
   "wind-swirl": { label: "Wind swirl (decal)", height: 0.6, group: "small", sink: 0, set: "doodle", kind: "decal" },
 
@@ -104,8 +129,9 @@ export const props = {
   flag: { label: "Flag", height: 1.8, group: "mid", sink: 0.08, set: "crayon", spare: true },
   bench: { label: "Bench", height: 0.9, group: "mid", sink: 0.04, set: "crayon", spare: true },
   "log-hollow": { label: "Hollow log", height: 0.9, group: "mid", sink: 0.06, set: "crayon", spare: true },
-  "street-lamp": { label: "Street lamp", height: 1.8, group: "mid", sink: 0.07, set: "crayon", spare: true },
-  fence: { label: "Fence", height: 0.8, group: "mid", sink: 0.05, set: "crayon", spare: true },
+  // The lamp and fence frame the near corners until the near-edge framing sheet arrives (#38).
+  "street-lamp": { label: "Street lamp", height: 1.5, group: "mid", sink: 0.07, set: "crayon", role: "frame" },
+  fence: { label: "Fence", height: 0.6, group: "mid", sink: 0.05, set: "crayon", role: "frame" },
   mailbox: { label: "Mailbox", height: 1.1, group: "mid", sink: 0.05, set: "crayon", spare: true },
   radio: { label: "Radio", height: 0.45, group: "small", sink: 0.02, set: "crayon", spare: true },
   bucket: { label: "Bucket", height: 0.4, group: "small", sink: 0.03, set: "crayon", spare: true },
@@ -239,44 +265,66 @@ export type Placement = {
   scale?: number;
   /** Which part of the frame it belongs to (only for reading the layout). */
   side: "left" | "right" | "far";
+  /** Stands this high above the snow instead of in it (the red bird on the stump). Default 0. */
+  lift?: number;
 };
 
 /*
-  Lane framing, cosy and airy, in three clusters with the lane clear down the middle.
-  Behind the pins (z about -6.5 to -8) is a calm patch of open snow, at least 3 units deep and as wide as the
-  lane (`lane.calm`), so the little cut-outs read against white snow (Rachel: the tree and flag right behind
-  the pins made the background as crowded as the pins).
-  far    — the big tree is the anchor, back and to the right so it frames the pins instead of standing behind
-           them; a tall pine back left balances it, a short pine further right, a bush and a mound at the
-           corners.
-  left   — the cottage about level with the pins, a tall pine behind it, a bush at its foot, a short pine and a
-           mound nearer the thrower; the sliding penguin at the lane's edge, sliding in toward the lane.
-  right  — the igloo a little nearer than the cottage, a tall pine nearer the thrower, a short pine further down,
-           a mound at the igloo's foot; the skier at the lane's edge, swaying.
+  Lane framing, cosy and airy, in three clusters with the lane clear down the middle, read as one little place
+  (#38). Behind the pins (z about -6.5 to -8) is a calm patch of open snow, at least 3 units deep and as wide as
+  the lane (`lane.calm`), so the little cut-outs read against white snow (Rachel: the tree and flag right behind
+  the pins made the background as crowded as the pins). Behind everything stands the paper sky with the far
+  hills (`backdrop`), so the snow ends in hills instead of fading out.
+  far    — the big tree is the anchor, back and to the right; the cocoa stall and the fairy lights back left,
+           under a tall pine, so the left cluster and the far end join into one little square; a bush and a
+           mound at the corners.
+  left   — "home": the blue cottage about level with the pins, the red cottage behind it to the left, a tall pine
+           between; nearer the thrower the frozen pond with the sliding penguin, a snowy stump with the red bird,
+           the rabbit by the bush.
+  right  — the igloo, the snowman family watching from the lane's edge, the skier, a snowball pile near the line.
+  near   — the lamp and a short pine at the left corner, the fence and a bush at the right, low and wide of the
+           thrower so they frame the bottom corners without covering the lane (desktop only; a phone held
+           upright is too narrow to see them).
   Big things far, small things near; pines mirrored and scaled so no two look copy-pasted.
 */
 export const layout: Placement[] = [
-  // far end: tree back right, pine back left, the middle left open
+  // far end: tree back right, cocoa corner back left, the middle left open
   { prop: "tree-snowmen", x: 4.0, z: -10.6, side: "far" },
-  { prop: "pine-snow-tall", x: -3.3, z: -11.2, scale: 1.05, side: "far" },
+  { prop: "pine-snow-tall", x: -5.0, z: -11.4, scale: 1.05, side: "far" },
+  { prop: "cocoa-stall", x: -3.55, z: -10.6, side: "far" },
+  { prop: "fairy-lights", x: -3.15, z: -9.2, scale: 0.95, side: "far" },
   { prop: "pine-snow-short", x: 5.6, z: -9.4, flip: true, side: "far" },
-  { prop: "bush-snow", x: -2.6, z: -9.6, scale: 0.9, side: "far" },
+  { prop: "bush-snow", x: -2.6, z: -11.4, scale: 0.8, side: "far" },
   { prop: "mound-snow", x: 2.7, z: -9.0, scale: 0.85, side: "far" },
 
-  // left side
+  // left side: home
   { prop: "cottage-blue", x: -3.75, z: -6.9, side: "left" },
-  { prop: "pine-snow-tall", x: -5.3, z: -8.9, scale: 0.9, flip: true, side: "left" },
+  { prop: "cottage-red", x: -4.95, z: -9.3, side: "left" },
+  { prop: "pine-snow-tall", x: -5.55, z: -7.4, scale: 0.8, flip: true, side: "left" },
   { prop: "bush-snow", x: -2.75, z: -5.3, scale: 0.85, side: "left" },
-  { prop: "pine-snow-short", x: -3.7, z: -2.6, scale: 0.85, side: "left" },
-  { prop: "mound-snow", x: -3.4, z: -1.6, scale: 0.8, side: "left" },
+  { prop: "rabbit", x: -3.25, z: -5.05, flip: true, side: "left" },
+  { prop: "pond-frozen", x: -3.55, z: -3.7, scale: 1.15, side: "left" },
   { prop: "penguin-slide", x: -2.55, z: -3.5, side: "left" },
+  { prop: "stump-snow", x: -4.75, z: -4.4, side: "left" },
+  { prop: "bird-red", x: -4.72, z: -4.36, lift: 0.36, side: "left" },
+  { prop: "pine-snow-short", x: -3.9, z: -2.2, scale: 0.85, side: "left" },
+  { prop: "mound-snow", x: -3.3, z: -1.3, scale: 0.8, side: "left" },
 
   // right side
   { prop: "igloo-friends", x: 3.6, z: -5.6, side: "right" },
-  { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
   { prop: "pine-snow-short", x: 3.9, z: -8.3, scale: 1.1, flip: true, side: "right" },
   { prop: "mound-snow", x: 2.75, z: -4.3, scale: 0.75, flip: true, side: "right" },
+  { prop: "snowman-family", x: 2.75, z: -6.75, flip: true, side: "right" },
   { prop: "skier", x: 2.55, z: -2.9, side: "right" },
+  { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
+  { prop: "snowballs", x: 3.05, z: -0.9, side: "right" },
+
+  // near corners, framing the bottom of the throwing view
+  { prop: "street-lamp", x: -3.55, z: 0.3, side: "left" },
+  { prop: "pine-snow-short", x: -3.75, z: 1.75, scale: 0.95, flip: true, side: "left" },
+  { prop: "bush-snow", x: -3.3, z: 2.15, scale: 0.7, side: "left" },
+  { prop: "fence", x: 3.55, z: 1.9, side: "right" },
+  { prop: "bush-snow", x: 3.7, z: 0.7, scale: 0.85, flip: true, side: "right" },
 ];
 
 /**
@@ -496,4 +544,85 @@ export const village = {
 
   /** For the sight-line check: how tall the pins are that must stay visible from the throwing view. */
   pinSightHeight: 0.5,
+
+  /** Chimney smoke rising from the cottages: where the chimney is on the drawing (share of width, from the left). */
+  chimneys: { "cottage-blue": 0.76, "cottage-red": 0.7 } as Partial<Record<PropId, number>>,
+  smoke: {
+    /** Seconds for one puff to rise and fade; two puffs per chimney, half a loop apart. */
+    period: 5.5,
+    /** How far it rises in that time (scene units) and how much it grows. */
+    rise: 0.45,
+    grow: 0.5,
+    /** Most opacity at the middle of its rise. */
+    opacity: 0.85,
+  },
+
+  /** Small life loops (`motion: "loop"` props). All stop when the device asks for reduced motion. */
+  life: {
+    /** The rabbit gives two little hops in place every `every` seconds. */
+    rabbit: { every: 5.5, hop: 0.07, hopTime: 0.32 },
+    /** The red bird bobs and turns its head (flips) now and then. */
+    bird: { every: 3.2, hop: 0.04 },
+  },
+
+  /**
+   * A few faint footprints and tracks pressed into the snow at start (the snow scene's pressGroove), drawn lane
+   * coordinates like the layout: boots from the cocoa corner toward the blue cottage, rabbit hops from the bush,
+   * a sled track by the igloo. Never in the roll lane; a fresh snowfall fills them like any dent.
+   */
+  tracks: {
+    /** Radius of one print and how far apart the prints of a walk are (scene units). */
+    footRadius: 0.08,
+    step: 0.32,
+    /** How deep each print goes (scene units): faint, but enough to show its pale-blue tint. */
+    depth: 0.05,
+    walks: [
+      { kind: "boots", from: [-2.75, -8.6], to: [-2.65, -6.0] },
+      { kind: "hops", from: [-2.9, -5.2], to: [-3.4, -3.0] },
+      { kind: "sled", from: [2.6, -7.4], to: [3.2, -3.4] },
+    ] as { kind: "boots" | "hops" | "sled"; from: [number, number]; to: [number, number] }[],
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* The paper sky and the far hills                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * From the throwing view the camera looks about 13 degrees below the horizon at the top of the screen, so the
+ * real horizon never shows. Instead a curved paper "backdrop" stands just behind the village, like the back of a
+ * paper theatre: a soft paper sky with Rachel's far hills panorama along its foot and a few flat sky doodles
+ * drifting high and small. It curves round the throwing view's look-at point, covering the back of the scene
+ * so turning the view keeps it behind; it fades away as the view rises, so the high view is all snow as before.
+ * Colours: the sky is `--paper` blending toward `--snow-shadow` higher up; the art is drawn as is.
+ */
+export const backdrop = {
+  /** Distance from the look-at point to the backdrop (scene units, on the game's lane), and how much of the circle it covers. */
+  radius: 9.6,
+  arc: 220, // degrees, centred straight back
+  /** Height of the paper sky wall (above the snow); tall enough that its top edge never shows below 40 degrees. */
+  height: 7,
+  /** Sky colour: `--paper` up to `tintFrom`, mixing toward `--snow-shadow` by `tintShare` at `tintTo` (heights). */
+  tintFrom: 0.9,
+  tintTo: 3.2,
+  tintShare: 0.55,
+  /** Far hills band: height on the wall (width follows the drawing), how far its foot sinks into the snow. */
+  hillsHeight: 0.95,
+  hillsSink: 0.12,
+  /** Far things fade a little toward `--paper`, so they sit behind the village. */
+  haze: 0.12,
+  /** Fade the whole backdrop out between these camera heights (degrees above the snow). */
+  fadeFrom: 38,
+  fadeTo: 50,
+  /**
+   * Sky doodles on the wall: `angle` along the arc (degrees, 0 = straight back, negative = left), `y` height
+   * on the wall. `drift` degrees either way over `period` seconds; the bird crosses the whole arc instead.
+   */
+  sky: [
+    { prop: "sky-sun", angle: -20, y: 1.45, drift: 0, period: 1 },
+    { prop: "sky-cloud", angle: -7, y: 1.6, drift: 3, period: 70 },
+    { prop: "sky-cloud-smile", angle: 15, y: 1.42, drift: 2.5, period: 55 },
+    { prop: "sky-cloud-curl", angle: 38, y: 1.6, drift: 3, period: 80 },
+  ] as { prop: PropId; angle: number; y: number; drift: number; period: number }[],
+  bird: { prop: "sky-bird" as PropId, y: 1.25, bob: 0.06, crossSeconds: 48, restSeconds: 10, fromAngle: -55, toAngle: 55 },
 };
