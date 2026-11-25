@@ -8,9 +8,11 @@
  */
 import type { Bowling } from "./simulation";
 
-const LEFT = new Set(["KeyA", "ArrowLeft"]);
-const RIGHT = new Set(["KeyD", "ArrowRight"]);
-const PULL = "Space";
+/** Which physical keys (`event.code`) slide / turn left and right, and pull. */
+export type KeyMap = { left: readonly string[]; right: readonly string[]; pull: readonly string[] };
+
+/** One thrower alone: A / D or ← / → and Space. */
+export const SOLO_KEYS: KeyMap = { left: ["KeyA", "ArrowLeft"], right: ["KeyD", "ArrowRight"], pull: ["Space"] };
 
 export type KeyboardInput = {
   /** Call once per frame, before `bowling.step`. */
@@ -30,7 +32,11 @@ function isTyping(target: EventTarget | null): boolean {
 export function createKeyboardInput(
   game: Bowling,
   target: Window | HTMLElement = window,
+  keys: KeyMap = SOLO_KEYS,
 ): KeyboardInput {
+  const LEFT = new Set(keys.left);
+  const RIGHT = new Set(keys.right);
+  const PULLS = new Set(keys.pull);
   const held = new Set<string>();
   let active = false;
   /** Space is down but did not start a pull: wait for it to come up. */
@@ -39,7 +45,7 @@ export function createKeyboardInput(
   let aim = 0;
   let pulled = 0;
 
-  const ours = (code: string) => code === PULL || LEFT.has(code) || RIGHT.has(code);
+  const ours = (code: string) => PULLS.has(code) || LEFT.has(code) || RIGHT.has(code);
 
   const onKeyDown = (event: Event) => {
     const e = event as KeyboardEvent;
@@ -47,7 +53,7 @@ export function createKeyboardInput(
     e.preventDefault(); // Space and arrows would scroll the page or press a focused button
     if (e.repeat) return;
     held.add(e.code);
-    if (e.code !== PULL || active || dead) return;
+    if (!PULLS.has(e.code) || active || dead) return;
     if (game.press()) {
       active = true;
       aim = 0;
@@ -61,7 +67,9 @@ export function createKeyboardInput(
     const e = event as KeyboardEvent;
     if (!held.delete(e.code)) return;
     e.preventDefault();
-    if (e.code !== PULL) return;
+    if (!PULLS.has(e.code)) return;
+    // Two pull keys (Space or W): the pull ends when the last one comes up.
+    if ([...held].some((c) => PULLS.has(c))) return;
     if (active) game.release();
     active = false;
     dead = false;

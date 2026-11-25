@@ -106,6 +106,14 @@ export function createPins(formation = FORMATIONS[0].id, options: PinsOptions = 
     changeAfterResult: (id: string) => void commands.push({ type: "after", id }),
     /** Free play changes set after a full clear; a match does not (`PinsOptions`). */
     autoNext: options.autoNext ?? true,
+    /**
+     * May the throw be counted yet? "Together" mode holds the count until every player has thrown this round
+     * (the cards stay where they fell meanwhile). Default: always.
+     */
+    countGate: (() => true) as () => boolean,
+    setCountGate(gate: () => boolean) {
+      this.countGate = gate;
+    },
     setDebug: (debug: boolean) => set({ debug }),
 
     /* ---- Used by the stage ---- */

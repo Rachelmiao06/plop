@@ -68,6 +68,21 @@ export const GAME = {
   evening: { lastRound: 0.85, endCard: 1, between: 2.6, toEnd: 3.2, back: 1.8 },
 
   /**
+   * "Together" mode (docs/GAMEPLAY.md 7d): both snowmen on the line at once, Bucket on the left half and Red Hat on
+   * the right (`slide`, x on the line; the middle stays free so the two never stand in each other). Keys are
+   * physical (`event.code`), one hand each side of a Mac keyboard: Bucket A / D to slide and aim, hold W (or Space)
+   * to pull; Red Hat ← / → and hold ↑ (or Enter). W, A, D sit apart from the arrow cluster, so pressing both
+   * players' keys at once never ghosts on Apple keyboards (they are wired in separate matrix rows).
+   */
+  together: {
+    slide: { left: [-2.2, -0.45] as [number, number], right: [0.45, 2.2] as [number, number] },
+    keys: {
+      left: { left: ["KeyA"], right: ["KeyD"], pull: ["KeyW", "Space"] },
+      right: { left: ["ArrowLeft"], right: ["ArrowRight"], pull: ["ArrowUp", "Enter"] },
+    },
+  },
+
+  /**
    * The quiet village ambience (`startAmbience` in src/lib/audio.ts, after the first tap; it follows the sound
    * switch): its volume alone, and a little lower while the music plays.
    */
@@ -148,6 +163,8 @@ export const GAME = {
      * pins never wait for it (the bowling ball otherwise rests 6 s and pins wait for it to leave).
      */
     meltBallAfterResult: 1.1,
+    /** "Together" mode: the second player's points fly into their total this long after the first's. */
+    secondGainAfter: 0.75,
     /** The "Red Hat's turn" note shows this long. */
     turnNoteFor: 1.6,
     /** The first-time hint fades out over this long after the first throw. */
@@ -170,6 +187,11 @@ export const TEXT = {
   round: (now: number, of: number) => `Round ${now} / ${of}`,
   /** Shown once on the hint: the pencil tick behind the snowman. */
   hintSweet: "the little tick is the sweet spot",
+  /** Together mode's hint: each player's keys. */
+  hintTogether: (left: string, right: string) => [`${left}: A / D, hold W`, `${right}: ← / →, hold ↑`] as const,
+  hintTogetherTouch: "each drag your own snowman back",
+  together: "roll together!",
+  mode: { label: "How do you play?", turns: "take turns", together: "together" },
   special: {
     star: "a star friend: +2 when it falls",
     friend: "let the bunny be: +2 if it stays up",

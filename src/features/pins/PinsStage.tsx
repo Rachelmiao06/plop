@@ -45,12 +45,12 @@ import { standee3d } from "@/features/scenery/content";
 import { toonMaterial } from "@/features/scenery/three/materials";
 import { freshSnowfallAt, useSnow } from "@/features/snow-scene";
 
-import { currentBowling, tapBowling } from "./ballTap";
+import { currentBowlings, tapBowling } from "./ballTap";
 import { MOUND, PINS, SPECIALS } from "./content";
 import { nextFormationId, type Pins, type PinsPhase } from "./controller";
 import { playFwump, unlockFwumpOnFirstTouch } from "./fwump";
 import { buildPins, formationById, moundsOf, pinPropIds, sampleGround, type PinSpec } from "./layout";
-import { countThrow, countedCards } from "./scoring";
+import { countByThrower, countThrow, countedCards } from "./scoring";
 import { PinCard, type PaperColors } from "./PinCard";
 
 /** Same as the bowling stage's ball limit. */
@@ -88,6 +88,8 @@ type PinRuntime = {
   starAt?: number;
   /** Its sparkle sound has played in this throw. */
   sparkled?: boolean;
+  /** Whose card it is this throw: the thrower whose ball (or a card that ball knocked) touched it first. */
+  by?: string;
 };
 
 const MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -171,6 +173,7 @@ function clearCounts(list: PinRuntime[]) {
     rt.landed = false;
     rt.struck = false;
     rt.sparkled = false;
+    rt.by = undefined;
   }
 }
 
@@ -240,7 +243,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     /** The set that just mounted hidden and should hop in. */
     arriveFor: null as string | null,
     fullClear: false,
-    game: null as Bowling | null,
+    /** The bowling games on the line (two in "together" mode), and their event listeners. */
+    games: [] as Bowling[],
+    offs: [] as (() => void)[],
     off: null as null | (() => void),
     /** Ball id → collider slot, so a ball never jumps from one slot to another. */
     slots: new Map<number, number>(),
@@ -249,6 +254,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     groundChecked: false,
     /** The ball has met a card in this throw (the hit-stop plays once per throw). */
     hitThisThrow: false,
+    /** Who threw in this throw (thrower ids), and the latest one (owner of a card nobody touched). */
+    throwers: new Set<string>(),
+    lastThrower: "",
     /** The closest a ball of this throw came to a friend (gap between their edges), for the near-miss mew. */
     friendGap: Infinity,
     /** A hit-stop is slowing the physics (it is paused and stepped by hand). */
@@ -277,11 +285,26 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const f = flow.current;
     return () => {
       stopUnlock();
-      f.off?.();
-      f.off = null;
-      f.game = null;
+      f.offs.forEach((off) => off());
+      f.offs = [];
+      f.games = [];
     };
   }, []);
+
+  /** Every ball on the lane, from every bowling game, with the game it belongs to. */
+  const allBalls = () => flow.current.games.flatMap((game) => game.balls.map((ball) => ({ ball, game })));
+  /** The ball whose collider is in this slot. */
+  const ballInSlot = (slot: number) => {
+    const f = flow.current;
+    for (const [id, k] of f.slots) {
+      if (k !== slot) continue;
+      for (const game of f.games) {
+        const ball = game.balls.find((b) => b.id === id);
+        if (ball) return { ball, game };
+      }
+    }
+    return null;
+  };
 
   /* ---------------- phases ---------------- */
 
@@ -383,7 +406,13 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
 
   const finishThrow = () => {
     const f = flow.current;
-    const result = countThrow(formation, runtime.current.map((rt) => rt.down));
+    const downs = runtime.current.map((rt) => rt.down);
+    const result = countThrow(formation, downs);
+    // Two throwers at once: each card counts for whoever's ball reached it first.
+    if (f.throwers.size > 1) {
+      result.byThrower = countByThrower(formation, downs, runtime.current.map((rt) => rt.by), [...f.throwers], f.lastThrower);
+    }
+    f.throwers.clear();
     const { down, fullClear } = result;
     // The ball came close to the bunny and it is still standing: a tiny surprised mew.
     if (result.friend === "safe" && f.friendGap < SPECIALS.friend.nearMiss) playNearMiss();
@@ -412,6 +441,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   const onBowl = (e: BowlEvent) => {
     const f = flow.current;
     if (e.type === "launched") {
+      f.throwers.add(e.thrower);
+      f.lastThrower = e.thrower;
       f.activeBalls.add(e.ballId);
       f.throwBalls.add(e.ballId);
       if (f.phase === "ready") startThrow();
@@ -435,11 +466,24 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     () =>
       specs.map((s, i) => (e: CollisionEnterPayload) => {
         const f = flow.current;
-        if (e.other.rigidBodyObject?.name === "ball") {
-          const ball = f.game?.balls.find((b) => b.rolling);
+        const otherName = e.other.rigidBodyObject?.name ?? "";
+        // Another card falling onto this one: it was knocked by the same ball (for "whose card is it").
+        if (otherName.startsWith("pin-")) {
+          const rt = runtime.current[i];
+          const other = runtime.current[Number(otherName.slice(4))];
+          if (rt && other?.by && !rt.by && f.phase === "throw") rt.by = other.by;
+          return;
+        }
+        if (otherName.startsWith("ball-")) {
+          const slot = Number(otherName.slice(5));
+          const hit = ballInSlot(slot);
+          const ball = hit?.ball;
+          const game = hit?.game;
           const rt = runtime.current[i];
           const body = e.target.rigidBody;
-          if (!ball || !f.game || f.phase !== "throw" || !rt || !body || rt.anim) return;
+          if (!ball || !game || f.phase !== "throw" || !rt || !body || rt.anim) return;
+          // The first ball to touch a card makes it that thrower's card ("together" mode counts per player).
+          if (!rt.by) rt.by = ball.thrower;
           // A bit more energy than the plain push: a shove, a lift and a tumble, once per card.
           if (!rt.struck) {
             rt.struck = true;
@@ -466,7 +510,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
             f.hitThisThrow = true;
             const h = PINS.hitStop;
             const size = ball.plan.size;
-            f.game.hitStop(h.seconds + h.bigExtra * size, h.slowest + (h.bigSlowest - h.slowest) * size);
+            game.hitStop(h.seconds + h.bigExtra * size, h.slowest + (h.bigSlowest - h.slowest) * size);
             playThump(h.thump + h.thumpPerSize * size);
             haptic("hit", ball.plan.size);
           }
@@ -505,10 +549,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
 
   useBeforePhysicsStep(() => {
     const f = flow.current;
-    const game = f.game;
-    const list = game?.balls ?? [];
     const live = new Set<number>();
-    for (const ball of list) {
+    for (const { ball, game } of allBalls()) {
       live.add(ball.id);
       let slot = f.slots.get(ball.id);
       const isNew = slot === undefined;
@@ -520,7 +562,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       }
       const body = ballBodies.current[slot];
       const collider = ballColliders.current[slot];
-      if (!body || !collider || !game) continue;
+      if (!body || !collider) continue;
       const bursting = ball.bursting !== null;
       const fade = bursting
         ? 1 - clamp01(ball.bursting! / game.feel.roll.burstTime) ** 2
@@ -560,11 +602,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   const scratchQ = useMemo(() => new Quaternion(), []);
   const ballsThrough = (): boolean => {
     const f = flow.current;
-    const game = f.game;
-    if (!game) return true;
     const B = PINS.burst;
     let clear = true;
-    for (const ball of game.balls) {
+    for (const { ball, game } of allBalls()) {
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
       const r = ball.plan.radius;
       const d = ball.plan.direction;
@@ -636,7 +676,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       if (f.phase === "throw") rt.down = isDown;
     });
     if (f.phase !== "throw") return;
-    for (const ball of f.game?.balls ?? []) {
+    for (const { ball } of allBalls()) {
       if (!f.throwBalls.has(ball.id) || ball.bursting !== null) continue;
       specs.forEach((s, i) => {
         if (s.kind !== "friend" || runtime.current[i]?.down) return;
@@ -654,7 +694,8 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const timedOut =
       (f.clearAt !== null && f.clock - f.clearAt > d.timeoutAfterClear) || f.clock - f.launchedAt > d.timeoutAfterLaunch;
     // The count is certain once no ball can reach a card and the cards are still: "N down!" pops now.
-    if ((clear && f.settledFor >= d.settleHold) || timedOut) finishThrow();
+    // "Together" mode waits until every player has thrown before it counts (`pins.setCountGate`).
+    if (((clear && f.settledFor >= d.settleHold) || timedOut) && pins.countGate()) finishThrow();
   });
 
   /* ---------------- a fallen card rests propped up on a little heap ---------------- */
@@ -723,7 +764,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
   useFrame((_, delta) => {
     const f = flow.current;
     // Hit-stop: while the bowling game runs slow, pause the physics and step it by hand with slowed time.
-    const scale = f.game?.timeScale ?? 1;
+    const scale = f.games.reduce((least, g) => Math.min(least, g.timeScale), 1);
     const slowing = scale < 1;
     if (slowing !== f.slowing) {
       f.slowing = slowing;
@@ -733,12 +774,12 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
     const dt = Math.min(delta, 0.1) * scale;
     f.clock += dt;
 
-    // Follow whichever bowling game is running.
-    const game = currentBowling();
-    if (game !== f.game) {
-      f.off?.();
-      f.game = game;
-      f.off = game ? game.subscribe((e) => onBowlRef.current(e)) : null;
+    // Follow every bowling game that is running (one, or two side by side in "together" mode).
+    const games = currentBowlings();
+    if (games.length !== f.games.length || games.some((g, k) => g !== f.games[k])) {
+      f.offs.forEach((off) => off());
+      f.games = games;
+      f.offs = games.map((g) => g.subscribe((e) => onBowlRef.current(e)));
     }
 
     // Asked by the page.
@@ -779,7 +820,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const wait = f.fullClear ? PINS.nextSet.delayAfterFullClear : PINS.reset.delayAfterResult;
       const ballOnSpots =
         !changing &&
-        (f.game?.balls ?? []).some((ball) =>
+        allBalls().some(({ ball }) =>
           specs.some((s) => Math.hypot(ball.position.x - s.home.x, ball.position.z - s.home.z) < ball.plan.radius + s.card[0]),
         );
       const waited = f.clock - f.since;
@@ -887,7 +928,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const leaving = f.phase === "changing" && f.nextFormation !== null;
       const arriving = f.arriveFor === entry.id;
       ms.grow += ((leaving || arriving ? 0 : 1) - ms.grow) * (1 - Math.exp(-6 * dt));
-      for (const ball of f.game?.balls ?? []) {
+      for (const { ball } of allBalls()) {
         if (!f.throwBalls.has(ball.id) && !ball.rolling) continue;
         if (Math.hypot(ball.position.x - m.x, ball.position.z - m.z) > m.radius + ball.plan.radius * 0.5) continue;
         ms.flat += (MOUND.flatten - ms.flat) * (1 - Math.exp(-MOUND.flattenRate * dt));
@@ -965,7 +1006,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
           }}
           type="kinematicPosition"
           colliders={false}
-          name="ball"
+          name={`ball-${k}`}
           position={[k * 3, PARK_Y, 0]}
         >
           <BallCollider
@@ -1019,7 +1060,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
             }}
             type={entry.arrive ? "kinematicPosition" : "dynamic"}
             colliders={false}
-            name="pin"
+            name={`pin-${i}`}
             position={[s.home.x, s.home.y, s.home.z]}
             rotation={[0, s.home.yaw, 0]}
             ccd

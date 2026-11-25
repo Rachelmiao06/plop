@@ -47,7 +47,7 @@ function Squiggle({ width }: { width: number }) {
 
 /** "hold Space or drag the snowman back": shown until the first throw, then fades (also while pulling). */
 export function GameHint({ game }: { game: Game }) {
-  const { throws, pulling, phase } = useGame(game);
+  const { throws, pulling, phase, mode } = useGame(game);
   const coarse = useSyncExternalStore(subscribeCoarse, () => window.matchMedia(coarseQuery).matches, () => false);
   // Out of the way while pulling (the growing ball sits right there); gone for good after the first throw.
   const gone = throws > 0 || pulling || phase !== "playing";
@@ -58,9 +58,27 @@ export function GameHint({ game }: { game: Game }) {
       style={{ opacity: gone ? 0 : 1, transitionDuration: `${GAME.timing.hintFade}s` }}
     >
       <div className={`px-10 py-4 text-center text-ink ${styles.wash}`}>
-        <p className="font-heading text-2xl leading-tight font-bold sm:text-3xl">{coarse ? TEXT.hintTouch : TEXT.hint}</p>
-        <Squiggle width={coarse ? 200 : 260} />
-        {!coarse && <p className="mt-1 font-heading text-lg leading-tight">{TEXT.hintMore}</p>}
+        {mode === "together" ? (
+          <>
+            <p className="font-heading text-2xl leading-tight font-bold sm:text-3xl">{TEXT.together}</p>
+            <Squiggle width={200} />
+            {coarse ? (
+              <p className="mt-1 font-heading text-lg leading-tight">{TEXT.hintTogetherTouch}</p>
+            ) : (
+              <p className="mt-1 flex justify-center gap-6 font-heading text-lg leading-tight">
+                {TEXT.hintTogether(GAME.players[0].name, GAME.players[1].name).map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="font-heading text-2xl leading-tight font-bold sm:text-3xl">{coarse ? TEXT.hintTouch : TEXT.hint}</p>
+            <Squiggle width={coarse ? 200 : 260} />
+            {!coarse && <p className="mt-1 font-heading text-lg leading-tight">{TEXT.hintMore}</p>}
+          </>
+        )}
         <p className="mt-0.5 font-heading text-base leading-tight sm:text-lg">{TEXT.hintSweet}</p>
       </div>
     </div>
@@ -113,10 +131,11 @@ export function SpecialHint({ game, pins }: { game: Game; pins: Pins }) {
 
 /** "Red Hat's turn!" for a moment each time the turn passes; "Round 2 / 3" and what the set asks when a round starts. */
 export function TurnNote({ game, pins }: { game: Game; pins: Pins }) {
-  const { turnId, active, phase, round, rounds, players } = useGame(game);
+  const { turnId, active, phase, round, rounds, players, mode } = useGame(game);
   const { formation } = useSyncExternalStore(pins.subscribeState, pins.getState, pins.getState);
   if (turnId === 0 || phase !== "playing") return null;
-  const newRound = active === 0;
+  const together = mode === "together";
+  const newRound = together || active === 0;
   const note = formationById(game.setFor(round)).note;
   void formation; // the note follows the round, not the set on the snow (it may still be hopping in)
   return (
@@ -131,7 +150,9 @@ export function TurnNote({ game, pins }: { game: Game; pins: Pins }) {
       >
         {newRound ? TEXT.round(round + 1, rounds) : TEXT.turn(GAME.players[active].name)}
         {newRound && note && <span className="block text-center text-xl font-normal sm:text-2xl">{note}</span>}
-        {newRound && players === 2 && <span className="block text-center text-lg font-normal">{TEXT.turn(GAME.players[0].name)}</span>}
+        {newRound && players === 2 && (
+          <span className="block text-center text-lg font-normal">{together ? TEXT.together : TEXT.turn(GAME.players[0].name)}</span>
+        )}
       </p>
     </div>
   );
@@ -143,8 +164,7 @@ export function CancelPull({ game, link }: { game: Game; link: GameLink }) {
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      const bowling = link.get();
-      if (e.code === "Escape" && bowling) cancelPull(bowling);
+      if (e.code === "Escape") link.all().forEach(cancelPull);
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
@@ -161,14 +181,73 @@ export function CancelPull({ game, link }: { game: Game; link: GameLink }) {
         // A second finger taps this while the first one holds the pull.
         onPointerDown={(e) => {
           e.preventDefault();
-          const bowling = link.get();
-          if (bowling) cancelPull(bowling);
+          // Together: puts down every pull being held (Escape too).
+          link.all().forEach(cancelPull);
         }}
         className="rounded-full bg-background/80 font-heading text-lg text-ink"
       >
         <X data-icon="inline-start" />
         {TEXT.cancel}
       </Button>
+    </div>
+  );
+}
+
+/**
+ * "Take turns" or "together", chosen before the first throw. It sits on top of the hud's start card like a paper
+ * tab (the card is the score panel feature's; this reads where it is, nothing more). Wanted from the hud: a `modes`
+ * row inside `MatchStart` next to the rounds, then this goes.
+ */
+export function ModePick({ game }: { game: Game }) {
+  const { phase, mode } = useGame(game);
+  const [box, setBox] = useState<{ left: number; top: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (phase !== "choosing") return;
+    let frame = 0;
+    const place = () => {
+      const card = document.querySelector<HTMLElement>('section[role="dialog"]');
+      const host = card?.closest("main");
+      if (card && host) {
+        const c = card.getBoundingClientRect();
+        const h = host.getBoundingClientRect();
+        setBox((old) => {
+          const next = { left: c.left - h.left, top: c.top - h.top, width: c.width };
+          return old && old.left === next.left && old.top === next.top && old.width === next.width ? old : next;
+        });
+      }
+      frame = requestAnimationFrame(place);
+    };
+    frame = requestAnimationFrame(place);
+    return () => cancelAnimationFrame(frame);
+  }, [phase]);
+
+  if (phase !== "choosing" || !box) return null;
+  return (
+    <div
+      role="radiogroup"
+      aria-label={TEXT.mode.label}
+      className="absolute z-30 flex justify-center gap-2"
+      style={{ left: box.left, width: box.width, top: box.top - 26 }}
+    >
+      {(["turns", "together"] as const).map((m, i) => {
+        const picked = mode === m;
+        return (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={picked}
+            onClick={() => game.setMode(m)}
+            className={`relative rounded-full px-4 py-1.5 font-heading text-lg leading-none transition-transform active:scale-95 ${
+              picked ? "bg-butter font-bold text-ink-deep" : "bg-paper text-ink"
+            }`}
+            style={{ rotate: `${i ? 2 : -2}deg`, boxShadow: picked ? "0 0 0 1.6px var(--ink)" : "0 0 0 1.2px color-mix(in oklab, var(--ink) 45%, transparent)" }}
+          >
+            {m === "turns" ? TEXT.mode.turns : TEXT.mode.together}
+          </button>
+        );
+      })}
     </div>
   );
 }

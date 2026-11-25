@@ -74,7 +74,11 @@ const STYLE = `
 }
 `;
 
-export function PinsPopup({ pins }: { pins: Pins }) {
+/**
+ * `names`: thrower id → the name to show. When two throwers threw at once ("together" mode), "N down!" is shown for
+ * each of them, the first on the left and the second on the right, under the shared count.
+ */
+export function PinsPopup({ pins, names }: { pins: Pins; names?: Record<string, string> }) {
   const [shown, setShown] = useState<{ id: number; result: PinsResult; leaving: boolean } | null>(null);
 
   useEffect(() => {
@@ -156,7 +160,8 @@ export function PinsPopup({ pins }: { pins: Pins }) {
         >
           {words}
         </p>
-        <SpecialNotes result={result} />
+        {!result.byThrower && <SpecialNotes result={result} />}
+        {result.byThrower && <PerThrower byThrower={result.byThrower} names={names} />}
       </div>
     </div>
   );
@@ -185,6 +190,35 @@ function SpecialNotes({ result }: { result: PinsResult }) {
           {n.text}
         </p>
       ))}
+    </div>
+  );
+}
+
+/** "Together" mode: each thrower's own "N down!" (and their star or bunny line), side by side. */
+function PerThrower({ byThrower, names }: { byThrower: Record<string, PinsResult>; names?: Record<string, string> }) {
+  const order = Object.keys(names ?? {}).filter((id) => id in byThrower);
+  const ids = order.length ? order : Object.keys(byThrower);
+  return (
+    <div className="relative z-[1] mt-2 flex items-start justify-center gap-6">
+      {ids.map((id, i) => {
+        const r = byThrower[id];
+        const extra = r.bonus > 0 ? ` +${r.bonus}` : "";
+        return (
+          <p
+            key={id}
+            className="font-heading text-2xl leading-tight font-bold text-ink sm:text-3xl"
+            style={{
+              textShadow: "0.06em 0 0 var(--paper), -0.06em 0 0 var(--paper), 0 0.06em 0 var(--paper), 0 -0.06em 0 var(--paper)",
+              animation: `pins-doodle-line 0.4s ${0.3 + i * 0.15}s cubic-bezier(.2,.9,.3,1.3) both`,
+              transform: `rotate(${i ? 2 : -2}deg)`,
+            }}
+          >
+            <span className="block text-lg font-normal">{names?.[id] ?? id}</span>
+            {r.down === 0 ? TEXT.none : TEXT.down(r.down)}
+            {extra && <span className="ml-1 text-lg">{extra}</span>}
+          </p>
+        );
+      })}
     </div>
   );
 }
