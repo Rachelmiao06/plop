@@ -77,14 +77,16 @@ export const props = {
   // Pins: the little friends the ball knocks down. Footprint = card base (width, depth); weight for the physics later.
   "flag-blue": { label: "Blue snowman flag", height: 1.15, group: "mid", sink: 0.06, set: "doodle", role: "pin", pin: { footprint: [0.2, 0.2], weight: "light" } },
   "girl-earmuffs": { label: "Girl with earmuffs", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.4, 0.2], weight: "light" } },
-  skier: { label: "Skier in a mint coat", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.45, 0.25], weight: "light" }, motion: "loop" },
+  // The skier and the sliding penguin look like they are moving, so they are village decoration at the lane's edges, not pins.
+  skier: { label: "Skier in a mint coat", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "frame", motion: "loop" },
   "penguin-bag": { label: "Penguin with a shoulder bag", height: 0.6, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.3, 0.18], weight: "light" } },
-  "penguin-slide": { label: "Sliding penguin", height: 0.35, group: "friend", sink: 0.02, set: "doodle", role: "pin", pin: { footprint: [0.4, 0.22], weight: "light" }, motion: "loop" },
+  "penguin-slide": { label: "Sliding penguin", height: 0.35, group: "friend", sink: 0.02, set: "doodle", role: "frame", motion: "loop" },
   "pine-walking": { label: "Walking pine with a backpack", height: 0.9, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.45, 0.22], weight: "medium" } },
   "snowman-newspaper": { label: "Snowman reading a newspaper", height: 0.85, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.5, 0.25], weight: "medium" } },
   "boy-snowman": { label: "Boy holding hands with a little snowman", height: 0.85, group: "person", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.75, 0.25], weight: "medium" } },
   "signpost-snowman": { label: "Signpost with a snowman arrow", height: 0.75, group: "mid", sink: 0.05, set: "doodle", role: "pin", pin: { footprint: [0.75, 0.2], weight: "medium" } },
-  "snowman-bucket-hat": { label: "Big sitting snowman (bucket hat)", height: 0.9, group: "friend", sink: 0.03, set: "doodle", role: "pin", pin: { footprint: [0.6, 0.35], weight: "heavy" } },
+  // The bucket-hat snowman is the thrower (main character), so never a pin; kept as a spare drawing.
+  "snowman-bucket-hat": { label: "Big sitting snowman (bucket hat)", height: 0.9, group: "friend", sink: 0.03, set: "doodle", spare: true },
   "bench-snowmen": { label: "Two snowmen on a bench", height: 0.85, group: "mid", sink: 0.04, set: "doodle", role: "pin", pin: { footprint: [0.9, 0.35], weight: "heavy" } },
   "log-music": { label: "Hollow log with radio, snowman and penguin", height: 0.95, group: "mid", sink: 0.06, set: "doodle", role: "pin", pin: { footprint: [1.5, 0.45], weight: "heavy" } },
 
@@ -210,6 +212,11 @@ export const lane = {
   pinZone: { x: 0, z: -6.5, halfWidth: 1.6, halfDepth: 1.5 },
   /** No frame prop may reach into this box: the roll path from the line to past the pins. */
   clear: { minX: -2, maxX: 2, minZ: -8.6, maxZ: 1.6 },
+  /**
+   * The calm patch of open snow behind the pins: nothing taller than `maxHeight` stands in it,
+   * so the pins read against white snow: 3.7 units deep here, a little over 3 on the game's shorter lane.
+   */
+  calm: { minX: -2.1, maxX: 2.1, minZ: -11.7, maxZ: -8, maxHeight: 0 },
   /** Between the camera and the line (z above this) nothing taller than `nearMaxHeight` within the camera's middle. */
   nearZ: 0.6,
   nearHalfWidth: 3,
@@ -235,22 +242,26 @@ export type Placement = {
 };
 
 /*
-  Lane framing, cosy and airy: village props on both sides and at the far end, the lane clear down the middle.
-  far    — the big tree as the anchor just right of centre behind the pins, a tall pine to its left and a short
-           one to its right, a bush and a mound softening the foot.
-  left   — the cottage about level with the pins, a tall pine behind it, a bush at its foot, and a short pine
-           and a mound nearer the thrower so the lane has a soft edge all the way.
-  right  — the igloo a little nearer than the cottage (not mirrored), a tall pine nearer the thrower, a short pine
-           further down and a mound at the igloo's foot.
+  Lane framing, cosy and airy, in three clusters with the lane clear down the middle.
+  Behind the pins (z about -6.5 to -8) is a calm patch of open snow, at least 3 units deep and as wide as the
+  lane (`lane.calm`), so the little cut-outs read against white snow (Rachel: the tree and flag right behind
+  the pins made the background as crowded as the pins).
+  far    — the big tree is the anchor, back and to the right so it frames the pins instead of standing behind
+           them; a tall pine back left balances it, a short pine further right, a bush and a mound at the
+           corners.
+  left   — the cottage about level with the pins, a tall pine behind it, a bush at its foot, a short pine and a
+           mound nearer the thrower; the sliding penguin at the lane's edge, sliding in toward the lane.
+  right  — the igloo a little nearer than the cottage, a tall pine nearer the thrower, a short pine further down,
+           a mound at the igloo's foot; the skier at the lane's edge, swaying.
   Big things far, small things near; pines mirrored and scaled so no two look copy-pasted.
 */
 export const layout: Placement[] = [
-  // far end
-  { prop: "tree-snowmen", x: 0.5, z: -10.3, side: "far" },
-  { prop: "pine-snow-tall", x: -2.5, z: -10.8, scale: 1.05, side: "far" },
-  { prop: "pine-snow-short", x: 3.1, z: -10.0, flip: true, side: "far" },
-  { prop: "bush-snow", x: -1.25, z: -9.5, scale: 0.9, side: "far" },
-  { prop: "mound-snow", x: 2.0, z: -9.2, scale: 0.85, side: "far" },
+  // far end: tree back right, pine back left, the middle left open
+  { prop: "tree-snowmen", x: 4.0, z: -10.6, side: "far" },
+  { prop: "pine-snow-tall", x: -3.3, z: -11.2, scale: 1.05, side: "far" },
+  { prop: "pine-snow-short", x: 5.6, z: -9.4, flip: true, side: "far" },
+  { prop: "bush-snow", x: -2.6, z: -9.6, scale: 0.9, side: "far" },
+  { prop: "mound-snow", x: 2.7, z: -9.0, scale: 0.85, side: "far" },
 
   // left side
   { prop: "cottage-blue", x: -3.75, z: -6.9, side: "left" },
@@ -258,12 +269,14 @@ export const layout: Placement[] = [
   { prop: "bush-snow", x: -2.75, z: -5.3, scale: 0.85, side: "left" },
   { prop: "pine-snow-short", x: -3.7, z: -2.6, scale: 0.85, side: "left" },
   { prop: "mound-snow", x: -3.4, z: -1.6, scale: 0.8, side: "left" },
+  { prop: "penguin-slide", x: -2.55, z: -3.5, side: "left" },
 
   // right side
   { prop: "igloo-friends", x: 3.6, z: -5.6, side: "right" },
   { prop: "pine-snow-tall", x: 4.6, z: -2.2, scale: 0.8, side: "right" },
   { prop: "pine-snow-short", x: 3.9, z: -8.3, scale: 1.1, flip: true, side: "right" },
   { prop: "mound-snow", x: 2.75, z: -4.3, scale: 0.75, flip: true, side: "right" },
+  { prop: "skier", x: 2.55, z: -2.9, side: "right" },
 ];
 
 /**
@@ -300,6 +313,9 @@ export function layoutProblems(list: Placement[] = layout): string[] {
     const name = `${item.prop} at (${item.x}, ${item.z})`;
     const inLane = item.x + halfW > clear.minX && item.x - halfW < clear.maxX && item.z > clear.minZ && item.z < clear.maxZ;
     if (inLane) problems.push(`${name} reaches into the lane`);
+    const calm = lane.calm;
+    const inCalm = item.x + halfW > calm.minX && item.x - halfW < calm.maxX && item.z > calm.minZ && item.z < calm.maxZ;
+    if (inCalm && h > calm.maxHeight) problems.push(`${name} stands in the calm snow behind the pins`);
     if (item.z > nearZ && h > nearMaxHeight && Math.abs(item.x) - halfW < nearHalfWidth)
       problems.push(`${name} is ${h} tall between the camera and the thrower`);
     const area = mapArea;
@@ -467,6 +483,16 @@ export const village = {
     distance: 1.6,
     turn: 0,
   },
+
+  /**
+   * The two village props that look like they are moving get a small loop (cheap: one group moved per frame).
+   * slide: glides `distance` toward the lane and back, once every `period` seconds, resting `rest` of the loop.
+   * sway: rocks `angle` degrees either way around its feet `speed` times a second, with a tiny side step.
+   */
+  movers: {
+    "penguin-slide": { kind: "slide", distance: 0.35, period: 5, rest: 0.35 },
+    skier: { kind: "sway", angle: 3, speed: 0.45, step: 0.05 },
+  } as Partial<Record<PropId, { kind: "slide"; distance: number; period: number; rest: number } | { kind: "sway"; angle: number; speed: number; step: number }>>,
 
   /** For the sight-line check: how tall the pins are that must stay visible from the throwing view. */
   pinSightHeight: 0.5,

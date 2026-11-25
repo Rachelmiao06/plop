@@ -162,3 +162,80 @@ export const TEXT = {
   keys: "A / D or ← / → slide · hold Space to pull back (A / D aim) · let go to roll",
   pointer: "Or press the snowman card: drag sideways to slide, drag back to pull, let go to roll.",
 };
+
+/** Who is throwing, as drawn: player one is Rachel's bucket snowman, player two her red-hat snowman. */
+export type ThrowerLook = "one" | "two";
+
+/**
+ * How the thrower and the snowball look and move. Drawing only: nothing here changes the rules.
+ * Angles in radians unless named "Degrees"; distances in scene units (one unit = one character height).
+ */
+export const LOOK = {
+  thrower: {
+    /** The scenery cut-out drawn for each player (`public/assets/scenery/<name>.webp`). */
+    art: { one: "thrower-bucket", two: "thrower-redhat" } satisfies Record<ThrowerLook, string>,
+    /** Half-turn toward the camera, like the village cut-outs: share of the camera's swing, cap, spring. */
+    turn: { fraction: 0.5, capDegrees: 30, stiffness: 30, damping: 9 },
+    /** Tilt and squash follow their goals on a soft spring, so every move overshoots a little. */
+    spring: { stiffness: 150, damping: 11 },
+    /** Idle: a slow breath (squash share) on top of the side wobble in `FEEL.thrower`. */
+    breathe: 0.022,
+    breatheSpeed: 0.5,
+    /** Pulling: crouch this much at full pull, and lean toward the ball's side (radians per unit pulled sideways). */
+    crouch: 0.08,
+    leanToBall: 0.18,
+    /** Strain at full charge: a quick shiver (radians, scene units, shivers per second). */
+    strain: { angle: 0.035, shift: 0.008, speed: 19 },
+    /** Hop on release: stretch while rising, squash on landing (shares of height). */
+    hop: { stretch: 0.14, landSquash: 0.2 },
+    /** The happy bounce after landing: little bounces, how high, how long. */
+    bounce: { count: 2, height: 0.08, time: 0.55 },
+    /** Sliding along the line looks like shuffling: steps per unit, side rock, lift per step, lean into the slide. */
+    shuffle: { stepsPerUnit: 3.4, rock: 0.11, lift: 0.035, leanInto: 0.08, fullSpeed: 2.2 },
+    /** A little pop when the player changes. */
+    swapSquash: 0.18,
+  },
+
+  ball: {
+    /** The --ink outline: width in scene units (the cut-outs' line is about 1.2% of their height), and how uneven. */
+    outline: 0.013,
+    outlineWobble: 0.45,
+    /** How strongly the outline fades in places, like a pencil line (0 = solid). */
+    outlineGaps: 0.35,
+    /**
+     * Shade side toward --snow-shadow. The light is the cut-outs' upper-left drawing light, turned
+     * more to the side (less from the camera), so the shaded crescent shows from the throwing view.
+     * `band`: where lit turns to shade; `uneven`: how much that edge wanders.
+     */
+    light: [-0.8, 0.55, 0.1] as [number, number, number],
+    band: { from: 0.53, to: 0.63 },
+    uneven: 0.14,
+    /** The shade is laid in like coloured pencil: faint hatch lines, this strong (0 = flat wash). */
+    hatch: 0.35,
+    /** Faint paper fibre speckle toward --snow-shadow. */
+    grain: 0.12,
+    /** Pencil marks and crumbs that turn with the roll: how many, line width (scene units), ink strength. */
+    marks: 22,
+    markWidth: 0.016,
+    markInk: 0.62,
+  },
+
+  /** Clumps of snow that fall off a big rolling ball. */
+  clumps: {
+    /** Balls smaller than this radius shed nothing. */
+    fromRadius: 0.3,
+    /** Clumps per unit rolled by the biggest ball (fewer for smaller ones). */
+    perUnit: 1.6,
+    /** At most this many in the air or melting at once. */
+    max: 48,
+    /** Size range (radius). */
+    size: [0.03, 0.065] as [number, number],
+    /** Thrown up this fast (units per second), and sideways up to this. Keeps this share of the ball's speed. */
+    kickUp: [0.8, 1.6] as [number, number],
+    kickSide: 0.7,
+    carry: 0.35,
+    gravity: 9,
+    /** After landing it sinks into the snow over this long. */
+    melt: 0.9,
+  },
+};
