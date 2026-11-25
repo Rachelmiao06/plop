@@ -182,6 +182,12 @@ export type PinsFeel = typeof PINS;
  */
 export const OVERLAP = {
   maxHidden: 0.15,
+  /**
+   * The picture measured for each card: this share of the drawing's width (the files have a thin clear margin;
+   * boxy drawings such as the signpost fill the rest) and of its height (the top holds floating snow dots).
+   */
+  widthShare: 0.95,
+  heightShare: 0.88,
   /** Seconds after the page opens before measuring, so the camera has reached its throwing view. */
   measureAfter: 2,
 } as const;
@@ -199,11 +205,11 @@ export type Formation = { id: string; label: string; pins: FormationPin[] };
 
 /*
   Airy formations (Rachel: "far too crowded"). Rules, checked by overlap.ts on /dev/pins:
-  - 6 to 8 pins; only the small friends. Never the throwers (snowman-bucket-hat, the red-hat snowman)
+  - 5 to 8 pins; only the small friends. Never the throwers (snowman-bucket-hat, the red-hat snowman)
     or things that look like they are moving (penguin-slide, skier: they are village decoration now).
   - From the throwing view no card hides more than 15% of another (`OVERLAP.maxHidden`): pins in a row
     stand about 1.5 card widths apart, the row behind is staggered into the gaps, and rows step back
-    0.8 or so (less than a card's height, so a falling card still lands on the next one).
+    0.55 to 1 (about a card's height, so a falling card still lands on or slides into the next one).
   - Short ones in front, taller and heavier ones at the back. About 2.5 wide: wider than a full-size
     ball (1.2 across), still on a phone screen held upright.
 */
@@ -213,39 +219,39 @@ export const FORMATIONS: Formation[] = [
     label: "Triangle",
     // 1, 2, 3: each row sits in the gaps of the row in front.
     pins: [
-      { prop: "penguin-bag", dx: 0, dz: 0.8 },
-      { prop: "girl-earmuffs", dx: -0.52, dz: 0 },
-      { prop: "signpost-snowman", dx: 0.55, dz: 0, flip: true },
-      { prop: "pine-walking", dx: -1.08, dz: -0.8 },
-      { prop: "boy-snowman", dx: 0, dz: -0.85 },
-      { prop: "snowman-newspaper", dx: 1.1, dz: -0.8, flip: true },
+      { prop: "penguin-bag", dx: 0, dz: 0.7 },
+      { prop: "girl-earmuffs", dx: -0.55, dz: 0, scale: 0.95 },
+      { prop: "signpost-snowman", dx: 0.57, dz: 0, flip: true, scale: 0.9 },
+      { prop: "pine-walking", dx: -1.1, dz: -0.75 },
+      { prop: "boy-snowman", dx: 0, dz: -0.8 },
+      { prop: "snowman-newspaper", dx: 1.13, dz: -0.75, flip: true },
     ],
   },
   {
     id: "row",
     label: "Domino row",
-    // A slanted line from front left to back right: each card just overlaps the next sideways, so a
-    // card knocked back and to the right tips the next one, and all six stay in view.
+    // Five on a slant from front left to back right: each card just overlaps the next sideways, so a
+    // card knocked back and to the right tips the next one, and all five stay in view.
     pins: [
       { prop: "penguin-bag", dx: -1.2, dz: 1.1 },
-      { prop: "signpost-snowman", dx: -0.72, dz: 0.66 },
-      { prop: "girl-earmuffs", dx: -0.24, dz: 0.22 },
-      { prop: "snowman-newspaper", dx: 0.24, dz: -0.22, flip: true },
-      { prop: "pine-walking", dx: 0.74, dz: -0.66, flip: true },
-      { prop: "flag-blue", dx: 1.22, dz: -1.1 },
+      { prop: "girl-earmuffs", dx: -0.6, dz: 0.55 },
+      { prop: "snowman-newspaper", dx: 0, dz: 0, flip: true },
+      { prop: "pine-walking", dx: 0.6, dz: -0.55, flip: true },
+      { prop: "flag-blue", dx: 1.2, dz: -1.1 },
     ],
   },
   {
     id: "ring",
     label: "Ring",
-    // Six friends in a circle, turned a little so nobody stands straight behind anybody.
+    // Six friends in a circle, turned a little so nobody stands straight behind anybody; the front two
+    // stand close enough that a ball straight down the middle never slips through untouched.
     pins: [
-      { prop: "penguin-bag", dx: -0.55, dz: 0.85 },
-      { prop: "signpost-snowman", dx: 0.55, dz: 0.85, flip: true },
-      { prop: "girl-earmuffs", dx: -1.15, dz: 0 },
-      { prop: "snowman-newspaper", dx: 1.15, dz: 0, flip: true },
-      { prop: "pine-walking", dx: -0.55, dz: -0.85 },
-      { prop: "boy-snowman", dx: 0.6, dz: -0.85, flip: true },
+      { prop: "penguin-bag", dx: -0.38, dz: 0.9 },
+      { prop: "signpost-snowman", dx: 0.42, dz: 0.9, flip: true, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: -1.15, dz: 0.05 },
+      { prop: "snowman-newspaper", dx: 1.15, dz: 0.05, flip: true },
+      { prop: "pine-walking", dx: -0.45, dz: -0.85 },
+      { prop: "boy-snowman", dx: 0.5, dz: -0.85, flip: true },
     ],
   },
   {
@@ -253,13 +259,13 @@ export const FORMATIONS: Formation[] = [
     label: "Crowd of friends",
     // Penguins and people standing about loosely, a little turned toward each other.
     pins: [
-      { prop: "penguin-bag", dx: -0.3, dz: 0.9, turn: 8 },
-      { prop: "penguin-bag", dx: 0.6, dz: 0.75, flip: true, scale: 0.9, turn: -6 },
-      { prop: "girl-earmuffs", dx: -1.0, dz: 0.15, turn: 10 },
-      { prop: "snowman-newspaper", dx: 0.05, dz: 0.05, turn: -4 },
-      { prop: "boy-snowman", dx: 1.1, dz: -0.1, flip: true, turn: -10 },
-      { prop: "pine-walking", dx: -0.55, dz: -0.8, turn: 6 },
-      { prop: "girl-earmuffs", dx: 0.58, dz: -1.0, flip: true, scale: 0.95, turn: -8 },
+      { prop: "penguin-bag", dx: -0.3, dz: 0.95, turn: 8 },
+      { prop: "penguin-bag", dx: 0.6, dz: 0.8, flip: true, scale: 0.9, turn: -6 },
+      { prop: "girl-earmuffs", dx: -1.05, dz: 0.15, turn: 10 },
+      { prop: "snowman-newspaper", dx: -0.05, dz: 0.05, turn: -4 },
+      { prop: "boy-snowman", dx: 1.15, dz: -0.15, flip: true, turn: -10 },
+      { prop: "pine-walking", dx: -0.65, dz: -0.95, turn: 6 },
+      { prop: "girl-earmuffs", dx: 0.55, dz: -1.2, flip: true, scale: 0.95, turn: -8 },
     ],
   },
   {
@@ -267,14 +273,14 @@ export const FORMATIONS: Formation[] = [
     label: "Little village",
     // A mixed set: light friends in front, the heavy bench and log at the back.
     pins: [
-      { prop: "penguin-bag", dx: 0, dz: 0.95 },
-      { prop: "signpost-snowman", dx: -0.75, dz: 0.4 },
-      { prop: "girl-earmuffs", dx: 0.75, dz: 0.4, flip: true },
-      { prop: "pine-walking", dx: -1.3, dz: -0.35 },
-      { prop: "snowman-newspaper", dx: 0, dz: -0.35 },
-      { prop: "boy-snowman", dx: 1.3, dz: -0.35, flip: true },
-      { prop: "bench-snowmen", dx: -0.72, dz: -1.3 },
-      { prop: "log-music", dx: 0.62, dz: -1.45 },
+      { prop: "penguin-bag", dx: 0, dz: 1.0 },
+      { prop: "signpost-snowman", dx: -0.75, dz: 0.45, scale: 0.9 },
+      { prop: "girl-earmuffs", dx: 0.72, dz: 0.45, flip: true, scale: 0.95 },
+      { prop: "pine-walking", dx: -1.3, dz: -0.4 },
+      { prop: "snowman-newspaper", dx: 0, dz: -0.4 },
+      { prop: "boy-snowman", dx: 1.36, dz: -0.45, flip: true },
+      { prop: "bench-snowmen", dx: -0.7, dz: -1.5 },
+      { prop: "log-music", dx: 0.6, dz: -1.75 },
     ],
   },
 ];

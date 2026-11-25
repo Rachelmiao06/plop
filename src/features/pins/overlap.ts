@@ -27,9 +27,10 @@ export type FormationOverlap = {
   pass: boolean;
 };
 
-/** Screen rectangle (normalized device units) around a pin's card: the collider card, the drawing minus its empty corners. */
+/** Screen rectangle (normalized device units) around a pin's drawing as it stands. */
 function cardRect(pin: PinSpec, camera: Camera, v: Vector3): Rect {
-  const [hw, hh] = pin.card;
+  const hw = (pin.width * OVERLAP.widthShare) / 2;
+  const hh = (pin.height * OVERLAP.heightShare) / 2;
   const { x, y, z, yaw } = pin.home;
   const rx = Math.cos(yaw);
   const rz = -Math.sin(yaw);

@@ -11,7 +11,8 @@ The main characters are 3D and are not part of this feature.
   Per prop: `set` (`doodle` = Rachel's current stickers, `crayon` = the first set, all spare),
   `kind` (`standee` by default; `character` = model for a 3D main character, never placed;
   `decal` = flat flourish such as the wind swirl), `spare`, and `motion: "loop"` for the skier and the
-  sliding penguin (candidates for a small looping motion later).
+  sliding penguin, which are village decoration at the lane's edges (not pins) with a small loop on the real snow
+  (`village.movers`: the penguin glides a little toward the lane and back, the skier sways).
 - `sizes.json`, `effect-sizes.json`: pixel size of every file. Written by the slicing script, never by hand.
 - `effects` in `content.ts`: effect marks (surprise lines, star, snow puff, music notes, ring of dots, wind curl)
   in `public/assets/effects/`, sources in `art-source/effects/`. Not standees, never in the layout; each has a
@@ -62,8 +63,9 @@ see-through gap stays white, lower it or add a hole point.
 - The throwing view (`previewCamera`): 20° up, the snow scene's 22° lens, 14 units from a point part way down the lane.
   The snow scene does not have this view yet; it is the proposal the previews use. The free camera on the 3D page
   keeps the snow scene's limits: at most 60° left or right and 76° up, so the cut-outs never show their backs.
-- `layoutProblems()` checks that no frame prop reaches into the clear lane (`lane.clear`) and nothing tall stands
-  between the camera and the thrower.
+- `layoutProblems()` checks that no frame prop reaches into the clear lane (`lane.clear`), nothing stands in the calm
+  open snow behind the pins (`lane.calm`, about 3 units deep on the game's lane, so the pins read against white
+  snow), and nothing tall stands between the camera and the thrower. The big tree frames the pins from back right.
 
 ## Part 2: placing the props in the 3D scene
 

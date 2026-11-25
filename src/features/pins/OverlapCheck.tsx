@@ -43,7 +43,6 @@ function Measure() {
       else console.warn(head);
       console.table(table);
       console.info(`Pin overlap JSON ${JSON.stringify(table)}`);
-      console.info(`Pin overlap CAMERA ${JSON.stringify({ m: camera.matrixWorld.elements, p: camera.projectionMatrix.elements })}`);
     }, OVERLAP.measureAfter * 1000);
     return () => window.clearTimeout(timer);
   }, [camera, size.width, size.height, snow]);
