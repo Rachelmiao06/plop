@@ -29,6 +29,7 @@ import {
   stopAmbience,
   subscribeAudioSettings,
 } from "@/lib/audio";
+import { track } from "@/lib/analytics";
 
 import { GAME, TEXT, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
@@ -134,6 +135,8 @@ export function Game() {
   useEffect(() => {
     if (state.phase !== "over") return;
     const [a, b] = game.getState().scores;
+    // No names: the length, the mode and how many played.
+    track("match_end", { rounds: game.getState().rounds, mode: game.getState().mode, players: game.getState().players });
     if (game.getState().players === 2 && a === b) playTie();
     else playWin();
   }, [state.phase, game]);
@@ -160,6 +163,7 @@ export function Game() {
       if (pins.getState().formation !== first) pins.setFormation(first);
       else pins.reset();
       setBestBefore(playing === 1 ? readBest(rounds) : null);
+      track("match_start", { rounds, mode: game.getState().mode, players: playing });
       // Back to the afternoon with a soft fade (the end card sat in the evening light).
       if (getTimeOfDay() > 0) easeTimeOfDay(0, GAME.evening.back);
       saved.current = false;

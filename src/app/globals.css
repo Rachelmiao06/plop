@@ -11,6 +11,7 @@
   --color-ink: var(--ink);
   --color-ink-deep: var(--ink-deep);
   --color-paper: var(--paper);
+  --color-snow-white: var(--snow-white);
   --color-snow-shadow: var(--snow-shadow);
   --color-sky-blue: var(--sky-blue);
   --color-butter: var(--butter);
@@ -75,6 +76,7 @@
   /* Named palette (eyeballed from the reference illustration). */
   --ink: #7a5a3c; /* warm brown: all text and outlines, instead of black */
   --paper: #fffdf8; /* warm white page */
+  --snow-white: #ffffff; /* pure white: the loading and invite pages (Rachel, 2026-11-25) */
   --snow-shadow: #cfe1f2; /* pale blue shadow on snow and white things */
   --sky-blue: #8db7e2;
   --butter: #f6de8a;

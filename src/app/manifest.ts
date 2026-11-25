@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 
 // "Add to home screen": served at /manifest.webmanifest, linked from every page by Next.js.
-// Colours are --paper from globals.css (a manifest cannot read CSS variables).
+// Colours are --snow-white from globals.css (a manifest cannot read CSS variables), so the home-screen splash matches
+// the all-white loading page.
 // Icons are the bucket-hat snowman cut-out on paper (public/icons/); the maskable one has extra paper around it
 // so Android's round or squircle mask never clips the bucket. No service worker: nothing is cached offline.
-const PAPER = "#fffdf8";
+const SNOW_WHITE = "#ffffff";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -16,8 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "any",
-    background_color: PAPER,
-    theme_color: PAPER,
+    background_color: SNOW_WHITE,
+    theme_color: SNOW_WHITE,
     icons: [
       { src: "/icons/plop-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/plop-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

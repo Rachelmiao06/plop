@@ -21,6 +21,8 @@ import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { GAME, readNames, savePlayerOne, serverNames, shownName, subscribeNames } from "@/features/game";
 import { cleanName, INVITE, invitePath } from "@/features/invite";
 
+import { track } from "@/lib/analytics";
+
 import { copy, isWeChat, store, systemShare } from "./actions";
 import { SHARE } from "./content";
 import { ensureGroupId } from "./group";
@@ -72,6 +74,8 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
     // Never unsigned: no name typed means the snowman's cute default.
     const path = invitePath({ group: ensureGroupId(), name: signed, score: best !== null && withScore ? best : null });
     const url = window.location.origin + path;
+    // Coarse facts only (never the name): whether a score went along, and whether it went from inside WeChat.
+    track("invite_made", { with_score: best !== null && withScore });
 
     if (isWeChat()) {
       await copy(url);

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { INVITE, InviteBackdrop, InviteCard, inviteDescription, inviteTitle, readInvite } from "@/features/invite";
+import { INVITE, InviteCard, inviteDescription, inviteTitle, readInvite } from "@/features/invite";
 import { LoadingScreen } from "@/features/loading";
 import { WeChatShareImage } from "@/features/share";
 
@@ -26,22 +26,21 @@ async function Card({ searchParams }: Props) {
   return <InviteCard {...invite} />;
 }
 
-/** The invite card: a Christmas-evening welcome. Accept goes to the game with `?from=<name>`. */
+/**
+ * The invite card on an all-white page (Rachel): the loading snowball rolls, bursts into snow, and the card pops out
+ * of the puff. Accept goes to the game with `?g=<group>&from=<name>`.
+ */
 export default function InvitePage(props: Props) {
-  const { words, art, squareImage } = INVITE;
+  const { words, squareImage } = INVITE;
   return (
-    <main className="plop-invite relative h-dvh w-full overflow-hidden">
+    <main className="plop-invite relative h-dvh w-full overflow-hidden bg-snow-white">
       {/* Must stay the first image in <body>: WeChat uses it for the chat link card. */}
       <WeChatShareImage src={squareImage.src} size={squareImage.size} />
-      <InviteBackdrop />
       <Suspense fallback={null}>
         <Card {...props} />
       </Suspense>
-      <LoadingScreen
-        art={{ ...art.mouse, alt: "" }}
-        note={words.loading.zh}
-        small={words.loading.en}
-      />
+      {/* No 3D scene here: ready once the page has loaded; the card pops out of the snowball's puff. */}
+      <LoadingScreen note={words.loading.zh} small={words.loading.en} noScene reveal />
     </main>
   );
 }
