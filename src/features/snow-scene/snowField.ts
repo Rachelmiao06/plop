@@ -68,19 +68,6 @@ type Stamp = {
 
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
-/**
- * Distance from a point to the edge of the rounded snow slab:
- * negative inside, zero on the edge, positive outside.
- */
-export function slabEdgeDistance(x: number, z: number): number {
-  const g = content.ground;
-  const r = g.cornerRadius;
-  const qx = Math.abs(x) - (g.sizeX / 2 - r);
-  const qz = Math.abs(z - g.centerZ) - (g.sizeZ / 2 - r);
-  const outside = Math.hypot(Math.max(qx, 0), Math.max(qz, 0));
-  return outside + Math.min(Math.max(qx, qz), 0) - r;
-}
-
 function hash2(x: number, z: number): number {
   const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
   return s - Math.floor(s);
@@ -100,6 +87,83 @@ function smoothNoise(x: number, z: number): number {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 
+/**
+ * Distance from a point to the edge of the play area (the pressable snow,
+ * a rounded rectangle): negative inside, zero on the edge, positive outside.
+ */
+export function playEdgeDistance(x: number, z: number): number {
+  const g = content.ground;
+  const r = g.cornerRadius;
+  const qx = Math.abs(x) - (g.sizeX / 2 - r);
+  const qz = Math.abs(z - g.centerZ) - (g.sizeZ / 2 - r);
+  const outside = Math.hypot(Math.max(qx, 0), Math.max(qz, 0));
+  return outside + Math.min(Math.max(qx, qz), 0) - r;
+}
+
+const smooth = (lo: number, hi: number, v: number) => {
+  const t = clamp01((v - lo) / (hi - lo));
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * Height of untouched snow anywhere, near or far: gentle drifts and ripples
+ * around the play area, slowly giving way to bigger mounds in the distance.
+ * The play area and the snow around it both use this, so they meet exactly.
+ */
+export function baseHeightAt(x: number, z: number): number {
+  const g = content.ground;
+  const f = content.surround;
+  const far = Math.hypot(x, z - g.centerZ);
+  const near = 1 - smooth(f.driftFadeStart, f.driftFadeEnd, far);
+  let h = 0;
+  if (near > 0) {
+    const drift =
+      (smoothNoise(x * g.driftScale + 11.3, z * g.driftScale + 4.7) - 0.5) *
+      2 *
+      g.driftHeight;
+    const ripple =
+      (smoothNoise(x * g.rippleScale + 3.1, z * g.rippleScale * 1.7 + 8.2) - 0.5) *
+      2 *
+      g.rippleHeight;
+    // Ripples are finer than drifts, so they have to fade out sooner.
+    const fine = 1 - smooth(f.rippleFadeStart, f.rippleFadeEnd, far);
+    h += (drift + ripple * fine) * near;
+  }
+  const mid =
+    smooth(f.midStart, f.midFull, far) * (1 - smooth(f.midFadeStart, f.midFadeEnd, far));
+  if (mid > 0) {
+    h +=
+      (smoothNoise(x * f.midScale + 21.4, z * f.midScale + 2.6) - 0.5) *
+      2 *
+      f.midHeight *
+      mid;
+  }
+  const mounds = smooth(f.moundStart, f.moundFull, far);
+  if (mounds > 0) {
+    h +=
+      (smoothNoise(x * f.moundScale + 31.7, z * f.moundScale + 17.9) - 0.4) *
+      f.moundHeight *
+      mounds;
+  }
+  return h;
+}
+
+/** Slope of untouched snow at a point, written as an upward-pointing normal. */
+export function baseNormalInto(
+  x: number,
+  z: number,
+  out: Float32Array,
+  offset: number,
+): void {
+  const e = content.ground.cell;
+  const sx = (baseHeightAt(x + e, z) - baseHeightAt(x - e, z)) / (2 * e);
+  const sz = (baseHeightAt(x, z + e) - baseHeightAt(x, z - e)) / (2 * e);
+  const inv = 1 / Math.sqrt(sx * sx + sz * sz + 1);
+  out[offset] = -sx * inv;
+  out[offset + 1] = inv;
+  out[offset + 2] = -sz * inv;
+}
+
 export class SnowField implements SnowApi {
   readonly cols: number;
   readonly rows: number;
@@ -117,7 +181,8 @@ export class SnowField implements SnowApi {
   readonly pressed: Float32Array;
   /**
    * How far the snow may be pressed per grid point: 1 in the middle of the
-   * slab, easing to 0 at its edge so the side wall never breaks.
+   * play area, easing to 0 at its edge so the snow there always matches the
+   * untouched snow beyond it.
    */
   readonly give: Float32Array;
 
@@ -142,20 +207,11 @@ export class SnowField implements SnowApi {
       for (let i = 0; i < this.cols; i++) {
         const x = this.originX + i * g.cell;
         const z = this.originZ + j * g.cell;
-        const drift =
-          (smoothNoise(x * g.driftScale + 11.3, z * g.driftScale + 4.7) - 0.5) *
-          2 *
-          g.driftHeight;
-        const ripple =
-          (smoothNoise(x * g.rippleScale + 3.1, z * g.rippleScale * 1.7 + 8.2) -
-            0.5) *
-          2 *
-          g.rippleHeight;
-        const h = drift + ripple;
+        const h = baseHeightAt(x, z);
         const k = j * this.cols + i;
         this.base[k] = h;
         this.height[k] = h;
-        const inset = clamp01(-slabEdgeDistance(x, z) / g.edgeLock);
+        const inset = clamp01(-playEdgeDistance(x, z) / g.edgeLock);
         this.give[k] = inset * inset * (3 - 2 * inset);
       }
     }
@@ -186,13 +242,19 @@ export class SnowField implements SnowApi {
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
 
-  heightAt = (x: number, z: number): number => this.sample(this.height, x, z);
+  heightAt = (x: number, z: number): number =>
+    this.contains(x, z) ? this.sample(this.height, x, z) : baseHeightAt(x, z);
+
+  /** True if this point is over the pressable grid. */
+  private contains(x: number, z: number): boolean {
+    const fx = (x - this.originX) / this.cell;
+    const fz = (z - this.originZ) / this.cell;
+    return fx >= 0 && fz >= 0 && fx <= this.cols - 1 && fz <= this.rows - 1;
+  }
 
   packedAt = (x: number, z: number): number =>
     clamp01(this.sample(this.pressed, x, z));
 
-  /** True if this point is on the slab (not past its edge). */
-  insideAt = (x: number, z: number): boolean => slabEdgeDistance(x, z) <= 0;
 
   pressGroove = (
     x: number,
@@ -305,7 +367,7 @@ export class SnowField implements SnowApi {
         const k = j * cols + i;
         if (d2 < r2) {
           const floor = base[k] - floorDepth;
-          // Near the edge of the slab the snow gives less and less.
+          // Near the edge of the play area the snow gives less and less.
           const target = Math.max(s.shapeAt(d2), base[k] - floorDepth * give[k]);
           if (height[k] > target) {
             removed += height[k] - target;

@@ -12,40 +12,31 @@ import {
 import { content } from "./content";
 import { sharedUniforms } from "./sharedUniforms";
 import { SnowContext } from "./snowContext";
-import { slabEdgeDistance, type SnowField } from "./snowField";
+import { baseHeightAt, baseNormalInto, type SnowField } from "./snowField";
 
-// Draws the height grid as thick snow. Each frame it re-sends only the rows
-// and columns that were pressed since the last frame.
+// Draws the snow: the pressable play area as a fine height grid (each frame
+// it re-sends only the rows and columns that were pressed), and around it one
+// big cheap surface out to the haze. Both use the same material.
 
 function buildGeometry(field: SnowField): BufferGeometry {
-  const { cols, rows, cell } = field;
+  const { cols, rows } = field;
   const count = cols * rows;
   const positions = new Float32Array(count * 3);
   const normals = new Float32Array(count * 3);
-  // Distance of each grid point to the slab's rounded edge (negative = inside).
-  const edge = new Float32Array(count);
 
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
       const k = j * cols + i;
-      let x = field.xAt(i);
-      let z = field.zAt(j);
-      const d = slabEdgeDistance(x, z);
-      edge[k] = d;
-      if (d > 0 && d < cell * 1.5) {
-        // Just outside: slide the point onto the edge, so the mesh ends in
-        // a clean rounded outline instead of a staircase.
-        const e = cell * 0.25;
-        const gx = slabEdgeDistance(x + e, z) - slabEdgeDistance(x - e, z);
-        const gz = slabEdgeDistance(x, z + e) - slabEdgeDistance(x, z - e);
-        const g = Math.hypot(gx, gz) || 1;
-        x -= (gx / g) * d;
-        z -= (gz / g) * d;
-      }
-      positions[k * 3] = x;
+      positions[k * 3] = field.xAt(i);
       positions[k * 3 + 1] = field.height[k];
-      positions[k * 3 + 2] = z;
-      field.normalInto(i, j, normals, k * 3);
+      positions[k * 3 + 2] = field.zAt(j);
+      if (onRim(field, i, j)) {
+        // The outermost points are shared with the snow beyond, and take
+        // their slope from the same place it does, so no seam can show.
+        baseNormalInto(field.xAt(i), field.zAt(j), normals, k * 3);
+      } else {
+        field.normalInto(i, j, normals, k * 3);
+      }
     }
   }
 
@@ -57,13 +48,6 @@ function buildGeometry(field: SnowField): BufferGeometry {
       const b = a + 1;
       const c = a + cols;
       const d = c + 1;
-      // Keep only squares that are on the slab (at least one corner inside,
-      // and no corner too far out to have been slid onto the edge).
-      const far = cell * 1.5;
-      const inside = edge[a] < 0 || edge[b] < 0 || edge[c] < 0 || edge[d] < 0;
-      if (!inside || edge[a] >= far || edge[b] >= far || edge[c] >= far || edge[d] >= far) {
-        continue;
-      }
       // Alternate which way each square is split, so steep groove walls
       // do not turn into a saw-tooth in one diagonal direction.
       if ((i + j) % 2 === 0) {
@@ -89,7 +73,98 @@ function buildGeometry(field: SnowField): BufferGeometry {
   geometry.setAttribute("normal", new BufferAttribute(normals, 3));
   // Shares the field's own array: how packed the snow is at each point.
   geometry.setAttribute("aPressed", new BufferAttribute(field.pressed, 1));
-  geometry.setIndex(new BufferAttribute(indices.subarray(0, n), 1));
+  geometry.setIndex(new BufferAttribute(indices, 1));
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+const onRim = (field: SnowField, i: number, j: number) =>
+  i === 0 || j === 0 || i === field.cols - 1 || j === field.rows - 1;
+
+/**
+ * Grid lines along one direction for the snow beyond the play area: the play
+ * area's own lines in the middle, then steps that grow with distance.
+ * Returns the positions and where the play area's lines start in that list.
+ */
+function surroundLines(inner: number[]): { lines: number[]; start: number } {
+  const f = content.surround;
+  const grow = (from: number, direction: number) => {
+    const out: number[] = [];
+    let step: number = content.ground.cell;
+    let at = from;
+    while (Math.abs(at) < f.reach) {
+      step = Math.min(step * f.growth, f.maxStep);
+      at += step * direction;
+      out.push(at);
+    }
+    return out;
+  };
+  const before = grow(inner[0], -1).reverse();
+  const after = grow(inner[inner.length - 1], 1);
+  return { lines: [...before, ...inner, ...after], start: before.length };
+}
+
+/**
+ * The snow beyond the play area: one big, cheap, never-pressed surface with
+ * a hole where the play area sits. Along the hole it has exactly the play
+ * area's own points, heights and slopes, so the two meet without a seam.
+ */
+function buildSurround(field: SnowField): BufferGeometry {
+  const innerX = Array.from({ length: field.cols }, (_, i) => field.xAt(i));
+  const innerZ = Array.from({ length: field.rows }, (_, j) => field.zAt(j));
+  const x = surroundLines(innerX);
+  const z = surroundLines(innerZ);
+  const cols = x.lines.length;
+  const rows = z.lines.length;
+
+  const positions = new Float32Array(cols * rows * 3);
+  const normals = new Float32Array(cols * rows * 3);
+  const inHole = (i: number, j: number) =>
+    i > x.start &&
+    i < x.start + field.cols - 1 &&
+    j > z.start &&
+    j < z.start + field.rows - 1;
+
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      if (inHole(i, j)) continue;
+      const k = (j * cols + i) * 3;
+      positions[k] = x.lines[i];
+      positions[k + 1] = Math.fround(baseHeightAt(x.lines[i], z.lines[j]));
+      positions[k + 2] = z.lines[j];
+      baseNormalInto(x.lines[i], z.lines[j], normals, k);
+    }
+  }
+
+  const indices: number[] = [];
+  for (let j = 0; j < rows - 1; j++) {
+    for (let i = 0; i < cols - 1; i++) {
+      // Skip the squares the play area covers.
+      if (
+        i >= x.start &&
+        i < x.start + field.cols - 1 &&
+        j >= z.start &&
+        j < z.start + field.rows - 1
+      ) {
+        continue;
+      }
+      const a = j * cols + i;
+      const b = a + 1;
+      const c = a + cols;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new BufferAttribute(normals, 3));
+  // Never pressed: all zeros.
+  geometry.setAttribute(
+    "aPressed",
+    new BufferAttribute(new Float32Array(cols * rows), 1),
+  );
+  geometry.setIndex(indices);
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -113,6 +188,7 @@ const NOISE_GLSL = /* glsl */ `
 `;
 
 function buildMaterial(): MeshStandardMaterial {
+  const g = content.ground;
   const s = content.surface;
   const material = new MeshStandardMaterial({
     color: content.colors.snow,
@@ -122,9 +198,32 @@ function buildMaterial(): MeshStandardMaterial {
   });
 
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, {
+    Object.assign(shader.uniforms, sharedUniforms, {
       uSnowPressed: { value: new Color(content.colors.snowPressed) },
       uHardGround: { value: new Color(content.colors.hardGround) },
+      // Far snow: the small drifts and ripples are drawn as shading there
+      // instead of shape. x, y = where that takes over; z, w = drift size and steepness.
+      uFarDrift: {
+        value: new Vector4(
+          content.surround.driftFadeStart,
+          content.surround.driftFadeEnd,
+          g.driftScale,
+          2 * g.driftHeight * g.driftScale,
+        ),
+      },
+      // x, y = ripple fade distances; z, w = ripple size and steepness.
+      uFarRipple: {
+        value: new Vector4(
+          content.surround.rippleFadeStart,
+          content.surround.rippleFadeEnd,
+          g.rippleScale,
+          2 * g.rippleHeight * g.rippleScale,
+        ),
+      },
+      // where the far snow starts and finishes melting into the sky
+      uHaze: {
+        value: new Vector4(content.haze.start, content.haze.end, 0, content.ground.centerZ),
+      },
       uSparkleColor: { value: new Color(content.colors.sparkle) },
       // scale, strength, tint
       uGrain: { value: new Vector4(s.grainScale, s.grainStrength, s.grainTint, 0) },
@@ -161,6 +260,12 @@ function buildMaterial(): MeshStandardMaterial {
         uniform vec3 uSnowPressed;
         uniform vec3 uHardGround;
         uniform vec3 uSparkleColor;
+        uniform vec3 uFogTop;
+        uniform vec3 uFogBottom;
+        uniform vec2 uResolution;
+        uniform vec4 uHaze;
+        uniform vec4 uFarDrift;
+        uniform vec4 uFarRipple;
         uniform vec4 uGrain;
         uniform vec4 uSparkle;
         varying vec3 vSnowPos;
@@ -201,8 +306,31 @@ function buildMaterial(): MeshStandardMaterial {
           snowNoise(fineP + vec2(0.0, grainE)) - snowNoise(fineP - vec2(0.0, grainE))
         );
         vec2 allSlope = grainSlope * grainFade + fineSlope * fineFade;
+        // Far from the middle the mesh is too coarse to carry the small
+        // drifts and ripples, so they continue here as shading only. The
+        // hand-over matches where the shape fades out, so no patch shows.
+        float farAway = length(vSnowPos.xz - uHaze.zw);
+        vec2 farSlope = vec2(0.0);
+        float farDrift = smoothstep(uFarDrift.x, uFarDrift.y, farAway);
+        if (farDrift > 0.0) {
+          vec2 dp = vSnowPos.xz * uFarDrift.z + vec2(11.3, 4.7);
+          farSlope += farDrift * uFarDrift.w * vec2(
+            snowNoise(dp + vec2(0.5, 0.0)) - snowNoise(dp - vec2(0.5, 0.0)),
+            snowNoise(dp + vec2(0.0, 0.5)) - snowNoise(dp - vec2(0.0, 0.5))
+          );
+        }
+        float farRipple = smoothstep(uFarRipple.x, uFarRipple.y, farAway)
+          * (1.0 - smoothstep(0.12, 0.45, snowPx * uFarRipple.z));
+        if (farRipple > 0.0) {
+          vec2 rp = vSnowPos.xz * vec2(uFarRipple.z, uFarRipple.z * 1.7) + vec2(3.1, 8.2);
+          farSlope += farRipple * uFarRipple.w * vec2(
+            snowNoise(rp + vec2(0.5, 0.0)) - snowNoise(rp - vec2(0.5, 0.0)),
+            (snowNoise(rp + vec2(0.0, 0.5)) - snowNoise(rp - vec2(0.0, 0.5))) * 1.7
+          );
+        }
         vec3 grainBump = (viewMatrix * vec4(allSlope.x, 0.0, allSlope.y, 0.0)).xyz;
-        normal = normalize(normal - grainBump * uGrain.y * (1.0 - 0.6 * packed));`,
+        vec3 farBump = (viewMatrix * vec4(farSlope.x, 0.0, farSlope.y, 0.0)).xyz;
+        normal = normalize(normal - grainBump * uGrain.y * (1.0 - 0.6 * packed) - farBump);`,
       )
       .replace(
         "#include <opaque_fragment>",
@@ -229,6 +357,14 @@ function buildMaterial(): MeshStandardMaterial {
         outgoingLight += uSparkleColor * uSparkle.w * sparkleGlint * sparkleOn
           * sparkleDot * sparkleSun * sparkleFade * (1.0 - 0.7 * packed);
         #include <opaque_fragment>`,
+      )
+      .replace(
+        "#include <tonemapping_fragment>",
+        /* glsl */ `#include <tonemapping_fragment>
+        // Far away the snow melts into the soft sky, like haze at a horizon.
+        float haze = smoothstep(uHaze.x, uHaze.y, length(vSnowPos.xz - uHaze.zw));
+        vec3 skyColor = mix(uFogBottom, uFogTop, gl_FragCoord.y / uResolution.y);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, skyColor, haze);`,
       );
   };
 
@@ -240,6 +376,7 @@ export function SnowGround() {
   if (!field) throw new Error("SnowGround must be inside the snow scene");
 
   const geometry = useMemo(() => buildGeometry(field), [field]);
+  const surround = useMemo(() => buildSurround(field), [field]);
   const material = useMemo(() => buildMaterial(), []);
 
   useFrame((state) => {
@@ -259,6 +396,8 @@ export function SnowGround() {
     for (let j = dirty.z0; j <= dirty.z1; j++) {
       const rowStart = j * cols + dirty.x0;
       for (let i = dirty.x0; i <= dirty.x1; i++) {
+        // The outermost points never change; they belong to the seam.
+        if (onRim(field, i, j)) continue;
         const k = j * cols + i;
         positions[k * 3 + 1] = field.height[k];
         field.normalInto(i, j, normals, k * 3);
@@ -274,14 +413,23 @@ export function SnowGround() {
   });
 
   return (
-    <mesh
-      geometry={geometry}
-      material={material}
-      castShadow
-      receiveShadow
-      frustumCulled={false}
-      // Pointer rays skip the big grid; use a flat plane and heightAt instead.
-      raycast={() => null}
-    />
+    <>
+      <mesh
+        geometry={geometry}
+        material={material}
+        castShadow
+        receiveShadow
+        frustumCulled={false}
+        // Pointer rays skip the big grid; use useSnowPoint instead.
+        raycast={() => null}
+      />
+      <mesh
+        geometry={surround}
+        material={material}
+        receiveShadow
+        frustumCulled={false}
+        raycast={() => null}
+      />
+    </>
   );
 }

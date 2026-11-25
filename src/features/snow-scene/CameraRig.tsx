@@ -61,13 +61,7 @@ class CameraView {
     const margin = content.orbit.fitMargin;
     const wide =
       (need + margin) / Math.max(needAtStart + margin, layout.visibleWidth / 2);
-    // From high above, the whole depth of the slab must fit up the screen too.
-    const g = content.ground;
-    const tall =
-      ((g.sizeX / 2) * Math.abs(sin) + (g.sizeZ / 2) * Math.abs(cos)) *
-        Math.sin(this.goalPitch * RAD) +
-      content.orbit.fitMargin * 0.5;
-    return Math.max(1, wide, tall / (layout.visibleHeight / 2));
+    return Math.max(1, wide);
   }
 
   private refit(): void {
@@ -155,25 +149,16 @@ class CameraView {
     const pitch = this.pitch * RAD;
     const yaw = this.yaw * RAD;
     const flat = d * Math.cos(pitch);
-    // Look a little in front of the middle (toward the viewer), so the cut
-    // side of the slab is in frame. Less so from above, where no side shows.
-    const o = content.orbit;
-    const lean =
-      c.targetZ *
-      this.level *
-      clamp((o.pitchMax - this.pitch) / (o.pitchMax - c.elevation), 0, 1.2);
-    const lookX = this.x + Math.sin(yaw) * lean;
-    const lookZ = this.z + Math.cos(yaw) * lean;
     // A tiny slow sway so sparkles glint; smaller when close so it never swims.
     const t = time * c.swaySpeed;
     const sway = c.swayAmount * this.level;
     const side = Math.sin(t) * sway;
     camera.position.set(
-      lookX + flat * Math.sin(yaw) + side * Math.cos(yaw),
+      this.x + flat * Math.sin(yaw) + side * Math.cos(yaw),
       c.targetHeight + d * Math.sin(pitch) + Math.cos(t * 1.3) * sway * 0.5,
-      lookZ + flat * Math.cos(yaw) - side * Math.sin(yaw),
+      this.z + flat * Math.cos(yaw) - side * Math.sin(yaw),
     );
-    camera.lookAt(lookX, c.targetHeight, lookZ);
+    camera.lookAt(this.x, c.targetHeight, this.z);
   }
 }
 

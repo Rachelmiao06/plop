@@ -173,11 +173,7 @@ class SpraySim {
     }
   }
 
-  update(
-    seconds: number,
-    heightAt: (x: number, z: number) => number,
-    insideAt: (x: number, z: number) => boolean,
-  ): void {
+  update(seconds: number, heightAt: (x: number, z: number) => number): void {
     const s = this.s;
     const { dustPos, dustVel, dustLife, clumpPos, clumpVel, clumpState } = this;
 
@@ -212,15 +208,8 @@ class SpraySim {
         clumpPos[i * 3] += clumpVel[i * 3] * seconds;
         clumpPos[i * 3 + 1] += clumpVel[i * 3 + 1] * seconds;
         clumpPos[i * 3 + 2] += clumpVel[i * 3 + 2] * seconds;
-        const onSlab = insideAt(clumpPos[i * 3], clumpPos[i * 3 + 2]);
         const ground = heightAt(clumpPos[i * 3], clumpPos[i * 3 + 2]);
-        if (!onSlab) {
-          // Thrown past the edge: it falls away out of sight.
-          if (clumpPos[i * 3 + 1] < -3) clumpState[i] = 0;
-        } else if (
-          clumpVel[i * 3 + 1] < 0 &&
-          clumpPos[i * 3 + 1] <= ground + scale * 0.5
-        ) {
+        if (clumpVel[i * 3 + 1] < 0 && clumpPos[i * 3 + 1] <= ground + scale * 0.5) {
           // Landed: sit on the snow, then melt into it.
           clumpPos[i * 3 + 1] = ground + scale * 0.5;
           clumpState[i] = -1;
@@ -257,7 +246,7 @@ export function SnowSpray() {
 
   useFrame((_, delta) => {
     for (const kick of field.takeKicks()) sim.throwFrom(kick);
-    sim.update(Math.min(delta, 0.05), field.heightAt, field.insideAt);
+    sim.update(Math.min(delta, 0.05), field.heightAt);
   });
 
   return (

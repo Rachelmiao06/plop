@@ -21,12 +21,11 @@ One line per decision: date, what, why.
 - 2026-11-24 · Zoom is written by hand, not drei CameraControls: the camera only moves along its fixed viewing line, and the view is clamped back to the centre at full size. Two unclaimed fingers are a pinch; a feature calls `claimSnowPointer` to keep a finger for its own drag.
 - 2026-11-24 · The snow stays a CPU height grid (not a GPU displacement map), because later features need `heightAt`. Measured cost is small.
 - 2026-11-24 · Snow rolling and landing sounds are real CC0 recordings from Freesound (`public/assets/audio/`, credits there), sliced and re-pitched by the engine; only the whoosh is synthesized. Pure synthesis sounded like scratching paper, not fluffy snow. This replaces issue #9's "no sound files".
-- 2026-11-24 · The snow is a rounded slab with a visible cut side (snow thickness, thin darker base, soft shadow underneath) instead of ground fading into fog. Rachel approved from a concept image; it shows that the snow is thick. This replaces the earlier fog-fade decision.
-- 2026-11-24 · Snow cannot be pressed right at the slab's edge (it eases in over 0.4 units), so dents never break the side wall.
+- 2026-11-24 · Snow fills the screen at every angle and zoom; the slab with a cut side was tried and rejected because the empty surround looked wrong (Rachel). The play area is a fine pressable grid, surrounded by one big cheap snow surface that shares its height function, material and edge points so no seam shows; far away it melts into a soft haze.
+- 2026-11-24 · Toward the edge of the play area the snow gives less and less (over 0.7 units), so a dent never reveals where the pressable snow ends.
 - 2026-11-24 · Camera rules: starts above and to the side (35 degrees). One finger or mouse drag on empty snow turns it, 25 degrees up to 82 (nearly top-down) and 60 degrees left and right, never behind or below, with a little glide after a flick. It does not spring back; a "Reset view" button does that. Two fingers / wheel zoom. The view pulls back by itself when turned so both characters stay in frame.
 - 2026-11-24 · A feature keeps a finger for its own drag with `claimSnowPointer`; claimed fingers never turn or zoom the view. This is how the slingshot drag will coexist with look-around.
 - 2026-11-24 · Because the view turns, the two characters will be small 3D snowmen, not flat stickers.
-- 2026-11-24 · The camera looks slightly in front of the slab's middle so the cut side is in frame; the characters therefore sit a little above screen centre.
 - 2026-11-24 · The look is "crayon sticker snow village": hand-drawn stickers with warm brown pencil outlines, coloured-pencil fills, round shapes and handwritten lettering. Picked by Rachel from a reference illustration.
 - 2026-11-24 · Outlines and text are warm brown (`--ink`), never black. Black looks harsh next to crayon colours.
 - 2026-11-24 · Shadows are pale blue (`--snow-shadow`), never grey. The 3D snow's shadow tint should match `--snow-shadow` so the drawn stickers and the real snow belong together.
@@ -34,3 +33,6 @@ One line per decision: date, what, why.
 - 2026-11-24 · Headings use Gaegu (handwritten), small text uses Nunito (round, easy to read). Corners are generous and round (`--radius` 1.25rem).
 - 2026-11-24 · Light theme only. The dark variant resolves to the same colours so the page never turns black.
 - 2026-11-24 · Style notes for future art: outline about 1.5% of the character's height, with a slight hand wobble and round caps; coloured-pencil hatch fills, no gradients; characters about two heads tall, dot eyes, a short arc mouth, pink blush.
+- 2026-11-24 · Thickness is shown by the snow itself, not a cut side: dents and pits with shaded walls and rims, depth that builds with dwell time, drifts that catch the low sun, and bigger mounds in the distance.
+- 2026-11-24 · Small drifts and ripples are real shape near the play area and shading only further out, because the far grid is too coarse to carry them. The hand-over distances are in `content.ts` under `surround`.
+- 2026-11-24 · Camera limits unchanged after the slab was removed (25 to 82 degrees up, 60 left and right): at the lowest angle the camera still looks at least 14 degrees below the horizon, and the snow has turned to haze well before its end.

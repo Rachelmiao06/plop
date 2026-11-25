@@ -14,17 +14,15 @@ export const content = {
   tempPressHint: "Press and hold, or drag, on the snow. Double tap for a crater.",
 
   ground: {
-    // Size of the snow slab (the play area is centred on 0, 0) and how round
-    // its corners are.
-    sizeX: 6.6,
-    sizeZ: 5.6,
+    // Size of the play area: the part of the snow that can be pressed
+    // (centred on 0, 0), and how round its corners are.
+    sizeX: 9,
+    sizeZ: 7.2,
     centerZ: 0,
-    cornerRadius: 0.9,
-    // Close to the edge the snow cannot be pressed, so the side of the slab
-    // stays whole. Pressing eases in over this distance from the edge.
-    edgeLock: 0.4,
-    // Thickness of the darker base the snow sits on.
-    baseThickness: 0.2,
+    cornerRadius: 1.4,
+    // Toward the edge of the play area the snow gives less and less, so a
+    // dent never shows where the pressable snow ends.
+    edgeLock: 0.7,
     // Width of one grid square. Smaller = finer dents, more work for the phone.
     cell: 0.04,
     // How far down the snow can be pressed before it hits hard ground.
@@ -32,8 +30,41 @@ export const content = {
     // Gentle drifts so the surface is not a flat sheet.
     driftHeight: 0.09,
     driftScale: 0.42,
-    rippleHeight: 0.012,
+    rippleHeight: 0.009,
     rippleScale: 2.6,
+  },
+
+  // The snow beyond the play area: it only has to look right, never be pressed.
+  surround: {
+    // How far the snow reaches from the middle, in every direction.
+    reach: 52,
+    // Grid squares grow by this factor per step away from the play area, up to this size.
+    growth: 1.09,
+    maxStep: 1.8,
+    // The far grid is too coarse to draw small shapes, so detail hands over
+    // with distance from the middle: ripples fade first, then the small
+    // drifts, while medium drifts and then big mounds take over. Low views
+    // get their depth from those.
+    rippleFadeStart: 5,
+    rippleFadeEnd: 7.5,
+    driftFadeStart: 6,
+    driftFadeEnd: 9.5,
+    midStart: 3.5,
+    midFull: 7.5,
+    midFadeStart: 12,
+    midFadeEnd: 16,
+    midHeight: 0.2,
+    midScale: 0.17,
+    moundStart: 9,
+    moundFull: 20,
+    moundHeight: 0.7,
+    moundScale: 0.07,
+  },
+
+  // Far away, the snow melts into the soft sky between these distances from the middle.
+  haze: {
+    start: 20,
+    end: 46,
   },
 
   press: {
@@ -117,15 +148,9 @@ export const content = {
     skyFill: "#a9c8ff",
     groundBounce: "#dfe6f5",
     sparkle: "#fff6e6",
-    // The soft backdrop behind the slab: top and bottom of the screen.
+    // The soft sky the far snow melts into: top and bottom of the screen.
     fogTop: "#cfdcf0",
     fogBottom: "#e3eaf5",
-    // The cut side of the slab: snow at the top of the cut, packed snow at
-    // the bottom of it, the base under it, and the soft shadow it sits in.
-    slabSideTop: "#dfe7f2",
-    slabSideBottom: "#b9c9e6",
-    slabBase: "#7a8db3",
-    slabShadow: "#6f84b0",
     snowflake: "#ffffff",
     snowDust: "#ffffff",
     // TEMPORARY: stand-in blocks shown with ?guides in the address.
@@ -143,7 +168,7 @@ export const content = {
     // Shadows: sharpness and softness.
     shadowMapSize: 2048,
     shadowSoftness: 5,
-    shadowArea: 6,
+    shadowArea: 7.5,
     shadowBias: -0.0004,
     shadowNormalBias: 0.05,
   },
@@ -170,9 +195,6 @@ export const content = {
     characterScreenShare: 0.2,
     // Height of the point the camera looks at.
     targetHeight: 0.35,
-    // The camera looks this far in front of the middle (toward the viewer),
-    // so the cut side of the slab is in view.
-    targetZ: 1.1,
     // A tiny slow drift of the view, so sparkles glint.
     swayAmount: 0.12,
     swaySpeed: 0.22,
@@ -187,14 +209,16 @@ export const content = {
     // How quickly the view glides to where it was asked to go (higher = snappier).
     ease: 9,
     // How far from the middle the view may wander when fully zoomed in.
-    panX: 2.4,
-    panZFar: 2.4,
+    panX: 3.2,
+    panZFar: 2.8,
     panZNear: 2.4,
   },
 
   // Turning the view by dragging on empty snow.
   orbit: {
-    // Lowest and highest angle above the ground (degrees): side-on to nearly top-down.
+    // Lowest and highest angle above the ground (degrees): side-on to nearly
+    // top-down. Kept high enough that the far snow has always turned to haze
+    // before its end could show.
     pitchMin: 25,
     pitchMax: 82,
     // How far left and right the view may turn (degrees). Never behind the scene.
@@ -207,9 +231,6 @@ export const content = {
     friction: 4.5,
     // Room kept around the characters when the view pulls back to keep both in frame.
     fitMargin: 0.65,
-    // Opacity and reach of the soft shadow under the slab.
-    shadowOpacity: 0.75,
-    shadowReach: 1.6,
   },
 
   layout: {
