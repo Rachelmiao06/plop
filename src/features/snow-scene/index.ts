@@ -16,6 +16,6 @@ export { freshSnowfall, freshSnowfallAt, snowTileCount } from "./freshSnow";
 export type { FreshSnowfallOptions, KickUpOptions, PressOptions, SnowApi } from "./snowField";
 export type { SnowLayout, Spot } from "./layout";
 export { snowShadow } from "./content";
-export { getTimeOfDay, setTimeOfDay, subscribeTimeOfDay } from "./timeOfDay";
+export { easeTimeOfDay, getTimeOfDay, setTimeOfDay, subscribeTimeOfDay } from "./timeOfDay";
 export { useTimeOfDay } from "./useTimeOfDay";
 export { TimeOfDaySlider } from "./TimeOfDaySlider";

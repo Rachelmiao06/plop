@@ -11,10 +11,43 @@ const listeners = new Set<(t: number) => void>();
 
 /** Set the time of day: 0 = afternoon, 0.5 = sunset, 1 = evening (clamped). Cheap; call it every frame to animate. */
 export function setTimeOfDay(t: number): void {
+  stopEase();
+  write(t);
+}
+
+function write(t: number): void {
   const next = Math.min(Math.max(Number.isFinite(t) ? t : 0, 0), 1);
   if (next === current) return;
   current = next;
   for (const fn of listeners) fn(next);
+}
+
+let easeFrame = 0;
+function stopEase(): void {
+  if (easeFrame && typeof cancelAnimationFrame === "function") cancelAnimationFrame(easeFrame);
+  easeFrame = 0;
+}
+
+/**
+ * Glide the time of day to `to` over `seconds` (eased in and out), for example between a match's rounds. The value
+ * moves every frame by itself; everything that reads it follows. A new ease, or setTimeOfDay, replaces a running one.
+ * Browser only (does nothing on the server).
+ */
+export function easeTimeOfDay(to: number, seconds: number): void {
+  stopEase();
+  if (typeof requestAnimationFrame !== "function") return;
+  if (!(seconds > 0)) {
+    write(to);
+    return;
+  }
+  const from = current;
+  const start = performance.now();
+  const step = (now: number) => {
+    const u = Math.min((now - start) / (seconds * 1000), 1);
+    write(from + (to - from) * u * u * (3 - 2 * u));
+    easeFrame = u < 1 ? requestAnimationFrame(step) : 0;
+  };
+  easeFrame = requestAnimationFrame(step);
 }
 
 /** The time of day now (0 = afternoon, 1 = evening). Cheap: read it inside useFrame. */
