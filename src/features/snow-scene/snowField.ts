@@ -68,6 +68,19 @@ type Stamp = {
 
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
+/**
+ * Distance from a point to the edge of the rounded snow slab:
+ * negative inside, zero on the edge, positive outside.
+ */
+export function slabEdgeDistance(x: number, z: number): number {
+  const g = content.ground;
+  const r = g.cornerRadius;
+  const qx = Math.abs(x) - (g.sizeX / 2 - r);
+  const qz = Math.abs(z - g.centerZ) - (g.sizeZ / 2 - r);
+  const outside = Math.hypot(Math.max(qx, 0), Math.max(qz, 0));
+  return outside + Math.min(Math.max(qx, qz), 0) - r;
+}
+
 function hash2(x: number, z: number): number {
   const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
   return s - Math.floor(s);
@@ -102,6 +115,11 @@ export class SnowField implements SnowApi {
    * plus up to 1 more where it is pressed right down to hard ground.
    */
   readonly pressed: Float32Array;
+  /**
+   * How far the snow may be pressed per grid point: 1 in the middle of the
+   * slab, easing to 0 at its edge so the side wall never breaks.
+   */
+  readonly give: Float32Array;
 
   private dirty: DirtyRect | null = null;
   private kicks: Kick[] = [];
@@ -118,6 +136,7 @@ export class SnowField implements SnowApi {
     this.height = new Float32Array(n);
     this.base = new Float32Array(n);
     this.pressed = new Float32Array(n);
+    this.give = new Float32Array(n);
 
     for (let j = 0; j < this.rows; j++) {
       for (let i = 0; i < this.cols; i++) {
@@ -136,6 +155,8 @@ export class SnowField implements SnowApi {
         const k = j * this.cols + i;
         this.base[k] = h;
         this.height[k] = h;
+        const inset = clamp01(-slabEdgeDistance(x, z) / g.edgeLock);
+        this.give[k] = inset * inset * (3 - 2 * inset);
       }
     }
   }
@@ -169,6 +190,9 @@ export class SnowField implements SnowApi {
 
   packedAt = (x: number, z: number): number =>
     clamp01(this.sample(this.pressed, x, z));
+
+  /** True if this point is on the slab (not past its edge). */
+  insideAt = (x: number, z: number): boolean => slabEdgeDistance(x, z) <= 0;
 
   pressGroove = (
     x: number,
@@ -256,7 +280,7 @@ export class SnowField implements SnowApi {
    * snow was pushed away (summed height over grid points).
    */
   private stamp(x: number, z: number, s: Stamp): number {
-    const { cols, rows, cell, height, base, pressed } = this;
+    const { cols, rows, cell, height, base, pressed, give } = this;
     const floorDepth = content.ground.depth;
     const p = content.press;
     const rimOuter = s.radius + s.rimWidth;
@@ -281,7 +305,8 @@ export class SnowField implements SnowApi {
         const k = j * cols + i;
         if (d2 < r2) {
           const floor = base[k] - floorDepth;
-          const target = Math.max(s.shapeAt(d2), floor);
+          // Near the edge of the slab the snow gives less and less.
+          const target = Math.max(s.shapeAt(d2), base[k] - floorDepth * give[k]);
           if (height[k] > target) {
             removed += height[k] - target;
             height[k] = target;
@@ -311,7 +336,7 @@ export class SnowField implements SnowApi {
           const k = j * cols + i;
           const w = this.rimWeightAt(dx, dz, d2, k, s);
           if (w <= 0) continue;
-          const top = base[k] + s.rimCap * Math.min(w, 1 + s.plough);
+          const top = base[k] + s.rimCap * Math.min(w, 1 + s.plough) * give[k];
           if (height[k] < top) {
             height[k] = Math.min(height[k] + perWeight * w, top);
           }

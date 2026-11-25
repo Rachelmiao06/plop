@@ -10,6 +10,7 @@ import { Backdrop, Lights, Snowfall } from "./SceneLook";
 import { SnowContext } from "./snowContext";
 import { SnowField } from "./snowField";
 import { SnowGround } from "./SnowGround";
+import { SnowSlab } from "./SnowSlab";
 import { SnowSpray } from "./SnowSpray";
 import { TempDragPress, TempFps, TempGuides } from "./TempDragPress";
 
@@ -40,6 +41,7 @@ export default function SnowCanvas({ children }: { children?: ReactNode }) {
         <Backdrop />
         <Lights />
         <SnowGround />
+        <SnowSlab />
         <Snowfall />
         <SnowSpray />
         {/* TEMPORARY test hook, see TempDragPress.tsx */}

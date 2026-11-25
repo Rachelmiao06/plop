@@ -7,29 +7,44 @@ import {
   BufferGeometry,
   Color,
   MeshStandardMaterial,
-  Vector2,
   Vector4,
 } from "three";
 import { content } from "./content";
 import { sharedUniforms } from "./sharedUniforms";
 import { SnowContext } from "./snowContext";
-import type { SnowField } from "./snowField";
+import { slabEdgeDistance, type SnowField } from "./snowField";
 
 // Draws the height grid as thick snow. Each frame it re-sends only the rows
 // and columns that were pressed since the last frame.
 
 function buildGeometry(field: SnowField): BufferGeometry {
-  const { cols, rows } = field;
+  const { cols, rows, cell } = field;
   const count = cols * rows;
   const positions = new Float32Array(count * 3);
   const normals = new Float32Array(count * 3);
+  // Distance of each grid point to the slab's rounded edge (negative = inside).
+  const edge = new Float32Array(count);
 
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
       const k = j * cols + i;
-      positions[k * 3] = field.xAt(i);
+      let x = field.xAt(i);
+      let z = field.zAt(j);
+      const d = slabEdgeDistance(x, z);
+      edge[k] = d;
+      if (d > 0 && d < cell * 1.5) {
+        // Just outside: slide the point onto the edge, so the mesh ends in
+        // a clean rounded outline instead of a staircase.
+        const e = cell * 0.25;
+        const gx = slabEdgeDistance(x + e, z) - slabEdgeDistance(x - e, z);
+        const gz = slabEdgeDistance(x, z + e) - slabEdgeDistance(x, z - e);
+        const g = Math.hypot(gx, gz) || 1;
+        x -= (gx / g) * d;
+        z -= (gz / g) * d;
+      }
+      positions[k * 3] = x;
       positions[k * 3 + 1] = field.height[k];
-      positions[k * 3 + 2] = field.zAt(j);
+      positions[k * 3 + 2] = z;
       field.normalInto(i, j, normals, k * 3);
     }
   }
@@ -42,6 +57,13 @@ function buildGeometry(field: SnowField): BufferGeometry {
       const b = a + 1;
       const c = a + cols;
       const d = c + 1;
+      // Keep only squares that are on the slab (at least one corner inside,
+      // and no corner too far out to have been slid onto the edge).
+      const far = cell * 1.5;
+      const inside = edge[a] < 0 || edge[b] < 0 || edge[c] < 0 || edge[d] < 0;
+      if (!inside || edge[a] >= far || edge[b] >= far || edge[c] >= far || edge[d] >= far) {
+        continue;
+      }
       // Alternate which way each square is split, so steep groove walls
       // do not turn into a saw-tooth in one diagonal direction.
       if ((i + j) % 2 === 0) {
@@ -67,7 +89,7 @@ function buildGeometry(field: SnowField): BufferGeometry {
   geometry.setAttribute("normal", new BufferAttribute(normals, 3));
   // Shares the field's own array: how packed the snow is at each point.
   geometry.setAttribute("aPressed", new BufferAttribute(field.pressed, 1));
-  geometry.setIndex(new BufferAttribute(indices, 1));
+  geometry.setIndex(new BufferAttribute(indices.subarray(0, n), 1));
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -91,7 +113,6 @@ const NOISE_GLSL = /* glsl */ `
 `;
 
 function buildMaterial(): MeshStandardMaterial {
-  const g = content.ground;
   const s = content.surface;
   const material = new MeshStandardMaterial({
     color: content.colors.snow,
@@ -101,7 +122,7 @@ function buildMaterial(): MeshStandardMaterial {
   });
 
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, sharedUniforms, {
+    Object.assign(shader.uniforms, {
       uSnowPressed: { value: new Color(content.colors.snowPressed) },
       uHardGround: { value: new Color(content.colors.hardGround) },
       uSparkleColor: { value: new Color(content.colors.sparkle) },
@@ -116,9 +137,6 @@ function buildMaterial(): MeshStandardMaterial {
           s.sparkleStrength,
         ),
       },
-      uFadeCenter: { value: new Vector2(0, g.centerZ) },
-      uFadeHalf: { value: new Vector2(g.sizeX / 2, g.sizeZ / 2) },
-      uFade: { value: new Vector2(content.fog.start, content.fog.end) },
     });
 
     shader.vertexShader = shader.vertexShader
@@ -143,14 +161,8 @@ function buildMaterial(): MeshStandardMaterial {
         uniform vec3 uSnowPressed;
         uniform vec3 uHardGround;
         uniform vec3 uSparkleColor;
-        uniform vec3 uFogTop;
-        uniform vec3 uFogBottom;
-        uniform vec2 uResolution;
         uniform vec4 uGrain;
         uniform vec4 uSparkle;
-        uniform vec2 uFadeCenter;
-        uniform vec2 uFadeHalf;
-        uniform vec2 uFade;
         varying vec3 vSnowPos;
         varying float vPressed;
         ${NOISE_GLSL}`,
@@ -217,14 +229,6 @@ function buildMaterial(): MeshStandardMaterial {
         outgoingLight += uSparkleColor * uSparkle.w * sparkleGlint * sparkleOn
           * sparkleDot * sparkleSun * sparkleFade * (1.0 - 0.7 * packed);
         #include <opaque_fragment>`,
-      )
-      .replace(
-        "#include <tonemapping_fragment>",
-        /* glsl */ `#include <tonemapping_fragment>
-        // Melt into the fog toward the edge of the mesh, so no edge shows.
-        float edgeFade = smoothstep(uFade.x, uFade.y, length((vSnowPos.xz - uFadeCenter) / uFadeHalf));
-        vec3 fogColor = mix(uFogBottom, uFogTop, gl_FragCoord.y / uResolution.y);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, edgeFade);`,
       );
   };
 

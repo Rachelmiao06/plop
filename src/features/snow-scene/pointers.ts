@@ -1,14 +1,26 @@
 import { type Camera, Plane, Raycaster, Vector2, Vector3 } from "three";
 
 // Who owns which finger. A feature that starts dragging something (a
-// character, later) claims that finger, so the scene does not also treat it
-// as half of a pinch-to-zoom. Fingers that nobody claimed are "on empty snow".
+// character, later) claims that finger, so the scene does not also turn or
+// zoom the view with it. Fingers that nobody claimed are "on empty snow":
+// one of them turns the view, two of them pinch to zoom.
 
 export const snowPointers = {
   /** Fingers a feature has claimed for its own drag. */
   claimed: new Set<number>(),
   /** True while two unclaimed fingers are pinching to zoom. */
   pinching: false,
+  /**
+   * TEMPORARY: true while the press test hook is in "press" mode, where a
+   * one-finger drag presses the snow instead of turning the view.
+   */
+  lookOff: false,
+};
+
+/** Lets buttons outside the 3D scene ask the camera for things. */
+export const snowView = {
+  /** Glide back to the starting angle and zoom. Set by the camera. */
+  reset: () => {},
 };
 
 /**

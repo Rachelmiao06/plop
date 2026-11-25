@@ -3,14 +3,19 @@
 // ─────────────────────────────────────────────────────────────────────────
 // TEMPORARY TEST HOOK. Delete this file when the real characters arrive.
 // It exists only to check the snow scene (issue #2):
+// The "Press" button (top right, in ViewControls.tsx) switches it on; in
+// "Look" mode a drag turns the view instead. In press mode:
 //   - press and hold on the snow: digs deeper the longer it is held
 //   - drag: a groove that follows the finger with a little lag (friction)
 //   - double click or double tap: punches a crater
+// Always:
 //   - add ?guides to the address: two stand-in blocks where characters stand
 //   - add ?fps to the address: frame rate replaces the hint at the bottom
-// (Zoom is NOT temporary; it lives in CameraRig.tsx.)
-// To remove: delete this file, its lines in SnowCanvas.tsx, the hint in
-// SnowScene.tsx, and `tempHint`, `tempDrag`, `colors.tempGuide` in content.ts.
+// (Turning and zooming the view are NOT temporary; they live in CameraRig.tsx.)
+// To remove: delete this file and its lines in SnowCanvas.tsx; in
+// ViewControls.tsx the look / press switch and the second hint; `lookOff` in
+// pointers.ts; and `tempLook`, `tempPress`, `tempPressHint`, `tempDrag`,
+// `colors.tempGuide` in content.ts.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from "react";
@@ -41,6 +46,7 @@ export function TempDragPress() {
 
   useEffect(() => {
     const down = (e: PointerEvent) => {
+      if (!snowPointers.lookOff) return;
       fingers.set(e.pointerId, {
         clientX: e.clientX,
         clientY: e.clientY,
@@ -72,6 +78,7 @@ export function TempDragPress() {
     // A double click or double tap punches a crater, to try that part too.
     let lastTap = { time: 0, x: 0, y: 0 };
     const tap = (e: PointerEvent) => {
+      if (!snowPointers.lookOff) return;
       const near = Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
       if (near && e.timeStamp - lastTap.time < 350) {
         const p = pointOnSnow(e.clientX, e.clientY);
@@ -105,7 +112,9 @@ export function TempDragPress() {
     for (const [id, finger] of fingers) {
       if (finger.touch && !snowPointers.claimed.has(id)) touching++;
     }
-    if (snowPointers.pinching || touching >= 2) fingers.clear();
+    if (snowPointers.pinching || touching >= 2 || !snowPointers.lookOff) {
+      fingers.clear();
+    }
     if (fingers.size === 0) return;
 
     const t = content.tempDrag;

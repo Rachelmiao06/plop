@@ -5,16 +5,28 @@ export const content = {
   title: "Plop!",
   tagline: "A cute snowy toy: pull back, roll a snowball, let go.",
 
-  // TEMPORARY: caption for the drag-to-dent test hook. Remove with TempDragPress.
-  tempHint: "Drag on the snow",
+  resetView: "Reset view",
+  lookHint: "Drag to look around. Pinch or scroll to zoom.",
+
+  // TEMPORARY: words for the press test hook. Remove with TempDragPress.
+  tempLook: "Look",
+  tempPress: "Press",
+  tempPressHint: "Press and hold, or drag, on the snow. Double tap for a crater.",
 
   ground: {
-    // Size of the snow mesh and where its middle sits (the play area is at 0, 0).
-    sizeX: 14,
-    sizeZ: 13.2,
-    centerZ: -1.2,
+    // Size of the snow slab (the play area is centred on 0, 0) and how round
+    // its corners are.
+    sizeX: 7.6,
+    sizeZ: 6.4,
+    centerZ: 0,
+    cornerRadius: 0.9,
+    // Close to the edge the snow cannot be pressed, so the side of the slab
+    // stays whole. Pressing eases in over this distance from the edge.
+    edgeLock: 0.4,
+    // Thickness of the darker base the snow sits on.
+    baseThickness: 0.2,
     // Width of one grid square. Smaller = finer dents, more work for the phone.
-    cell: 0.05,
+    cell: 0.04,
     // How far down the snow can be pressed before it hits hard ground.
     depth: 0.9,
     // Gentle drifts so the surface is not a flat sheet.
@@ -105,9 +117,15 @@ export const content = {
     skyFill: "#a9c8ff",
     groundBounce: "#dfe6f5",
     sparkle: "#fff6e6",
-    // The fog the ground melts into: top and bottom of the screen.
+    // The soft backdrop behind the slab: top and bottom of the screen.
     fogTop: "#cfdcf0",
     fogBottom: "#e3eaf5",
+    // The cut side of the slab: snow at the top of the cut, packed snow at
+    // the bottom of it, the base under it, and the soft shadow it sits in.
+    slabSideTop: "#dfe7f2",
+    slabSideBottom: "#b9c9e6",
+    slabBase: "#566a92",
+    slabShadow: "#8fa3c9",
     snowflake: "#ffffff",
     snowDust: "#ffffff",
     // TEMPORARY: stand-in blocks shown with ?guides in the address.
@@ -125,7 +143,7 @@ export const content = {
     // Shadows: sharpness and softness.
     shadowMapSize: 2048,
     shadowSoftness: 5,
-    shadowArea: 9,
+    shadowArea: 6,
     shadowBias: -0.0004,
     shadowNormalBias: 0.05,
   },
@@ -145,13 +163,16 @@ export const content = {
   },
 
   camera: {
-    // Angle above the ground, in degrees (30 to 40 = snow diorama on a table).
+    // Starting angle above the ground, in degrees (30 to 40 = snow diorama on a table).
     elevation: 35,
     fieldOfView: 22,
     // A character one unit tall fills this share of the screen height.
     characterScreenShare: 0.2,
     // Height of the point the camera looks at.
     targetHeight: 0.35,
+    // The camera looks a little in front of the middle, so the front cut
+    // side of the slab is in view.
+    targetZ: 1.3,
     // A tiny slow drift of the view, so sparkles glint.
     swayAmount: 0.12,
     swaySpeed: 0.22,
@@ -166,9 +187,29 @@ export const content = {
     // How quickly the view glides to where it was asked to go (higher = snappier).
     ease: 9,
     // How far from the middle the view may wander when fully zoomed in.
-    panX: 3.4,
-    panZFar: 3.2,
-    panZNear: 2.6,
+    panX: 2.8,
+    panZFar: 3.6,
+    panZNear: 1.2,
+  },
+
+  // Turning the view by dragging on empty snow.
+  orbit: {
+    // Lowest and highest angle above the ground (degrees): side-on to nearly top-down.
+    pitchMin: 25,
+    pitchMax: 82,
+    // How far left and right the view may turn (degrees). Never behind the scene.
+    yawLimit: 60,
+    // Degrees turned per pixel dragged.
+    speed: 0.3,
+    // How quickly the view glides after the finger (higher = snappier), and
+    // how quickly a flick slows down after letting go.
+    ease: 14,
+    friction: 4.5,
+    // Room kept around the characters when the view pulls back to keep both in frame.
+    fitMargin: 0.65,
+    // Opacity and reach of the soft shadow under the slab.
+    shadowOpacity: 0.55,
+    shadowReach: 1.6,
   },
 
   layout: {
@@ -176,13 +217,6 @@ export const content = {
     // width they may use before they are staggered front-to-back instead.
     characterDistance: 4.4,
     widthShare: 0.6,
-  },
-
-  fog: {
-    // The ground fades to fog between these two points, measured from the
-    // middle of the mesh (0) to its edge (1).
-    start: 0.55,
-    end: 0.94,
   },
 
   snowfall: {
