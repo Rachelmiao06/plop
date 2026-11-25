@@ -95,8 +95,8 @@ export function ScoreHud({
         <CornerToggles hidden={hidden} onHiddenChange={setHidden} showAudio={showAudioToggles} />
       </div>
 
-      {/* Phone: sits below the scene's top-right buttons, clear of the corner toggles. Wider: centred at the top. */}
-      <div className="flex justify-center pt-14 pr-3 pl-16 md:pt-3 md:pr-3 md:pl-3">
+      {/* Phone: full width below the row of corner toggles and the scene's top-right buttons. Wider: centred at the top. */}
+      <div className="flex justify-center px-3 pt-16 md:pt-3">
         {!hidden && (
           <section
             aria-label={t.panelLabel}
