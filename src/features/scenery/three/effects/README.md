@@ -43,6 +43,10 @@ Ice chunks are placed beside props by name (`effects.ice.chunks`, `near`), every
 - **Snow bank at the backdrop's foot (#51):** soft, uneven heaps of real snow in front of the paper hills along the
   middle 30% of the arc (about what the low view's lens takes in), so the low view has no hard line. A bank
   round the whole arc cost about 15 fps in the high view (each heap makes fine snow tiles).
+- **Time of day** (the snow scene's `getTimeOfDay()`, 0 = afternoon, 1 = evening): toward evening the halos grow
+  stronger and the point lights brighter (`lights.evening`), so the lamp, windows, fairy lights and lanterns really
+  shine by the last round. Smoke catches the warm low sun at sunset and the moonlight in the evening
+  (`smoke.sunsetWarm`, `eveningCool`). The ice glint follows the sun as it moves (and becomes the moon).
 - **Reduced motion:** no flicker; smoke rises three times slower.
 - Heaps that the pins' physics ground samples (`FootBank`, `IceBeds`) are made outside Suspense. Keep heaps broad:
   narrow ones trip the pins' "physics ground is off" check (its grid is 0.25 units).

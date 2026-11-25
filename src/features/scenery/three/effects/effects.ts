@@ -84,6 +84,12 @@ export const effects = {
     lightForward: 0.25,
     /** How warm: `--butter` mixed this much toward `--paper` (0 = pure butter). */
     warmSoftening: 0.15,
+    /**
+     * Toward evening (the snow scene's time of day, 0 = afternoon, 1 = evening) the lights come up: from `from` to
+     * `to` of the way, halos grow `haloBoost` times stronger (front halos capped at full) and point lights
+     * `lightBoost` times brighter, so the lamp, windows, fairy lights and lanterns really shine by the last round.
+     */
+    evening: { from: 0.3, to: 0.95, haloBoost: 1.4, lightBoost: 2.6 },
     /** The crayon look of every halo: number of bands, how much they show (0 = smooth), paper grain. */
     bands: 4,
     banding: 0.6,
@@ -114,6 +120,12 @@ export const effects = {
     tint: 0.45,
     shade: 0.75,
     outline: 0,
+    /**
+     * Light on the smoke through the day: at sunset (time 0.5) it catches the warm low sun, `--butter` toward
+     * `--blush` by `sunsetWarm`; by evening it takes the moonlight, toward `--sky-blue` by `eveningCool`.
+     */
+    sunsetWarm: 0.55,
+    eveningCool: 0.35,
   },
 
   /**
