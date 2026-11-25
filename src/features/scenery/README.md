@@ -3,15 +3,25 @@
 Flat hand-drawn cut-outs ("standees") planted upright in the 3D snow. Each one turns to face the camera.
 The main characters are 3D and are not part of this feature.
 
-- `content.ts`: the manifest (`props`, by name; `spare: true` = not in the first layout), the first village layout (`layout`), the two character spots and the layout rules.
+- `content.ts`: the manifest (`props`, by name), the first village layout (`layout`), the two character spots,
+  the layout rules and `previewCamera` (a copy of the snow scene's default camera, for the previews).
+  Per prop: `set` (`doodle` = Rachel's current stickers, `crayon` = the first set, all spare),
+  `kind` (`standee` by default; `character` = model for a 3D main character, never placed;
+  `decal` = flat flourish such as the wind swirl), `spare`, and `motion: "loop"` for the skier and the
+  sliding penguin (candidates for a small looping motion later).
 - `sizes.json`: pixel size of every file. Written by the slicing script, never by hand.
-- `PropSheet.tsx`, `LayoutPreview.tsx`: the `/dev/scenery` check page. Flat HTML only, no 3D.
+- `CameraPreview.tsx`, `LayoutPreview.tsx`, `PropSheet.tsx`, `view.ts`: the `/dev/scenery` check page.
+  `CameraPreview` paints the layout back to front as the default camera sees it (and pulled back 1.6×);
+  `view.ts` is the small pinhole-camera maths behind it. Flat HTML only, no Three.js.
 - Art: `public/assets/scenery/*.webp`, cut from Rachel's sticker sheets in `art-source/scenery/` by `scripts/slice_scenery.py`.
 
 ## The art files
 
-**The art is provisional.** Rachel is regenerating the sheets in a looser, thinner-lined doodle style.
+The current set is Rachel's doodle stickers (`art-source/scenery/doodle-*.png`, four per sheet, 2 by 2).
+The first crayon sheets (`sheet-*.png`, six per sheet) stay in the pipeline as spares.
 Props are referred to only by name (`<name>.webp`), so new files with the same names drop in with no code change.
+Detached bits that belong to a drawing (snow dots, music notes, speed lines) are kept: every piece in a
+grid cell goes with that cell's prop (`min_piece` sets the smallest speck kept, 15 px for the doodle sheets).
 
 Transparent WebP, long side 512 px or less. The **bottom edge of every file is where the prop meets the snow**,
 with no empty margin below (8 px of clear margin on the other three sides).
@@ -40,12 +50,15 @@ see-through gap stays white, lower it or add a hole point.
 
 - One scene unit = one main character's height.
 - Three.js axes: x to the right, y up, z toward the default camera. Negative z is the back of the village.
-- Characters stand at (-3, 0) and (3, 0).
+- Characters stand at (-2.2, 0) and (2.2, 0): 4.4 apart, as the snow scene in PR #17 places them on a landscape screen.
+- The default camera (35° up, 22° field of view, a character fills a fifth of the screen height) is a close
+  diorama view: anything more than about 3 units behind the characters gets cut at the top if it is tall.
+  That is why the village sits close and the buildings are small (cottage 1.5, tree 1.65).
 
 ## Part 2: placing the props in the 3D scene
 
 Start from `props` and `layout`; nothing else is needed. Use `propSrc(id)`, `propPx(id)` and `propWidth(id)`.
-Only props in `layout` are placed; `spare` ones wait for later.
+Only props in `layout` are placed; `spare` ones, the `character` model and `decal`s are not standees.
 
 1. For each `layout` entry, look up `props[entry.prop]`.
 2. Make a plane `propWidth(id) * scale` wide and `height * scale` tall, textured with `propSrc(id)`

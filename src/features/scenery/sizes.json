@@ -3,9 +3,17 @@
     "w": 402,
     "h": 307
   },
+  "bench-snowmen": {
+    "w": 470,
+    "h": 396
+  },
   "berry-bush": {
     "w": 365,
     "h": 281
+  },
+  "boy-snowman": {
+    "w": 404,
+    "h": 387
   },
   "bucket": {
     "w": 315,
@@ -15,6 +23,10 @@
     "w": 428,
     "h": 383
   },
+  "cottage-blue": {
+    "w": 374,
+    "h": 338
+  },
   "fence": {
     "w": 390,
     "h": 245
@@ -23,17 +35,41 @@
     "w": 250,
     "h": 363
   },
+  "flag-blue": {
+    "w": 245,
+    "h": 393
+  },
+  "girl-earmuffs": {
+    "w": 307,
+    "h": 394
+  },
   "igloo": {
     "w": 438,
     "h": 323
+  },
+  "igloo-friends": {
+    "w": 512,
+    "h": 304
   },
   "log-hollow": {
     "w": 424,
     "h": 281
   },
+  "log-music": {
+    "w": 512,
+    "h": 310
+  },
   "mailbox": {
     "w": 304,
     "h": 351
+  },
+  "penguin-bag": {
+    "w": 228,
+    "h": 362
+  },
+  "penguin-slide": {
+    "w": 396,
+    "h": 232
   },
   "penguin-sliding": {
     "w": 384,
@@ -55,6 +91,10 @@
     "w": 296,
     "h": 444
   },
+  "pine-walking": {
+    "w": 323,
+    "h": 449
+  },
   "radio": {
     "w": 334,
     "h": 330
@@ -62,6 +102,14 @@
   "signpost": {
     "w": 380,
     "h": 359
+  },
+  "signpost-snowman": {
+    "w": 329,
+    "h": 312
+  },
+  "skier": {
+    "w": 321,
+    "h": 456
   },
   "sled": {
     "w": 429,
@@ -74,6 +122,14 @@
   "snowball-pile": {
     "w": 365,
     "h": 299
+  },
+  "snowman-bucket-hat": {
+    "w": 369,
+    "h": 460
+  },
+  "snowman-newspaper": {
+    "w": 365,
+    "h": 394
   },
   "snowman-reading": {
     "w": 344,
@@ -94,5 +150,13 @@
   "tree-bare": {
     "w": 445,
     "h": 436
+  },
+  "tree-snowmen": {
+    "w": 512,
+    "h": 417
+  },
+  "wind-swirl": {
+    "w": 299,
+    "h": 190
   }
 }

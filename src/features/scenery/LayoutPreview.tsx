@@ -1,10 +1,11 @@
 import Image from "next/image";
 
-import { characters, layout, layoutRules, propPx, props, propSrc, propWidth, type SceneryProp } from "./content";
+import { characters, layout, layoutRules, propPx, propSettings, propSrc, propWidth } from "./content";
+import { groundFootprint } from "./view";
 
 const { area, lane } = layoutRules;
 /** Extra room above the back row so the tall props there are not cut off in the preview. */
-const HEADROOM = 1.8;
+const HEADROOM = 1.2;
 const viewMinZ = area.minZ - HEADROOM;
 const spanX = area.maxX - area.minX;
 const spanZ = area.maxZ - viewMinZ;
@@ -18,10 +19,14 @@ const THUMB = 0.7;
 
 /**
  * A flat map of the first village layout, seen from above with the default camera at the bottom.
- * Each prop is a small thumbnail standing on its base point; the dashed box is the throwing lane.
+ * Each prop is a small thumbnail standing on its base point; the dashed box is the throwing lane;
+ * the faint outline is the patch of snow the default camera sees.
  */
 export function LayoutPreview() {
   const sorted = [...layout].sort((a, b) => a.z - b.z); // back first, so nearer props overlap them
+  const footprint = groundFootprint()
+    .map(([x, z]) => `${left(x)},${top(z)}`)
+    .join(" ");
 
   return (
     <div className="flex flex-col gap-2">
@@ -29,6 +34,17 @@ export function LayoutPreview() {
         className="relative w-full overflow-hidden rounded-xl border-2 border-snow-shadow bg-muted/60"
         style={{ aspectRatio: `${spanX} / ${spanZ}` }}
       >
+        {/* What the default camera sees */}
+        <svg className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+          <polygon
+            points={footprint}
+            className="fill-paper/40 stroke-ink/40"
+            strokeWidth={0.4}
+            strokeDasharray="1.5 1"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+
         {/* Throwing lane */}
         <div
           className="absolute rounded-lg border-2 border-dashed border-sky-blue bg-paper/50"
@@ -41,7 +57,7 @@ export function LayoutPreview() {
         />
 
         {sorted.map((item, i) => {
-          const p: SceneryProp = props[item.prop];
+          const p = propSettings(item.prop)!;
           const scale = item.scale ?? 1;
           const w = (propWidth(item.prop) * scale * THUMB) / spanX;
           const px = propPx(item.prop) ?? { w: 1, h: 1 };
@@ -79,13 +95,13 @@ export function LayoutPreview() {
             style={{ left: `${left(c.x)}%`, top: `${top(c.z)}%` }}
           >
             <span
-              className={`size-5 rounded-full border-2 border-ink sm:size-7 ${c.name === "left" ? "bg-berry" : "bg-sky-blue"}`}
+              className={`size-5 rounded-full border-2 border-ink sm:size-7 ${c.name === "A" ? "bg-berry" : "bg-sky-blue"}`}
             />
             <span className="text-xs font-bold">{c.name}</span>
           </div>
         ))}
       </div>
-      <p className="text-center text-xs">↓ default camera looks from here, above and in front ↓</p>
+      <p className="text-center text-xs">↓ default camera looks from here, above and in front; dashed outline = what it sees ↓</p>
     </div>
   );
 }
