@@ -55,8 +55,12 @@ export function getLayout(aspect: number): SnowLayout {
 
 /** Unit direction pointing from the scene toward the sun. */
 export function sunDirection(): [number, number, number] {
-  const l = content.light;
-  const el = toRadians(l.sunElevation);
-  const az = toRadians(l.sunAzimuth);
+  return sunDirectionAt(content.light.sunElevation, content.light.sunAzimuth);
+}
+
+/** The same for any height and compass direction (degrees), as the time of day moves the sun. */
+export function sunDirectionAt(elevation: number, azimuth: number): [number, number, number] {
+  const el = toRadians(elevation);
+  const az = toRadians(azimuth);
   return [Math.cos(el) * Math.cos(az), Math.sin(el), -Math.cos(el) * Math.sin(az)];
 }

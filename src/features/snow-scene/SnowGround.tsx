@@ -231,18 +231,7 @@ function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number):
       uHaze: {
         value: new Vector4(content.haze.start, content.haze.end, 0, content.ground.centerZ),
       },
-      uSparkleColor: { value: new Color(content.colors.sparkle) },
-      // scale, strength, tint
-      uGrain: { value: new Vector4(s.grainScale, s.grainStrength, s.grainTint, 0) },
-      // glint size, share lit, flicker speed, brightness
-      uSparkle: {
-        value: new Vector4(
-          s.sparkleCell,
-          s.sparkleAmount,
-          s.sparkleSensitivity,
-          s.sparkleStrength,
-        ),
-      },
+      // uSparkleColor and uSparkle come from sharedUniforms (the time of day changes them).
     });
 
     shader.vertexShader = shader.vertexShader

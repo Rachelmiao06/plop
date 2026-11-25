@@ -5,7 +5,19 @@
 // Design tokens from src/app/globals.css (same names there, with dashes).
 const tokens = {
   snowShadow: "#cfe1f2", // --snow-shadow
+  paper: "#fffdf8", // --paper
+  skyBlue: "#8db7e2", // --sky-blue
+  butter: "#f6de8a", // --butter
+  blush: "#f5c4b8", // --blush
+  slate: "#9aa3ad", // --slate
 } as const;
+
+/** Mix two hex colours (share 0 = a, 1 = b), for light colours made from the tokens. */
+function mixHex(a: string, b: string, share: number): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const out = [0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * share));
+  return `#${out.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
 
 export const content = {
   title: "Plop!",
@@ -198,6 +210,71 @@ export const content = {
   shade: {
     color: tokens.snowShadow,
     strength: 0.65,
+  },
+
+  // Time of day for a match (setTimeOfDay(t): 0 = afternoon, 0.5 = sunset, 1 = evening). The light moves
+  // smoothly through these three keys; between them every number and colour is blended. Afternoon is exactly
+  // the scene's everyday light (the values in `colors`, `shade`, `light` and `surface`). Sunset: a low warm sun
+  // (`--butter` toward `--blush`) and a rosy sky fill. Evening: a cool moon on the other side, a deeper
+  // sky-blue fill, a touch more exposure so the snow stays bright and clean (never murky), and stronger,
+  // bluer sparkles. The cut-outs are never lit, so none of this changes them.
+  timeOfDay: {
+    keys: [
+      {
+        at: 0,
+        sunElevation: 42,
+        sunAzimuth: 128,
+        sun: "#ffe2bd",
+        sunStrength: 3.1,
+        skyFill: "#a9cdf5",
+        groundBounce: "#dfe6f5",
+        skyStrength: 1.7,
+        shadeStrength: 0.65,
+        exposure: 1.0,
+        sparkle: "#fff6e6",
+        sparkleStrength: 2.2,
+        fogTop: "#cfdcf0",
+        fogBottom: "#e3eaf5",
+        snowflake: "#ffffff",
+      },
+      {
+        at: 0.5,
+        sunElevation: 20,
+        sunAzimuth: 150,
+        sun: mixHex(tokens.butter, tokens.blush, 0.55),
+        sunStrength: 4.6,
+        skyFill: mixHex("#a9cdf5", tokens.blush, 0.18),
+        groundBounce: mixHex(tokens.paper, tokens.blush, 0.35),
+        skyStrength: 1.8,
+        shadeStrength: 0.55,
+        exposure: 1.12,
+        sparkle: mixHex(tokens.butter, tokens.paper, 0.4),
+        sparkleStrength: 2.6,
+        fogTop: mixHex(tokens.snowShadow, tokens.blush, 0.45),
+        fogBottom: mixHex(tokens.paper, tokens.butter, 0.35),
+        snowflake: mixHex(tokens.paper, tokens.butter, 0.25),
+      },
+      {
+        at: 1,
+        // The moon, low on the other side.
+        sunElevation: 34,
+        sunAzimuth: 55,
+        sun: mixHex(tokens.skyBlue, tokens.paper, 0.6),
+        sunStrength: 1.9,
+        skyFill: mixHex(tokens.skyBlue, tokens.paper, 0.25),
+        groundBounce: mixHex(tokens.snowShadow, tokens.paper, 0.3),
+        skyStrength: 1.6,
+        shadeStrength: 0.5,
+        exposure: 1.2,
+        sparkle: mixHex(tokens.snowShadow, tokens.paper, 0.5),
+        sparkleStrength: 3.2,
+        fogTop: mixHex(tokens.skyBlue, tokens.slate, 0.45),
+        fogBottom: mixHex(tokens.snowShadow, tokens.skyBlue, 0.5),
+        snowflake: mixHex(tokens.paper, tokens.snowShadow, 0.4),
+      },
+    ],
+    // The /dev/time page's slider label.
+    sliderLabel: "Time of day",
   },
 
   light: {
