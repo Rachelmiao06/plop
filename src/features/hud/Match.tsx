@@ -11,13 +11,16 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 import { content, type SnowmanLook } from "./content";
-import { CrownDoodle, PencilFrame, SnowballDots, SnowmanFace } from "./Doodles";
+import { CrownDoodle, HaloDoodle, PaperFill, PencilFrame, SnowballDots, SnowmanFace } from "./Doodles";
+import { useEvening } from "./hooks";
 import { hudCss, styles } from "./hudStyles";
 
 const t = content.text;
 
 /** A paper note in the middle of the screen. */
 function Card({ label, children, seed }: { label: string; children: ReactNode; seed: number }) {
+  const evening = useEvening();
+  const tint = Math.min(100, content.glass.tint + 18 + content.glass.evening * evening);
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4">
       <style href="plop-hud" precedence="default">
@@ -27,8 +30,9 @@ function Card({ label, children, seed }: { label: string; children: ReactNode; s
         aria-label={label}
         role="dialog"
         className={`pointer-events-auto relative w-full max-w-sm rounded-[calc(var(--radius)*1.4)] px-6 pt-5 pb-6 text-center text-ink ${styles.glass} ${styles.card}`}
-        style={{ "--hud-blur": content.glass.blur, "--hud-tint": content.glass.tint + 18 } as CSSProperties}
+        style={{ "--hud-blur": content.glass.blur, "--hud-tint": tint } as CSSProperties}
       >
+        <PaperFill seed={seed} />
         <PencilFrame seed={seed} radius={28} />
         {children}
       </section>
@@ -129,7 +133,11 @@ function Finisher({ player, crown, seed }: { player: EndPlayer; crown: boolean; 
             <CrownDoodle size={e.crown} />
           </div>
         )}
-        {crown && <div className={`absolute inset-1 top-4 rounded-full ${styles.glow}`} />}
+        {crown && (
+          <div className={`absolute inset-x-0 top-3 bottom-[-6px] ${styles.glow}`}>
+            <HaloDoodle seed={seed} />
+          </div>
+        )}
         <div className="relative mt-4">
           <SnowmanFace look={player.look} size={e.face} seed={seed} />
         </div>

@@ -4,7 +4,7 @@ import { useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { content } from "./content";
 import { StarDoodle, SurpriseLines } from "./Doodles";
 import { useReducedMotion, useSize, useSpring } from "./hooks";
-import { edgeJitter, hatchStrokes, pencilRoundRect, raggedFill } from "./pencil";
+import { edgeJitter, hatchStrokes, pencilRoundRect, pencilRoundRectStrokes, raggedFill } from "./pencil";
 import { styles } from "./hudStyles";
 
 type Props = {
@@ -37,7 +37,10 @@ export function ProgressBar({ down, total, color, knock }: Props) {
   }
 
   const inner = Math.max(0, w - 4);
-  const outline = useMemo(() => pencilRoundRect(w, h, h / 2, 11, { step: 10, overshoot: 6 }), [w, h]);
+  const outline = useMemo(
+    () => pencilRoundRectStrokes(w, h, h / 2, 11, content.pencil.width, { step: 10, overshoot: 6 }),
+    [w, h],
+  );
   const track = useMemo(
     () => pencilRoundRect(w, h, h / 2, 23, { wobble: 0.2, overshoot: 0 }),
     [w, h],
@@ -93,14 +96,18 @@ export function ProgressBar({ down, total, color, knock }: Props) {
                 ))}
               </g>
             </g>
-            <path
-              d={outline}
-              fill="none"
-              stroke="var(--ink)"
-              strokeWidth={content.pencil.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            {outline.map((s, i) => (
+              <path
+                key={i}
+                d={s.d}
+                fill="none"
+                stroke="var(--ink)"
+                strokeWidth={s.width}
+                opacity={s.opacity}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
           </svg>
         </div>
       )}
@@ -131,14 +138,11 @@ export function ProgressBar({ down, total, color, knock }: Props) {
           className="pointer-events-none absolute top-0 right-0 flex -translate-y-3/4 items-center"
           style={{ "--hud-burst": `${content.burst.duration}ms` } as CSSProperties}
         >
-          <div className="absolute -top-2 -left-7">
-            <SurpriseLines size={30} flip />
-          </div>
           <div className={styles.burst}>
             <StarDoodle size={44} />
           </div>
-          <div className="absolute -top-2 -right-7">
-            <SurpriseLines size={30} />
+          <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+            <SurpriseLines size={40} />
           </div>
         </div>
       )}

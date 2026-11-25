@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { content, type SnowmanLook } from "./content";
 import { CornerToggles } from "./CornerToggles";
-import { CrownDoodle, PencilFrame, SnowmanFace } from "./Doodles";
+import { CrownDoodle, HaloDoodle, PaperFill, PencilFrame, SnowmanFace } from "./Doodles";
+import { useEvening } from "./hooks";
 import { ProgressBar } from "./ProgressBar";
 import { hudCss, styles } from "./hudStyles";
 
@@ -115,7 +116,11 @@ function PlayerScore({
         </span>
       )}
       <div className="relative grid size-10 place-items-center">
-        {active && <div className={`absolute -inset-2.5 rounded-full ${styles.glow}`} />}
+        {active && (
+          <div className={`absolute -inset-2.5 ${styles.glow}`}>
+            <HaloDoodle seed={side === "left" ? 2 : 5} />
+          </div>
+        )}
         <div className={`relative transition-transform duration-300 ${active ? "scale-110" : "scale-95 opacity-80"}`}>
           <SnowmanFace look={player.look} size={38} seed={side === "left" ? 3 : 8} />
         </div>
@@ -159,9 +164,10 @@ export function ScoreHud({
 
   const t = content.text;
   const color = content.looks[players[active].look].fill;
+  const evening = useEvening();
   const vars = {
     "--hud-blur": content.glass.blur,
-    "--hud-tint": content.glass.tint,
+    "--hud-tint": Math.min(100, content.glass.tint + content.glass.evening * evening),
     "--hud-pop": `${content.pop.duration}ms`,
   } as CSSProperties;
 
@@ -181,6 +187,7 @@ export function ScoreHud({
             aria-label={t.panelLabel}
             className={`pointer-events-auto relative w-full max-w-md rounded-[var(--radius)] md:max-w-lg px-4 pt-2 pb-2.5 ${styles.glass} ${styles.enter}`}
           >
+            <PaperFill seed={17} />
             <PencilFrame seed={17} radius={20} />
             <p className="sr-only" aria-live="polite">
               {round ? `${t.roundLabel(round.now, round.of)}. ` : ""}
@@ -207,6 +214,7 @@ export function ScoreHud({
                   className={`relative rounded-full px-3 py-0.5 font-heading text-base leading-tight text-ink ${styles.glass} ${styles.tag}`}
                   aria-label={t.roundLabel(round.now, round.of)}
                 >
+                  <PaperFill seed={round.now + 30} />
                   <PencilFrame seed={round.now * 5 + 2} radius={11} overshoot={4} />
                   {t.round(round.now, round.of)}
                 </span>

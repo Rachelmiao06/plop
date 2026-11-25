@@ -64,13 +64,45 @@ export const content = {
     secondPass: 0.35,
     /** How far the line runs past its start, in pixels (pencil outlines rarely close exactly). */
     overshoot: 10,
+    /** Pressure: how much the weight swells and thins along a line (0 = even, 0.45 = ±45%). */
+    pressure: 0.4,
+    /** How much darker and lighter the line gets along with the pressure (0..1). */
+    darkness: 0.2,
+    /** Curve segments per piece of line; each piece has one weight. Smaller = more changes. */
+    piece: 2,
   },
 
   /** The frosted glass: blur of the snow behind, and how much paper white shows. */
   glass: {
     blur: "14px",
-    /** Share of paper white over the blurred snow, 0..100. */
-    tint: 52,
+    /** Share of paper white over the blurred snow, 0..100. Paper first, glass second (#31; was 52). */
+    tint: 70,
+    /** Extra paper white by evening (time of day 1), so the panel stays a lit paper note on the dark snow. */
+    evening: 16,
+  },
+
+  /** The paper inside the panels (#31): grain and a faint coloured-pencil wash. */
+  paper: {
+    /** Strength of the --ink paper grain (0..1). */
+    grain: 0.09,
+    /** Grain size: noise frequency and tile in px. */
+    grainFrequency: 0.85,
+    grainTile: 140,
+    /** The coloured-pencil wash: strength, gap between strokes (px), angle (deg). Afternoon --snow-shadow, evening --butter. */
+    wash: 0.3,
+    washGap: 6,
+    /** Height of one hatched band (px); bands overlap a little. */
+    washBand: 22,
+    washAngle: -28,
+  },
+
+  /** The active player's halo: a --butter crayon ring scribbled a few times round (replaces the soft gradient glow). */
+  halo: {
+    /** Crayon weight (px at 60 px across) and how many times round. */
+    width: 3.4,
+    passes: 3,
+    /** Strength of the light crayon fill inside the ring (0..1). */
+    fill: 0.32,
   },
 
   /** The progress bar. */
@@ -84,6 +116,8 @@ export const content = {
     /** Coloured-pencil hatch: gap between strokes and their angle. */
     hatchGap: 4.5,
     hatchAngle: -32,
+    /** How hand-made the hatch is (0 = even machine strokes, 1 = uneven gaps, lengths, a light second layer). */
+    hatchMess: 1,
     /** How ragged the fill's leading edge is, in pixels. */
     edgeJag: 2.2,
   },
