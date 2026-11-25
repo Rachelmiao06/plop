@@ -11,7 +11,9 @@ import { backdrop, propSrc, village, type PropId } from "../content";
 import { drawnGameLane, throwingView, villageLayout, villageProblems, type GameLane } from "../village";
 import { Backdrop } from "./Backdrop";
 import { Flecks } from "./Flecks";
-import { ChimneySmoke, LampGlow, Tracks } from "./Life";
+import { Tracks } from "./Life";
+// Real light, smoke and ice (three/effects/README.md): these replace the doodle smoke and the painted lamp glow.
+import { ChimneySmoke, FootBank, IceBeds, IceChunks, Icicles, WarmLights } from "./effects/EffectsLayer";
 import { useReducedMotion } from "./motion";
 import { hasOutline } from "./standeeGeometry";
 import { ThickStandee } from "./ThickStandee";
@@ -40,6 +42,9 @@ export function Village({ lane = drawnGameLane, pivot }: Props) {
   return (
     <PaperContext value={paper}>
       <Flecks>
+        {/* Effects: snow heaped before anything suspends, so the pins' physics ground already includes it. */}
+        <FootBank lane={lane} />
+        <IceBeds lane={lane} />
         <Suspense fallback={null}>
           <Standees lane={lane} pivot={pivot} />
         </Suspense>
@@ -107,11 +112,15 @@ function Standees({ lane, pivot }: { lane: GameLane; pivot?: [number, number, nu
           target={target}
           baseY={bases[i]}
           mound={false}
-        />
+        >
+          {/* Effects fixed to the drawing: warm glow and icicles, from the prop's effect tags. */}
+          <WarmLights id={p.id} width={p.width} height={p.height} />
+          <Icicles id={p.id} width={p.width} height={p.height} />
+        </ThickStandee>
         </Mover>
       ))}
       <ChimneySmoke placed={withBases} />
-      <LampGlow placed={withBases} />
+      <IceChunks lane={lane} />
       {process.env.NODE_ENV === "development" && <SightCheck lane={lane} />}
     </>
   );
