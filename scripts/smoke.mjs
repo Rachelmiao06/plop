@@ -9,11 +9,13 @@
  * 4. Reads the home page's <head> and fetches the icons and the share card it points to: each must answer 200
  *    with an image.
  * 5. Checks the first image in the home page body is the WeChat share image (at least 300 px) and loads.
- * 6. Fetches a page that does not exist: it must answer 404.
+ * 6. Opens the invite card with and without a name and group (`/invite`, `/invite?from=test&score=12`, with `g=`): the title must name the
+ *    inviter for WeChat's chat card, and the first image in the body must be the invite's own square card.
  * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
  *    taken and then listed, a rude nickname and an impossible score are refused. The test page `/dev/leaderboard`
  *    is one of the pages in step 3.
- * 8. Fails if the server printed an error while doing all this.
+ * 8. Fetches a page that does not exist: it must answer 404.
+ * 9. Fails if the server printed an error while doing all this.
  *
  * It does NOT run the page in a browser: client-side JavaScript errors, WebGL, the 3D scene, the loading screen
  * fading out and any interaction are not covered. It only proves the server can render every page.
@@ -174,6 +176,37 @@ async function main() {
       await res.arrayBuffer();
       if (res.status === 200) pass(`${src} (${width}px, first image)`);
       else fail(`WeChat share image ${src} answered ${res.status}`);
+    }
+
+    // The invite card: the title is WeChat's chat-card title, so it must say who invites; the first body image is
+    // the card picture.
+    console.log("\nInvite card:");
+    const invites = [
+      ["/invite", "有人邀请你来打雪仗 · Plop!"],
+      ["/invite?from=test&score=12", "test 邀请你来打雪仗 · Plop!"],
+      ["/invite?g=test1234&from=test&score=12", "test 邀请你来打雪仗 · Plop!"],
+    ];
+    for (const [path, title] of invites) {
+      try {
+        const res = await get(base + path);
+        const body = await res.text();
+        const img = body.split(/<body[^>]*>/)[1]?.match(/<img\b[^>]*>/)?.[0] ?? "";
+        const imgSrc = img.match(/\ssrc="([^"]+)"/)?.[1] ?? "";
+        const imgWidth = Number(img.match(/\swidth="(\d+)"/)?.[1] ?? 0);
+        if (res.status !== 200) fail(`${path} answered ${res.status}`);
+        else if (ERROR_MARKERS.some((m) => body.includes(m))) fail(`${path} rendered an error page`);
+        else if (!body.includes(`<title>${title}</title>`)) fail(`${path} has no "${title}" title`);
+        else if (!img.includes("data-wechat-share-image") || !imgSrc.includes("/invite/") || imgWidth < 300)
+          fail(`${path}: the first image in <body> is not the invite card (${imgSrc || "none"}, ${imgWidth}px)`);
+        else {
+          const pic = await get(base + imgSrc);
+          await pic.arrayBuffer();
+          if (pic.status !== 200) fail(`${path}: invite card image ${imgSrc} answered ${pic.status}`);
+          else pass(`${path} 200, "${title}", ${imgSrc} (${imgWidth}px, first image)`);
+        }
+      } catch (e) {
+        fail(`${path} did not answer (${e.message})`);
+      }
     }
 
     console.log("\nLeaderboard API (/api/scores):");

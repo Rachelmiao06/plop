@@ -74,9 +74,10 @@ import { SubmitScore, GroupBoard } from "@/features/leaderboard";
 )}
 ```
 
-Invite page (`src/features/invite/`, the slot under the message; `g` is the link's group id):
+Invite page (`src/features/invite/InviteCard.tsx`: replace the empty `data-leaderboard-slot` div under the message;
+`group` is the link's group id, same 8-character rule):
 
 ```tsx
 import { GroupBoard } from "@/features/leaderboard";
-{g && <GroupBoard group={g} className="mx-auto mt-4" />}
+{group && <GroupBoard group={group} limit={5} className="mx-auto" />}
 ```
