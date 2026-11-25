@@ -9,8 +9,6 @@ export const sharedUniforms = {
   uPixelsPerUnit: { value: 1 },
   // How visible the falling snow is (it thins out when the view flies high).
   uFlakeFade: { value: 1 },
-  // TEMPORARY: 1 while the press test is on, to outline where pressing works.
-  uAreaOutline: { value: 0 },
   uFogTop: { value: new Color(content.colors.fogTop) },
   uFogBottom: { value: new Color(content.colors.fogBottom) },
 };

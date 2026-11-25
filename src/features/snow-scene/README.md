@@ -40,13 +40,13 @@ The play-view distance pulls back by itself when needed so both character spots 
 
 Camera control is never blocked while characters are idle. When a character starts being dragged, call `claimSnowPointer(pointerId)`; that finger then no longer moves the camera. (Wheel and keys are not claimable yet; nothing uses keys.)
 
-Snow is everywhere: the play area (`ground.sizeX` by `ground.sizeZ`, 24 by 18 units, centred on 0, 0) is the part that can be pressed; around it one big cheap surface runs out to a soft haze. The two share the same height function (`baseHeightAt`), the same material and the same points along their meeting line, so there is no seam. Toward the edge of the play area the snow gives less and less (`ground.edgeLock`), so a dent never shows where the pressable part ends. `heightAt` works anywhere; pressing only does something inside the play area.
+Snow is everywhere, and it can be pressed anywhere (up to `ground.pressReach` from the middle). Untouched snow is one big cheap surface out to the haze, shaped by `baseHeightAt`. The first time something presses a spot, a 4 by 4 unit tile of fine grid is made there and remembers the dents; the plain snow hides itself under every tile. Tiles near the middle use 0.05-unit squares, tiles further out 0.1 (only seen from high up), and every tile has a short hidden lip so no gap shows between tiles. Tiles and plain snow share the same height formula, look and edge slopes, so no seam shows. `heightAt` and `packedAt` work everywhere.
 
 ## Files
 
 - `content.ts` every colour and tunable number (grid, snow depth, sun, fog, sparkles, camera, snowfall). Tune here.
-- `snowField.ts` the height grid and the press / crater maths. No drawing.
-- `SnowGround.tsx` draws the play-area grid (re-sends only the changed rows each frame) and the big surrounding snow. Grain, sparkles, far drift shading and the haze are in its shader.
+- `snowField.ts` the untouched-snow formula, the pressed tiles, and the press / crater maths. No drawing.
+- `SnowGround.tsx` draws the plain snow and the pressed tiles (re-sends only the changed rows each frame). Grain, ripples, sparkles, far drift shading and the haze are in its shader.
 - `ViewControls.tsx` the buttons on top of the scene (reset view; temporary look / press switch).
 - `SnowSpray.tsx` dust puffs and clumps thrown up when snow is pressed or hit.
 - `CameraRig.tsx` the camera: turning, zooming, limits, reset. `pointers.ts` which finger belongs to whom, and screen-to-snow aiming.
@@ -64,8 +64,6 @@ Everything temporary is in `TempDragPress.tsx` and is marked `TEMPORARY` where i
 - double click / double tap: punches a crater
 
 Always:
-
-- In Press mode a faint line on the snow shows where pressing works.
 
 Scaling rule (test press only): the test press grows with camera distance (up to `tempDrag.maxScale` times), together with its lag, dig speed and crater size, so from high up a drag still leaves a track you can see. Stamps stay at most `tempDrag.maxStepCells` grid squares apart so wide grooves stay smooth. The real snowball has a fixed size and should call `pressGroove` with its own radius; it is not scaled. Snow dust and clumps grow with the size of the dent that threw them (`spray.baseRadius`, `spray.maxSizeScale`), which is natural for any press, test or real.
 

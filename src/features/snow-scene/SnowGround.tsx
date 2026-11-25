@@ -1,47 +1,86 @@
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  DataTexture,
+  Group,
+  Mesh,
   MeshStandardMaterial,
+  NearestFilter,
+  RedFormat,
+  UnsignedByteType,
   Vector4,
 } from "three";
 import { content } from "./content";
 import { sharedUniforms } from "./sharedUniforms";
 import { SnowContext } from "./snowContext";
-import { baseHeightAt, baseNormalInto, type SnowField } from "./snowField";
+import { baseHeightAt, baseNormalInto, type SnowField, type SnowTile } from "./snowField";
 
-// Draws the snow: the pressable play area as a fine height grid (each frame
-// it re-sends only the rows and columns that were pressed), and around it one
-// big cheap surface out to the haze. Both use the same material.
+// Draws the snow: one big plain surface out to the haze, and on top of it a
+// fine tile of grid wherever something has pressed. The plain snow hides
+// itself under every tile, and both use the same look, so no seam shows.
+// Each frame only the rows that were pressed are re-sent to the graphics card.
 
-function buildGeometry(field: SnowField): BufferGeometry {
-  const { cols, rows } = field;
-  const count = cols * rows;
-  const positions = new Float32Array(count * 3);
-  const normals = new Float32Array(count * 3);
+/** The border points of a tile, walking once round it. */
+function perimeter(tile: SnowTile): number[] {
+  const { cols, rows } = tile;
+  const out: number[] = [];
+  for (let i = 0; i < cols - 1; i++) out.push(i);
+  for (let j = 0; j < rows - 1; j++) out.push(j * cols + cols - 1);
+  for (let i = cols - 1; i > 0; i--) out.push((rows - 1) * cols + i);
+  for (let j = rows - 1; j > 0; j--) out.push(j * cols);
+  return out;
+}
 
+/** Copy a tile's border onto its hanging lip (heights, slopes, packedness). */
+function writeSkirt(
+  tile: SnowTile,
+  ring: number[],
+  positions: Float32Array,
+  normals: Float32Array,
+  pressed: Float32Array,
+): void {
+  const n = tile.cols * tile.rows;
+  const drop = content.ground.skirtDepth;
+  ring.forEach((k, p) => {
+    const s = n + p;
+    positions[s * 3] = positions[k * 3];
+    positions[s * 3 + 1] = positions[k * 3 + 1] - drop;
+    positions[s * 3 + 2] = positions[k * 3 + 2];
+    normals[s * 3] = normals[k * 3];
+    normals[s * 3 + 1] = normals[k * 3 + 1];
+    normals[s * 3 + 2] = normals[k * 3 + 2];
+    pressed[s] = pressed[k];
+  });
+}
+
+/** A tile as a mesh: its grid points, slopes, how packed the snow is, and its hidden lip. */
+function buildTileGeometry(field: SnowField, tile: SnowTile): BufferGeometry {
+  const { cols, rows } = tile;
+  const n = cols * rows;
+  const ring = perimeter(tile);
+  const total = n + ring.length;
+  const positions = new Float32Array(total * 3);
+  const normals = new Float32Array(total * 3);
+  const pressed = new Float32Array(total);
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
       const k = j * cols + i;
-      positions[k * 3] = field.xAt(i);
-      positions[k * 3 + 1] = field.height[k];
-      positions[k * 3 + 2] = field.zAt(j);
-      if (onRim(field, i, j)) {
-        // The outermost points are shared with the snow beyond, and take
-        // their slope from the same place it does, so no seam can show.
-        baseNormalInto(field.xAt(i), field.zAt(j), normals, k * 3);
-      } else {
-        field.normalInto(i, j, normals, k * 3);
-      }
+      positions[k * 3] = tile.xAt(i);
+      positions[k * 3 + 1] = tile.height[k];
+      positions[k * 3 + 2] = tile.zAt(j);
+      field.normalInto(tile, i, j, normals, k * 3);
+      pressed[k] = tile.pressed[k];
     }
   }
+  writeSkirt(tile, ring, positions, normals, pressed);
 
-  const indices = new Uint32Array((cols - 1) * (rows - 1) * 6);
-  let n = 0;
+  const indices = new Uint32Array((cols - 1) * (rows - 1) * 6 + ring.length * 12);
+  let m = 0;
   for (let j = 0; j < rows - 1; j++) {
     for (let i = 0; i < cols - 1; i++) {
       const a = j * cols + i;
@@ -51,120 +90,77 @@ function buildGeometry(field: SnowField): BufferGeometry {
       // Alternate which way each square is split, so steep groove walls
       // do not turn into a saw-tooth in one diagonal direction.
       if ((i + j) % 2 === 0) {
-        indices[n++] = a;
-        indices[n++] = c;
-        indices[n++] = b;
-        indices[n++] = b;
-        indices[n++] = c;
-        indices[n++] = d;
+        indices.set([a, c, b, b, c, d], m);
       } else {
-        indices[n++] = a;
-        indices[n++] = c;
-        indices[n++] = d;
-        indices[n++] = a;
-        indices[n++] = d;
-        indices[n++] = b;
+        indices.set([a, c, d, a, d, b], m);
       }
+      m += 6;
     }
+  }
+  // The lip, facing both ways (it is only ever seen through a hairline gap).
+  for (let p = 0; p < ring.length; p++) {
+    const a = ring[p];
+    const b = ring[(p + 1) % ring.length];
+    const sa = n + p;
+    const sb = n + ((p + 1) % ring.length);
+    indices.set([a, sa, b, b, sa, sb, a, b, sa, b, sb, sa], m);
+    m += 12;
   }
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
   geometry.setAttribute("normal", new BufferAttribute(normals, 3));
-  // Shares the field's own array: how packed the snow is at each point.
-  geometry.setAttribute("aPressed", new BufferAttribute(field.pressed, 1));
+  geometry.setAttribute("aPressed", new BufferAttribute(pressed, 1));
   geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingSphere();
+  geometry.userData.ring = ring;
   return geometry;
 }
 
-const onRim = (field: SnowField, i: number, j: number) =>
-  i === 0 || j === 0 || i === field.cols - 1 || j === field.rows - 1;
-
-/**
- * Grid lines along one direction for the snow beyond the play area: the play
- * area's own lines in the middle, then steps that grow with distance.
- * Returns the positions and where the play area's lines start in that list.
- */
-function surroundLines(inner: number[]): { lines: number[]; start: number } {
+/** Grid lines for the plain snow: fine near the middle, growing with distance. */
+function plainLines(): number[] {
   const f = content.surround;
-  const grow = (from: number, direction: number) => {
-    const out: number[] = [];
-    let step: number = content.ground.cell;
-    let at = from;
-    while (Math.abs(at) < f.reach) {
-      step = Math.min(step * f.growth, f.maxStep);
-      at += step * direction;
-      out.push(at);
-    }
-    return out;
-  };
-  const before = grow(inner[0], -1).reverse();
-  const after = grow(inner[inner.length - 1], 1);
-  return { lines: [...before, ...inner, ...after], start: before.length };
+  const lines = [0];
+  let step: number = f.nearStep;
+  let at = 0;
+  while (at < f.reach) {
+    if (at > f.nearSize) step = Math.min(step * f.growth, f.maxStep);
+    at += step;
+    lines.push(at);
+  }
+  return [...lines.slice(1).map((v) => -v).reverse(), ...lines];
 }
 
-/**
- * The snow beyond the play area: one big, cheap, never-pressed surface with
- * a hole where the play area sits. Along the hole it has exactly the play
- * area's own points, heights and slopes, so the two meet without a seam.
- */
-function buildSurround(field: SnowField): BufferGeometry {
-  const innerX = Array.from({ length: field.cols }, (_, i) => field.xAt(i));
-  const innerZ = Array.from({ length: field.rows }, (_, j) => field.zAt(j));
-  const x = surroundLines(innerX);
-  const z = surroundLines(innerZ);
-  const cols = x.lines.length;
-  const rows = z.lines.length;
-
-  const positions = new Float32Array(cols * rows * 3);
-  const normals = new Float32Array(cols * rows * 3);
-  const inHole = (i: number, j: number) =>
-    i > x.start &&
-    i < x.start + field.cols - 1 &&
-    j > z.start &&
-    j < z.start + field.rows - 1;
-
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols; i++) {
-      if (inHole(i, j)) continue;
-      const k = (j * cols + i) * 3;
-      positions[k] = x.lines[i];
-      positions[k + 1] = Math.fround(baseHeightAt(x.lines[i], z.lines[j]));
-      positions[k + 2] = z.lines[j];
-      baseNormalInto(x.lines[i], z.lines[j], normals, k);
+/** The plain, never-pressed snow everywhere. Cheap: big squares far away. */
+function buildPlainSnow(): BufferGeometry {
+  const lines = plainLines();
+  const count = lines.length;
+  const positions = new Float32Array(count * count * 3);
+  const normals = new Float32Array(count * count * 3);
+  for (let j = 0; j < count; j++) {
+    for (let i = 0; i < count; i++) {
+      const k = (j * count + i) * 3;
+      positions[k] = lines[i];
+      positions[k + 1] = baseHeightAt(lines[i], lines[j]);
+      positions[k + 2] = lines[j];
+      baseNormalInto(lines[i], lines[j], normals, k);
     }
   }
-
-  const indices: number[] = [];
-  for (let j = 0; j < rows - 1; j++) {
-    for (let i = 0; i < cols - 1; i++) {
-      // Skip the squares the play area covers.
-      if (
-        i >= x.start &&
-        i < x.start + field.cols - 1 &&
-        j >= z.start &&
-        j < z.start + field.rows - 1
-      ) {
-        continue;
-      }
-      const a = j * cols + i;
-      const b = a + 1;
-      const c = a + cols;
-      const d = c + 1;
-      indices.push(a, c, b, b, c, d);
+  const indices = new Uint32Array((count - 1) * (count - 1) * 6);
+  let n = 0;
+  for (let j = 0; j < count - 1; j++) {
+    for (let i = 0; i < count - 1; i++) {
+      const a = j * count + i;
+      indices.set([a, a + count, a + 1, a + 1, a + count, a + count + 1], n);
+      n += 6;
     }
   }
-
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
   geometry.setAttribute("normal", new BufferAttribute(normals, 3));
   // Never pressed: all zeros.
-  geometry.setAttribute(
-    "aPressed",
-    new BufferAttribute(new Float32Array(cols * rows), 1),
-  );
-  geometry.setIndex(indices);
+  geometry.setAttribute("aPressed", new BufferAttribute(new Float32Array(count * count), 1));
+  geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -187,7 +183,11 @@ const NOISE_GLSL = /* glsl */ `
   }
 `;
 
-function buildMaterial(): MeshStandardMaterial {
+/**
+ * The snow look. The plain snow's copy also hides itself wherever a tile has
+ * been made (it reads which squares have tiles from `tiles`).
+ */
+function buildMaterial(plain: boolean, tiles: DataTexture, tilesAcross: number): MeshStandardMaterial {
   const g = content.ground;
   const s = content.surface;
   const material = new MeshStandardMaterial({
@@ -196,6 +196,8 @@ function buildMaterial(): MeshStandardMaterial {
     metalness: 0,
     dithering: true,
   });
+  if (plain) material.defines = { SNOW_PLAIN: "" };
+  material.customProgramCacheKey = () => (plain ? "snow-plain" : "snow-tile");
 
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, sharedUniforms, {
@@ -211,22 +213,19 @@ function buildMaterial(): MeshStandardMaterial {
           2 * g.driftHeight * g.driftScale,
         ),
       },
-      // x, y = ripple fade distances; z, w = ripple size and steepness.
+      // Fine ripples, drawn as shading everywhere (x, y < 0 = always on);
+      // z, w = ripple size and steepness.
       uFarRipple: {
         value: new Vector4(
-          content.surround.rippleFadeStart,
-          content.surround.rippleFadeEnd,
+          -2,
+          -1,
           g.rippleScale,
           2 * g.rippleHeight * g.rippleScale,
         ),
       },
-      // TEMPORARY: the pressable area's shape (half size x, half size z,
-      // corner radius, centre z), where to draw its outline, and its colour.
-      uArea: {
-        value: new Vector4(g.sizeX / 2, g.sizeZ / 2, g.cornerRadius, g.centerZ),
-      },
-      uAreaInset: { value: g.edgeLock * 0.5 },
-      uAreaColor: { value: new Color(content.colors.tempAreaOutline) },
+      // Which squares have a tile, and how big a square is.
+      uTiles: { value: tiles },
+      uTileInfo: { value: new Vector4(g.tileSize, tilesAcross, 0, 0) },
       // where the far snow starts and finishes melting into the sky
       uHaze: {
         value: new Vector4(content.haze.start, content.haze.end, 0, content.ground.centerZ),
@@ -272,10 +271,8 @@ function buildMaterial(): MeshStandardMaterial {
         uniform vec2 uResolution;
         uniform vec4 uHaze;
         uniform vec4 uFarDrift;
-        uniform vec4 uArea;
-        uniform float uAreaInset;
-        uniform float uAreaOutline;
-        uniform vec3 uAreaColor;
+        uniform sampler2D uTiles;
+        uniform vec4 uTileInfo;
         uniform vec4 uFarRipple;
         uniform vec4 uGrain;
         uniform vec4 uSparkle;
@@ -286,6 +283,12 @@ function buildMaterial(): MeshStandardMaterial {
       .replace(
         "#include <color_fragment>",
         /* glsl */ `#include <color_fragment>
+        #ifdef SNOW_PLAIN
+          // A tile is drawn here instead: step aside.
+          vec2 tileCell = floor(vSnowPos.xz / uTileInfo.x) + uTileInfo.y * 0.5;
+          if (all(greaterThanEqual(tileCell, vec2(0.0))) && all(lessThan(tileCell, vec2(uTileInfo.y)))
+              && texture2D(uTiles, (tileCell + 0.5) / uTileInfo.y).r > 0.5) discard;
+        #endif
         // Scene units covered by one screen pixel: fine detail fades out
         // before it gets smaller than a pixel and starts to shimmer.
         float snowPx = length(fwidth(vSnowPos.xz));
@@ -372,14 +375,6 @@ function buildMaterial(): MeshStandardMaterial {
       .replace(
         "#include <tonemapping_fragment>",
         /* glsl */ `#include <tonemapping_fragment>
-        // TEMPORARY: in press-test mode, a soft line shows where pressing works.
-        if (uAreaOutline > 0.0) {
-          vec2 areaQ = abs(vSnowPos.xz - vec2(0.0, uArea.w)) - (uArea.xy - uArea.z);
-          float areaD = length(max(areaQ, 0.0)) + min(max(areaQ.x, areaQ.y), 0.0) - uArea.z;
-          float areaPx = max(fwidth(areaD), 1e-4);
-          float areaLine = 1.0 - smoothstep(areaPx, areaPx * 2.5, abs(areaD + uAreaInset));
-          gl_FragColor.rgb = mix(gl_FragColor.rgb, uAreaColor, areaLine * uAreaOutline * 0.6);
-        }
         // Far away the snow melts into the soft sky, like haze at a horizon.
         float haze = smoothstep(uHaze.x, uHaze.y, length(vSnowPos.xz - uHaze.zw));
         vec3 skyColor = mix(uFogBottom, uFogTop, gl_FragCoord.y / uResolution.y);
@@ -390,65 +385,104 @@ function buildMaterial(): MeshStandardMaterial {
   return material;
 }
 
+/** Ask for a texture to be sent to the graphics card again. */
+function resend(texture: DataTexture): void {
+  texture.needsUpdate = true;
+}
+
 export function SnowGround() {
   const field = useContext(SnowContext);
   if (!field) throw new Error("SnowGround must be inside the snow scene");
 
-  const geometry = useMemo(() => buildGeometry(field), [field]);
-  const surround = useMemo(() => buildSurround(field), [field]);
-  const material = useMemo(() => buildMaterial(), []);
+  const parts = useMemo(() => {
+    const across = field.occupancySize;
+    const tiles = new DataTexture(field.occupancy, across, across, RedFormat, UnsignedByteType);
+    tiles.magFilter = NearestFilter;
+    tiles.minFilter = NearestFilter;
+    // One byte per square, rows of any width.
+    tiles.unpackAlignment = 1;
+    tiles.needsUpdate = true;
+    const plain = new Mesh(buildPlainSnow(), buildMaterial(true, tiles, across));
+    plain.receiveShadow = true;
+    plain.frustumCulled = false;
+    plain.raycast = () => {};
+    const tileMaterial = buildMaterial(false, tiles, across);
+    const group = new Group();
+    return { tiles, plain, tileMaterial, group, meshes: new Map<SnowTile, Mesh>() };
+  }, [field]);
+
+  useEffect(
+    () => () => {
+      parts.tiles.dispose();
+      parts.plain.geometry.dispose();
+      (parts.plain.material as MeshStandardMaterial).dispose();
+      parts.tileMaterial.dispose();
+      for (const mesh of parts.meshes.values()) mesh.geometry.dispose();
+    },
+    [parts],
+  );
 
   useFrame((state) => {
     state.gl.getDrawingBufferSize(sharedUniforms.uResolution.value);
 
-    const dirty = field.takeDirty();
-    if (!dirty) return;
-
-    const position = geometry.getAttribute("position") as BufferAttribute;
-    const normal = geometry.getAttribute("normal") as BufferAttribute;
-    const pressed = geometry.getAttribute("aPressed") as BufferAttribute;
-    const positions = position.array as Float32Array;
-    const normals = normal.array as Float32Array;
-    const { cols } = field;
-    const width = dirty.x1 - dirty.x0 + 1;
-
-    for (let j = dirty.z0; j <= dirty.z1; j++) {
-      const rowStart = j * cols + dirty.x0;
-      for (let i = dirty.x0; i <= dirty.x1; i++) {
-        // The outermost points never change; they belong to the seam.
-        if (onRim(field, i, j)) continue;
-        const k = j * cols + i;
-        positions[k * 3 + 1] = field.height[k];
-        field.normalInto(i, j, normals, k * 3);
+    // New tiles: make their meshes and tell the plain snow to step aside.
+    const fresh = field.takeNewTiles();
+    if (fresh.length > 0) {
+      for (const tile of fresh) {
+        const mesh = new Mesh(buildTileGeometry(field, tile), parts.tileMaterial);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.raycast = () => {};
+        parts.meshes.set(tile, mesh);
+        parts.group.add(mesh);
       }
-      // Tell the graphics card about this short run of points only.
-      position.addUpdateRange(rowStart * 3, width * 3);
-      normal.addUpdateRange(rowStart * 3, width * 3);
-      pressed.addUpdateRange(rowStart, width);
+      resend(parts.tiles);
     }
-    position.needsUpdate = true;
-    normal.needsUpdate = true;
-    pressed.needsUpdate = true;
+
+    // Pressed tiles: re-send only the changed rows.
+    for (const [tile, mesh] of parts.meshes) {
+      const dirty = tile.takeDirty();
+      if (!dirty) continue;
+      const geometry = mesh.geometry;
+      const position = geometry.getAttribute("position") as BufferAttribute;
+      const normal = geometry.getAttribute("normal") as BufferAttribute;
+      const pressed = geometry.getAttribute("aPressed") as BufferAttribute;
+      const positions = position.array as Float32Array;
+      const normals = normal.array as Float32Array;
+      const { cols } = tile;
+      const width = dirty.x1 - dirty.x0 + 1;
+      const pressedValues = pressed.array as Float32Array;
+      for (let j = dirty.z0; j <= dirty.z1; j++) {
+        const rowStart = j * cols + dirty.x0;
+        for (let i = dirty.x0; i <= dirty.x1; i++) {
+          const k = j * cols + i;
+          positions[k * 3 + 1] = tile.height[k];
+          field.normalInto(tile, i, j, normals, k * 3);
+          pressedValues[k] = tile.pressed[k];
+        }
+        position.addUpdateRange(rowStart * 3, width * 3);
+        normal.addUpdateRange(rowStart * 3, width * 3);
+        pressed.addUpdateRange(rowStart, width);
+      }
+      // A changed border: move the hidden lip with it.
+      if (dirty.x0 === 0 || dirty.z0 === 0 || dirty.x1 === cols - 1 || dirty.z1 === tile.rows - 1) {
+        const ring = geometry.userData.ring as number[];
+        const start = cols * tile.rows;
+        writeSkirt(tile, ring, positions, normals, pressedValues);
+        position.addUpdateRange(start * 3, ring.length * 3);
+        normal.addUpdateRange(start * 3, ring.length * 3);
+        pressed.addUpdateRange(start, ring.length);
+      }
+      position.needsUpdate = true;
+      normal.needsUpdate = true;
+      pressed.needsUpdate = true;
+    }
   });
 
   return (
     <>
-      <mesh
-        geometry={geometry}
-        material={material}
-        castShadow
-        receiveShadow
-        frustumCulled={false}
-        // Pointer rays skip the big grid; use useSnowPoint instead.
-        raycast={() => null}
-      />
-      <mesh
-        geometry={surround}
-        material={material}
-        receiveShadow
-        frustumCulled={false}
-        raycast={() => null}
-      />
+      <primitive object={parts.plain} />
+      <primitive object={parts.group} />
     </>
   );
 }

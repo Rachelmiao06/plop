@@ -1,8 +1,11 @@
 import { content } from "./content";
 
-// The snow as numbers: a grid of heights that can be pressed down.
-// No drawing happens here; SnowGround reads this grid and redraws only the
-// part that changed, and SnowSpray reads the "kicks" to throw snow up.
+// The snow as numbers. Untouched snow is a formula (baseHeightAt), the same
+// everywhere. Where something presses, small square tiles of fine height grid
+// are made on the spot and remember the dents. So the snow can be pressed
+// anywhere, and only the pressed places cost memory.
+// No drawing happens here; SnowGround draws the tiles and the plain snow
+// around them, and SnowSpray reads the "kicks" to throw snow up.
 
 export type DirtyRect = { x0: number; x1: number; z0: number; z1: number };
 
@@ -87,28 +90,15 @@ function smoothNoise(x: number, z: number): number {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 
-/**
- * Distance from a point to the edge of the play area (the pressable snow,
- * a rounded rectangle): negative inside, zero on the edge, positive outside.
- */
-export function playEdgeDistance(x: number, z: number): number {
-  const g = content.ground;
-  const r = g.cornerRadius;
-  const qx = Math.abs(x) - (g.sizeX / 2 - r);
-  const qz = Math.abs(z - g.centerZ) - (g.sizeZ / 2 - r);
-  const outside = Math.hypot(Math.max(qx, 0), Math.max(qz, 0));
-  return outside + Math.min(Math.max(qx, qz), 0) - r;
-}
-
 const smooth = (lo: number, hi: number, v: number) => {
   const t = clamp01((v - lo) / (hi - lo));
   return t * t * (3 - 2 * t);
 };
 
 /**
- * Height of untouched snow anywhere, near or far: gentle drifts and ripples
- * around the play area, slowly giving way to bigger mounds in the distance.
- * The play area and the snow around it both use this, so they meet exactly.
+ * Height of untouched snow anywhere: gentle drifts near the middle, slowly
+ * giving way to bigger mounds in the distance. (The fine ripples are drawn
+ * as shading only.) Tiles and the plain snow both use this, so they meet exactly.
  */
 export function baseHeightAt(x: number, z: number): number {
   const g = content.ground;
@@ -117,17 +107,11 @@ export function baseHeightAt(x: number, z: number): number {
   const near = 1 - smooth(f.driftFadeStart, f.driftFadeEnd, far);
   let h = 0;
   if (near > 0) {
-    const drift =
+    h +=
       (smoothNoise(x * g.driftScale + 11.3, z * g.driftScale + 4.7) - 0.5) *
       2 *
-      g.driftHeight;
-    const ripple =
-      (smoothNoise(x * g.rippleScale + 3.1, z * g.rippleScale * 1.7 + 8.2) - 0.5) *
-      2 *
-      g.rippleHeight;
-    // Ripples are finer than drifts, so they have to fade out sooner.
-    const fine = 1 - smooth(f.rippleFadeStart, f.rippleFadeEnd, far);
-    h += (drift + ripple * fine) * near;
+      g.driftHeight *
+      near;
   }
   const mid =
     smooth(f.midStart, f.midFull, far) * (1 - smooth(f.midFadeStart, f.midFadeEnd, far));
@@ -164,7 +148,10 @@ export function baseNormalInto(
   out[offset + 2] = -sz * inv;
 }
 
-export class SnowField implements SnowApi {
+/** One square of fine, pressable snow. Made the first time something presses there. */
+export class SnowTile {
+  readonly tx: number;
+  readonly tz: number;
   readonly cols: number;
   readonly rows: number;
   readonly cell: number;
@@ -179,40 +166,29 @@ export class SnowField implements SnowApi {
    * plus up to 1 more where it is pressed right down to hard ground.
    */
   readonly pressed: Float32Array;
-  /**
-   * How far the snow may be pressed per grid point: 1 in the middle of the
-   * play area, easing to 0 at its edge so the snow there always matches the
-   * untouched snow beyond it.
-   */
-  readonly give: Float32Array;
+  dirty: DirtyRect | null = null;
 
-  private dirty: DirtyRect | null = null;
-  private kicks: Kick[] = [];
-
-  constructor() {
+  constructor(tx: number, tz: number) {
     const g = content.ground;
-    this.cell = g.cell;
-    this.cols = Math.round(g.sizeX / g.cell) + 1;
-    this.rows = Math.round(g.sizeZ / g.cell) + 1;
-    this.originX = -((this.cols - 1) * g.cell) / 2;
-    this.originZ = g.centerZ - ((this.rows - 1) * g.cell) / 2;
-
+    const size = g.tileSize;
+    this.tx = tx;
+    this.tz = tz;
+    const away = Math.hypot((tx + 0.5) * size, (tz + 0.5) * size - g.centerZ);
+    this.cell = away < g.fineRadius ? g.cell : g.farCell;
+    this.cols = Math.round(size / this.cell) + 1;
+    this.rows = this.cols;
+    this.originX = tx * size;
+    this.originZ = tz * size;
     const n = this.cols * this.rows;
     this.height = new Float32Array(n);
     this.base = new Float32Array(n);
     this.pressed = new Float32Array(n);
-    this.give = new Float32Array(n);
-
     for (let j = 0; j < this.rows; j++) {
       for (let i = 0; i < this.cols; i++) {
-        const x = this.originX + i * g.cell;
-        const z = this.originZ + j * g.cell;
-        const h = baseHeightAt(x, z);
         const k = j * this.cols + i;
+        const h = baseHeightAt(this.xAt(i), this.zAt(j));
         this.base[k] = h;
         this.height[k] = h;
-        const inset = clamp01(-playEdgeDistance(x, z) / g.edgeLock);
-        this.give[k] = inset * inset * (3 - 2 * inset);
       }
     }
   }
@@ -225,11 +201,9 @@ export class SnowField implements SnowApi {
     return this.originZ + j * this.cell;
   }
 
-  private sample(grid: Float32Array, x: number, z: number): number {
-    const fx = (x - this.originX) / this.cell;
-    const fz = (z - this.originZ) / this.cell;
-    const cx = Math.min(Math.max(fx, 0), this.cols - 1.001);
-    const cz = Math.min(Math.max(fz, 0), this.rows - 1.001);
+  sample(grid: Float32Array, x: number, z: number): number {
+    const cx = Math.min(Math.max((x - this.originX) / this.cell, 0), this.cols - 1.001);
+    const cz = Math.min(Math.max((z - this.originZ) / this.cell, 0), this.rows - 1.001);
     const i = Math.floor(cx);
     const j = Math.floor(cz);
     const u = cx - i;
@@ -242,19 +216,103 @@ export class SnowField implements SnowApi {
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
 
-  heightAt = (x: number, z: number): number =>
-    this.contains(x, z) ? this.sample(this.height, x, z) : baseHeightAt(x, z);
-
-  /** True if this point is over the pressable grid. */
-  private contains(x: number, z: number): boolean {
-    const fx = (x - this.originX) / this.cell;
-    const fz = (z - this.originZ) / this.cell;
-    return fx >= 0 && fz >= 0 && fx <= this.cols - 1 && fz <= this.rows - 1;
+  markDirty(i0: number, i1: number, j0: number, j1: number): void {
+    if (!this.dirty) {
+      this.dirty = { x0: i0, x1: i1, z0: j0, z1: j1 };
+    } else {
+      this.dirty.x0 = Math.min(this.dirty.x0, i0);
+      this.dirty.x1 = Math.max(this.dirty.x1, i1);
+      this.dirty.z0 = Math.min(this.dirty.z0, j0);
+      this.dirty.z1 = Math.max(this.dirty.z1, j1);
+    }
   }
 
-  packedAt = (x: number, z: number): number =>
-    clamp01(this.sample(this.pressed, x, z));
+  /** The part changed since the last call, or null if nothing changed. */
+  takeDirty(): DirtyRect | null {
+    const d = this.dirty;
+    this.dirty = null;
+    return d;
+  }
 
+  isBorder(i: number, j: number): boolean {
+    return i === 0 || j === 0 || i === this.cols - 1 || j === this.rows - 1;
+  }
+}
+
+/** A tile and the part of it a press touches. */
+type Span = { tile: SnowTile; i0: number; i1: number; j0: number; j1: number };
+
+export class SnowField implements SnowApi {
+  readonly cell = content.ground.cell;
+  readonly tiles = new Map<string, SnowTile>();
+  /** Which tile squares exist, for the plain snow to hide itself under them. */
+  readonly occupancy: Uint8Array;
+  readonly occupancySize: number;
+
+  private fresh: SnowTile[] = [];
+  private kicks: Kick[] = [];
+
+  constructor() {
+    const g = content.ground;
+    this.occupancySize = 2 * Math.ceil(g.pressReach / g.tileSize);
+    this.occupancy = new Uint8Array(this.occupancySize * this.occupancySize);
+  }
+
+  private key(tx: number, tz: number): string {
+    return `${tx},${tz}`;
+  }
+
+  private tileAt(x: number, z: number): SnowTile | undefined {
+    const size = content.ground.tileSize;
+    return this.tiles.get(this.key(Math.floor(x / size), Math.floor(z / size)));
+  }
+
+  /** Make sure tiles exist over this area (within reach and the tile limit). */
+  private ensureTiles(x0: number, x1: number, z0: number, z1: number): void {
+    const g = content.ground;
+    const size = g.tileSize;
+    const half = this.occupancySize / 2;
+    for (let tz = Math.floor(z0 / size); tz <= Math.floor(z1 / size); tz++) {
+      for (let tx = Math.floor(x0 / size); tx <= Math.floor(x1 / size); tx++) {
+        if (tx < -half || tz < -half || tx >= half || tz >= half) continue;
+        const key = this.key(tx, tz);
+        if (this.tiles.has(key) || this.tiles.size >= g.maxTiles) continue;
+        const tile = new SnowTile(tx, tz);
+        this.tiles.set(key, tile);
+        this.fresh.push(tile);
+        // 255 = "tile here" (the graphics card reads a byte as 0 to 1).
+        this.occupancy[(tz + half) * this.occupancySize + (tx + half)] = 255;
+      }
+    }
+  }
+
+  /** The parts of existing tiles that this area covers. */
+  private spans(x0: number, x1: number, z0: number, z1: number): Span[] {
+    const size = content.ground.tileSize;
+    const out: Span[] = [];
+    for (let tz = Math.floor(z0 / size); tz <= Math.floor(z1 / size); tz++) {
+      for (let tx = Math.floor(x0 / size); tx <= Math.floor(x1 / size); tx++) {
+        const tile = this.tiles.get(this.key(tx, tz));
+        if (!tile) continue;
+        const i0 = Math.max(Math.floor((x0 - tile.originX) / tile.cell), 0);
+        const i1 = Math.min(Math.ceil((x1 - tile.originX) / tile.cell), tile.cols - 1);
+        const j0 = Math.max(Math.floor((z0 - tile.originZ) / tile.cell), 0);
+        const j1 = Math.min(Math.ceil((z1 - tile.originZ) / tile.cell), tile.rows - 1);
+        if (i0 <= i1 && j0 <= j1) out.push({ tile, i0, i1, j0, j1 });
+      }
+    }
+    return out;
+  }
+
+  heightAt = (x: number, z: number): number => {
+    const tile = this.tileAt(x, z);
+    return tile ? tile.sample(tile.height, x, z) : baseHeightAt(x, z);
+  };
+
+  packedAt = (x: number, z: number): number => {
+    const tile = this.tileAt(x, z);
+    return tile ? clamp01(tile.sample(tile.pressed, x, z)) : 0;
+  };
 
   pressGroove = (
     x: number,
@@ -265,8 +323,8 @@ export class SnowField implements SnowApi {
     const p = content.press;
     const depth = content.ground.depth;
     const r = Math.max(ballRadius, this.cell);
-    const surface = this.sample(this.base, x, z);
-    const current = this.sample(this.height, x, z);
+    const surface = baseHeightAt(x, z);
+    const current = this.heightAt(x, z);
     const rest = Math.min(r * p.sinkPerRadius, depth);
     // The lowest point of the ball: at least its resting depth, deeper if
     // asked to dig. It may dip a little "below" hard ground so that the pit
@@ -301,10 +359,10 @@ export class SnowField implements SnowApi {
           : bottom + h0 + (d - d0) * m;
       },
       rimShare: p.rimShare,
-      rimWidth: Math.min(radius * p.rimWidth, p.rimWidthMax),
+      rimWidth: Math.min(radius * p.rimWidth, p.rimWidthMax * Math.max(r / 0.28, 1)),
       rimCap: Math.min(
         Math.max(Math.min(sink, depth) * p.rimHeightPerDepth, p.rimMinHeight),
-        p.rimMaxHeight,
+        p.rimMaxHeight * Math.max(r / 0.28, 1),
       ),
       lumpiness: 0,
       moveX: moving ? vx / speed : 0,
@@ -320,14 +378,14 @@ export class SnowField implements SnowApi {
     const r = Math.max(radius, this.cell);
     const depth = Math.min(r * c.depthPerRadius, content.ground.depth);
     // Measured from the snow as it is now, so a second hit digs deeper.
-    const surface = this.sample(this.height, x, z);
+    const surface = this.heightAt(x, z);
     const removed = this.stamp(x, z, {
       radius: r,
       // A bowl: deepest in the middle, meeting the surface at the edge.
       shapeAt: (d2) => surface - depth * (1 - d2 / (r * r)),
       rimShare: c.rimShare,
       rimWidth: r * c.rimWidth,
-      rimCap: c.rimMaxHeight,
+      rimCap: c.rimMaxHeight * Math.max(r / 0.5, 1),
       lumpiness: c.rimLumpiness,
       moveX: 0,
       moveZ: 0,
@@ -338,20 +396,18 @@ export class SnowField implements SnowApi {
 
   /**
    * Lower the snow inside `radius` to the given shape, then pile part of the
-   * snow that was pushed away into a ring just outside it. Returns how much
-   * snow was pushed away (summed height over grid points).
+   * snow that was pushed away into a ring just outside it. Works across tile
+   * borders. Returns how much snow was pushed away (summed height over grid points).
    */
   private stamp(x: number, z: number, s: Stamp): number {
-    const { cols, rows, cell, height, base, pressed, give } = this;
     const floorDepth = content.ground.depth;
     const p = content.press;
     const rimOuter = s.radius + s.rimWidth;
-
-    const i0 = Math.max(Math.floor((x - rimOuter - this.originX) / cell), 0);
-    const i1 = Math.min(Math.ceil((x + rimOuter - this.originX) / cell), cols - 1);
-    const j0 = Math.max(Math.floor((z - rimOuter - this.originZ) / cell), 0);
-    const j1 = Math.min(Math.ceil((z + rimOuter - this.originZ) / cell), rows - 1);
-    if (i0 > i1 || j0 > j1) return 0;
+    // One extra grid square all round, because the slope there changes too.
+    const reach = rimOuter + this.cell * 2;
+    this.ensureTiles(x - reach, x + reach, z - reach, z + reach);
+    const spans = this.spans(x - rimOuter, x + rimOuter, z - rimOuter, z + rimOuter);
+    if (spans.length === 0) return 0;
 
     const r2 = s.radius * s.radius;
     const outer2 = rimOuter * rimOuter;
@@ -359,29 +415,31 @@ export class SnowField implements SnowApi {
     let rimWeight = 0;
 
     // First pass: press down, and measure how much room the rim has.
-    for (let j = j0; j <= j1; j++) {
-      const dz = this.zAt(j) - z;
-      for (let i = i0; i <= i1; i++) {
-        const dx = this.xAt(i) - x;
-        const d2 = dx * dx + dz * dz;
-        const k = j * cols + i;
-        if (d2 < r2) {
-          const floor = base[k] - floorDepth;
-          // Near the edge of the play area the snow gives less and less.
-          const target = Math.max(s.shapeAt(d2), base[k] - floorDepth * give[k]);
-          if (height[k] > target) {
-            removed += height[k] - target;
-            height[k] = target;
+    for (const { tile, i0, i1, j0, j1 } of spans) {
+      const { cols, height, base, pressed } = tile;
+      for (let j = j0; j <= j1; j++) {
+        const dz = tile.zAt(j) - z;
+        for (let i = i0; i <= i1; i++) {
+          const dx = tile.xAt(i) - x;
+          const d2 = dx * dx + dz * dz;
+          const k = j * cols + i;
+          if (d2 < r2) {
+            const floor = base[k] - floorDepth;
+            const target = Math.max(s.shapeAt(d2), floor);
+            if (height[k] > target) {
+              removed += height[k] - target;
+              height[k] = target;
+            }
+            const sunk = base[k] - height[k];
+            if (sunk > 0) {
+              // Deeper = darker and bluer; right at hard ground, a second tint.
+              const tint = Math.min((sunk / p.fullTintDepth) ** 0.7, 1);
+              const hard = clamp01(1 - (height[k] - floor) / p.hardGroundBlend);
+              if (tint + hard > pressed[k]) pressed[k] = tint + hard;
+            }
+          } else if (d2 < outer2) {
+            rimWeight += this.rimWeightAt(tile, dx, dz, d2, k, s);
           }
-          const sunk = base[k] - height[k];
-          if (sunk > 0) {
-            // Deeper = darker and bluer; right at hard ground, a second tint.
-            const tint = Math.min((sunk / p.fullTintDepth) ** 0.7, 1);
-            const hard = clamp01(1 - (height[k] - floor) / p.hardGroundBlend);
-            if (tint + hard > pressed[k]) pressed[k] = tint + hard;
-          }
-        } else if (d2 < outer2) {
-          rimWeight += this.rimWeightAt(dx, dz, d2, k, s);
         }
       }
     }
@@ -389,44 +447,84 @@ export class SnowField implements SnowApi {
     if (removed > 0 && rimWeight > 0) {
       // Second pass: pile the pushed-away snow onto the ring.
       const perWeight = (removed * s.rimShare) / rimWeight;
-      for (let j = j0; j <= j1; j++) {
-        const dz = this.zAt(j) - z;
-        for (let i = i0; i <= i1; i++) {
-          const dx = this.xAt(i) - x;
-          const d2 = dx * dx + dz * dz;
-          if (d2 < r2 || d2 >= outer2) continue;
-          const k = j * cols + i;
-          const w = this.rimWeightAt(dx, dz, d2, k, s);
-          if (w <= 0) continue;
-          const top = base[k] + s.rimCap * Math.min(w, 1 + s.plough) * give[k];
-          if (height[k] < top) {
-            height[k] = Math.min(height[k] + perWeight * w, top);
+      for (const { tile, i0, i1, j0, j1 } of spans) {
+        const { cols, height, base } = tile;
+        for (let j = j0; j <= j1; j++) {
+          const dz = tile.zAt(j) - z;
+          for (let i = i0; i <= i1; i++) {
+            const dx = tile.xAt(i) - x;
+            const d2 = dx * dx + dz * dz;
+            if (d2 < r2 || d2 >= outer2) continue;
+            const k = j * cols + i;
+            const w = this.rimWeightAt(tile, dx, dz, d2, k, s);
+            if (w <= 0) continue;
+            const top = base[k] + s.rimCap * Math.min(w, 1 + s.plough);
+            if (height[k] < top) {
+              height[k] = Math.min(height[k] + perWeight * w, top);
+            }
           }
         }
       }
 
       // Third pass: soften the piled-up ring a little, so it reads as loose
-      // snow instead of single sharp points.
-      for (let j = Math.max(j0, 1); j <= Math.min(j1, rows - 2); j++) {
-        const dz = this.zAt(j) - z;
-        for (let i = Math.max(i0, 1); i <= Math.min(i1, cols - 2); i++) {
-          const dx = this.xAt(i) - x;
-          const d2 = dx * dx + dz * dz;
-          if (d2 < r2 || d2 >= outer2) continue;
-          const k = j * cols + i;
-          if (height[k] <= base[k]) continue;
-          const around =
-            (height[k - 1] + height[k + 1] + height[k - cols] + height[k + cols]) / 4;
-          height[k] += (Math.max(around, base[k]) - height[k]) * p.rimSoften;
+      // snow instead of single sharp points. A point on a tile border is
+      // shared with the next tile, so it is done once and written to both.
+      const done = new Set<string>();
+      for (const { tile, i0, i1, j0, j1 } of spans) {
+        const { cols, height, base, cell } = tile;
+        for (let j = j0; j <= j1; j++) {
+          const pz = tile.zAt(j);
+          const dz = pz - z;
+          for (let i = i0; i <= i1; i++) {
+            const px = tile.xAt(i);
+            const dx = px - x;
+            const d2 = dx * dx + dz * dz;
+            if (d2 < r2 || d2 >= outer2) continue;
+            const k = j * cols + i;
+            if (height[k] <= base[k]) continue;
+            if (!tile.isBorder(i, j)) {
+              const around =
+                (height[k - 1] + height[k + 1] + height[k - cols] + height[k + cols]) / 4;
+              height[k] += (Math.max(around, base[k]) - height[k]) * p.rimSoften;
+              continue;
+            }
+            const key = `${Math.round(px / cell)},${Math.round(pz / cell)},${cell}`;
+            if (done.has(key)) continue;
+            done.add(key);
+            const around =
+              (this.heightAt(px - cell, pz) +
+                this.heightAt(px + cell, pz) +
+                this.heightAt(px, pz - cell) +
+                this.heightAt(px, pz + cell)) /
+              4;
+            const next = height[k] + (Math.max(around, base[k]) - height[k]) * p.rimSoften;
+            for (const other of spans) {
+              const t = other.tile;
+              if (t.cell !== cell) continue;
+              const oi = Math.round((px - t.originX) / cell);
+              const oj = Math.round((pz - t.originZ) / cell);
+              if (oi < 0 || oj < 0 || oi >= t.cols || oj >= t.rows) continue;
+              t.height[oj * t.cols + oi] = next;
+            }
+          }
         }
       }
     }
 
-    this.markDirty(i0, i1, j0, j1);
+    // Mark what changed, plus a square all round (its slope changes too).
+    for (const { tile, i0, i1, j0, j1 } of this.spans(
+      x - rimOuter - this.cell,
+      x + rimOuter + this.cell,
+      z - rimOuter - this.cell,
+      z + rimOuter + this.cell,
+    )) {
+      tile.markDirty(i0, i1, j0, j1);
+    }
     return removed;
   }
 
   private rimWeightAt(
+    tile: SnowTile,
     dx: number,
     dz: number,
     d2: number,
@@ -436,7 +534,7 @@ export class SnowField implements SnowApi {
     const d = Math.sqrt(d2);
     // A soft hump across the ring; snow already pushed down (an older groove) takes none.
     let w = Math.sin(Math.PI * clamp01((d - s.radius) / s.rimWidth));
-    const sunk = (this.base[k] - this.height[k]) / content.press.rimSkipDepth;
+    const sunk = (tile.base[k] - tile.height[k]) / content.press.rimSkipDepth;
     w *= clamp01(1 - sunk);
     if (s.plough > 0 && d > 0) {
       // More ahead of the movement, some beside it, very little behind.
@@ -445,7 +543,7 @@ export class SnowField implements SnowApi {
     }
     if (s.lumpiness > 0) {
       const angle = Math.atan2(dz, dx);
-      const lump = smoothNoise(angle * 2.5 + k * 0.0001, s.radius * 9.1);
+      const lump = smoothNoise(angle * 2.5 + (dx + dz) * 0.37, s.radius * 9.1);
       w *= 1 - s.lumpiness + s.lumpiness * 2 * lump;
     }
     return w;
@@ -482,38 +580,32 @@ export class SnowField implements SnowApi {
     return k;
   }
 
-  private markDirty(i0: number, i1: number, j0: number, j1: number): void {
-    // One extra grid point all round, because the slope of the neighbours changes too.
-    const x0 = Math.max(i0 - 1, 0);
-    const x1 = Math.min(i1 + 1, this.cols - 1);
-    const z0 = Math.max(j0 - 1, 0);
-    const z1 = Math.min(j1 + 1, this.rows - 1);
-    if (!this.dirty) {
-      this.dirty = { x0, x1, z0, z1 };
+  /** Tiles made since the last call (for drawing). */
+  takeNewTiles(): SnowTile[] {
+    if (this.fresh.length === 0) return this.fresh;
+    const t = this.fresh;
+    this.fresh = [];
+    return t;
+  }
+
+  /** Surface slope at a tile's grid point, written as an upward-pointing normal. */
+  normalInto(tile: SnowTile, i: number, j: number, out: Float32Array, offset: number): void {
+    let sx: number;
+    let sz: number;
+    if (tile.isBorder(i, j)) {
+      // At a tile's edge, look across into the neighbour (or plain snow), so
+      // both sides of the edge get the same slope and no line shows.
+      const x = tile.xAt(i);
+      const z = tile.zAt(j);
+      const e = tile.cell;
+      sx = (this.heightAt(x + e, z) - this.heightAt(x - e, z)) / (2 * e);
+      sz = (this.heightAt(x, z + e) - this.heightAt(x, z - e)) / (2 * e);
     } else {
-      this.dirty.x0 = Math.min(this.dirty.x0, x0);
-      this.dirty.x1 = Math.max(this.dirty.x1, x1);
-      this.dirty.z0 = Math.min(this.dirty.z0, z0);
-      this.dirty.z1 = Math.max(this.dirty.z1, z1);
+      const { cols, height, cell } = tile;
+      const k = j * cols + i;
+      sx = (height[k + 1] - height[k - 1]) / (2 * cell);
+      sz = (height[k + cols] - height[k - cols]) / (2 * cell);
     }
-  }
-
-  /** The region changed since the last call, or null if nothing changed. */
-  takeDirty(): DirtyRect | null {
-    const d = this.dirty;
-    this.dirty = null;
-    return d;
-  }
-
-  /** Surface slope at a grid point, written as an upward-pointing normal. */
-  normalInto(i: number, j: number, out: Float32Array, offset: number): void {
-    const { cols, rows, height, cell } = this;
-    const il = i > 0 ? i - 1 : i;
-    const ir = i < cols - 1 ? i + 1 : i;
-    const jd = j > 0 ? j - 1 : j;
-    const ju = j < rows - 1 ? j + 1 : j;
-    const sx = (height[j * cols + ir] - height[j * cols + il]) / ((ir - il) * cell);
-    const sz = (height[ju * cols + i] - height[jd * cols + i]) / ((ju - jd) * cell);
     const inv = 1 / Math.sqrt(sx * sx + sz * sz + 1);
     out[offset] = -sx * inv;
     out[offset + 1] = inv;

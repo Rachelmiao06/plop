@@ -14,39 +14,47 @@ export const content = {
   tempPressHint: "Press and hold, or drag, on the snow. Double tap for a crater.",
 
   ground: {
-    // Size of the play area: the part of the snow that can be pressed
-    // (centred on 0, 0), and how round its corners are.
-    sizeX: 24,
-    sizeZ: 18,
+    // The middle of the play area (the characters stand around it).
     centerZ: 0,
-    cornerRadius: 3,
-    // Toward the edge of the play area the snow gives less and less, so a
-    // dent never shows where the pressable snow ends.
-    edgeLock: 1,
-    // Width of one grid square. Smaller = finer dents, more work for the phone.
+    // Snow can be pressed anywhere. Where something presses, square tiles of
+    // fine grid are made on the spot: this big (scene units), with grid
+    // squares this wide (smaller = finer dents, more work for the phone).
+    tileSize: 4,
     cell: 0.05,
+    // Tiles further than this from the middle use coarser squares (only seen
+    // from high up), and every tile has a short hidden lip hanging down its
+    // edges so no gap shows where a fine and a coarse tile meet.
+    fineRadius: 12,
+    farCell: 0.1,
+    skirtDepth: 0.5,
+    // How far from the middle pressing works (beyond it the snow is haze),
+    // and the most tiles kept, so memory stays bounded.
+    pressReach: 60,
+    maxTiles: 400,
     // How far down the snow can be pressed before it hits hard ground.
     depth: 0.9,
     // Gentle drifts so the surface is not a flat sheet.
     driftHeight: 0.09,
     driftScale: 0.42,
+    // Fine ripples, drawn as shading only.
     rippleHeight: 0.009,
     rippleScale: 2.6,
   },
 
-  // The snow beyond the play area: it only has to look right, never be pressed.
+  // The plain snow everywhere, until something presses it.
   surround: {
     // How far the snow reaches from the middle, in every direction.
     reach: 92,
-    // Grid squares grow by this factor per step away from the play area, up to this size.
+    // Grid squares of this size out to nearSize from the middle, then
+    // growing by this factor per step, up to maxStep.
+    nearStep: 0.15,
+    nearSize: 12,
     growth: 1.09,
     maxStep: 3,
     // The far grid is too coarse to draw small shapes, so detail hands over
-    // with distance from the middle: ripples fade first, then the small
-    // drifts, while medium drifts and then big mounds take over. Low views
-    // get their depth from those.
-    rippleFadeStart: 5,
-    rippleFadeEnd: 7.5,
+    // with distance from the middle: the small drifts become shading only,
+    // while medium drifts and then big mounds take over. Low views get
+    // their depth from those.
     driftFadeStart: 6,
     driftFadeEnd: 9.5,
     midStart: 3.5,
@@ -157,8 +165,6 @@ export const content = {
     fogBottom: "#e3eaf5",
     snowflake: "#ffffff",
     snowDust: "#ffffff",
-    // TEMPORARY: outline of the pressable area, shown in "Press" mode.
-    tempAreaOutline: "#7f97c4",
     // TEMPORARY: stand-in blocks shown with ?guides in the address.
     tempGuide: "#e58a6b",
   },
@@ -174,7 +180,7 @@ export const content = {
     // Shadows: sharpness and softness.
     shadowMapSize: 2048,
     shadowSoftness: 5,
-    shadowArea: 12,
+    shadowArea: 16,
     shadowBias: -0.0004,
     shadowNormalBias: 0.05,
   },

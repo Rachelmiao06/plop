@@ -5,7 +5,6 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { content } from "./content";
 import { snowPointers, snowView } from "./pointers";
-import { sharedUniforms } from "./sharedUniforms";
 
 // The few buttons that sit on top of the scene.
 export function ViewControls() {
@@ -15,8 +14,6 @@ export function ViewControls() {
     setPressing(press);
     // While pressing, a one-finger drag presses the snow instead of turning the view.
     snowPointers.lookOff = press;
-    // ...and the pressable area is outlined on the snow.
-    sharedUniforms.uAreaOutline.value = press ? 1 : 0;
   };
 
   return (

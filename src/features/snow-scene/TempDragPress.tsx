@@ -262,6 +262,7 @@ export function TempFps() {
       __plopCamera?: typeof camera;
       __plopTrail?: () => typeof tempTrail;
       __plopSharpness?: (ratio: number) => void;
+      __plopGl?: () => unknown;
       __plopView?: () => ReturnType<NonNullable<typeof snowView.state>> | undefined;
     };
     w.__plopBench = bench;
@@ -269,12 +270,14 @@ export function TempFps() {
     w.__plopTrail = () => tempTrail;
     w.__plopSharpness = (ratio: number) => get().setDpr(ratio);
     w.__plopView = () => snowView.state?.();
+    w.__plopGl = () => get().gl;
     return () => {
       delete w.__plopBench;
       delete w.__plopCamera;
       delete w.__plopTrail;
       delete w.__plopSharpness;
       delete w.__plopView;
+      delete w.__plopGl;
     };
   }, [show, get]);
 
