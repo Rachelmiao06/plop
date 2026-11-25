@@ -12,7 +12,18 @@ import { MatchEnd, MatchStart, ScoreHud } from "@/features/hud";
 import { createPins, formationById, PinsPopup, PinsStage, softSnowFor } from "@/features/pins";
 import { PaperFinish } from "@/features/look";
 import { Village } from "@/features/scenery";
-import { SnowScene } from "@/features/snow-scene";
+import { easeTimeOfDay, getTimeOfDay, setTimeOfDay, SnowScene } from "@/features/snow-scene";
+import {
+  getAudioSettings,
+  playRoundStart,
+  playTap,
+  playTie,
+  playWin,
+  setAmbienceVolume,
+  startAmbienceOnFirstTouch,
+  stopAmbience,
+  subscribeAudioSettings,
+} from "@/lib/audio";
 
 import { GAME, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
@@ -57,6 +68,37 @@ export function Game() {
   // The current set's soft mounds, for the roll.
   const softAt = useMemo(() => softSnowFor(formationById(set.formation)) ?? undefined, [set.formation]);
 
+  // A match starts in the afternoon light. The quiet village ambience starts after the first tap (it follows the
+  // sound switch) and sits a little lower while the music plays.
+  useEffect(() => {
+    setTimeOfDay(0);
+    const cancel = startAmbienceOnFirstTouch();
+    const duck = () => {
+      const s = getAudioSettings();
+      setAmbienceVolume(s.music ? GAME.sound.ambienceUnderMusic : GAME.sound.ambienceAlone);
+    };
+    duck();
+    const off = subscribeAudioSettings(duck);
+    return () => {
+      cancel();
+      off();
+      stopAmbience();
+    };
+  }, []);
+
+  // A round starts: a soft chime (with the "Round 2 / 3" note).
+  useEffect(() => {
+    if (state.phase === "playing" && state.active === 0 && state.turnId > 0) playRoundStart();
+  }, [state.phase, state.active, state.turnId]);
+
+  // The end card: a little jingle for a winner (or a new best alone), a gentle ding-dong for a tie.
+  useEffect(() => {
+    if (state.phase !== "over") return;
+    const [a, b] = game.getState().scores;
+    if (game.getState().players === 2 && a === b) playTie();
+    else playWin();
+  }, [state.phase, game]);
+
   // Space throws, so it must never also press a button that still has focus (a toggle just tapped).
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -77,6 +119,8 @@ export function Game() {
       if (pins.getState().formation !== first) pins.setFormation(first);
       else pins.reset();
       setBestBefore(playing === 1 ? readBest(rounds) : null);
+      // Back to the afternoon with a soft fade (the end card sat in the evening light).
+      if (getTimeOfDay() > 0) easeTimeOfDay(0, GAME.evening.back);
       saved.current = false;
     },
     [game, pins],
@@ -128,6 +172,13 @@ export function Game() {
         soloBest={solo ? (state.phase === "over" ? Math.max(bestBefore ?? 0, state.scores[0]) : bestBefore) : undefined}
       />
       <CancelPull game={game} link={link} />
+      {/* The start and end cards: every button there gives a soft paper tap (the cards are the hud's; the sound is the game's). */}
+      <div
+        className="contents"
+        onPointerDownCapture={(e) => {
+          if ((e.target as HTMLElement).closest("button")) playTap();
+        }}
+      >
       {state.phase === "choosing" && (
         <MatchStart
           lengths={GAME.match.lengths}
@@ -145,9 +196,13 @@ export function Game() {
           solo={solo ? { best: bestBefore } : null}
           bestThrow={bestThrow}
           onAgain={() => begin(state.rounds, state.players, true)}
-          onChoose={() => game.choose()}
+          onChoose={() => {
+            game.choose();
+            if (getTimeOfDay() > 0) easeTimeOfDay(0, GAME.evening.back);
+          }}
         />
       )}
+      </div>
     </main>
   );
 }
