@@ -92,7 +92,8 @@ Formation ids and exports are fixed; the game imports them.
 - **The ball never parks on the cards (#47), but rolls to the back first:** a ball of the throw rolls on through the
   pins to the paper wall and back (bowling's `FEEL.wall`). It poofs (`burst(ballId)`) when it slows below
   `burst.slowSpeed` among the cards on its way out, or, once it has been past them all or bounced, when it is nearly
-  still (`FEEL.wall.poofBelow`). On its way back it can knock more cards; they count.
+  still (`FEEL.wall.poofBelow`). On its way back it can knock more cards; they count. It never knocks a standing
+  friend on the way back: it poofs just short of it (`FEEL.wall.spareFriendsAhead`), so the friend's +2 is earned on the way out.
 - **Counting:** a card is down when tilted past `down.tiltDegrees`. The `result` event (and "N down!") comes once
   no ball of the throw can reach a card any more (it has poofed or stopped) and every card has been still for
   `down.settleHold` (a card already lying in the snow may still slide a little, `down.lyingShare`), or

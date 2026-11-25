@@ -55,7 +55,9 @@ middle of the line:
 | **The score still comes promptly.** The count comes when the ball has stopped (or poofed), at the latest this long after it first meets a card (or rolls past them all); a ball still rolling then poofs. A ball back from the wall poofs once slower than `poofBelow`. | `countWithin 3.5` s · `poofBelow 0.8` /s | `FEEL.wall` |
 
 In the browser "N down!" came 2.3 to 4.7 s after letting go (16 throws, light to full, straight and angled). Cards first
-met by a ball rolling back from the wall can fall too, and they count.
+met by a ball rolling back from the wall can fall too, and they count. A standing friend (bunny, sleepy cat) never
+falls to the roll back: the ball poofs just short of it, `FEEL.wall.spareFriendsAhead` (`0.12` s of its travel) ahead, so
+the friend's +2 is decided on the way out.
 
 ### The camera (`src/features/game/camera.ts`, and `GAME.camera` in `src/features/game/content.ts`)
 

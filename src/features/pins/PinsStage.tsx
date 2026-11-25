@@ -631,6 +631,10 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       const bz = ball.position.z;
       let past = true;
       let near = false;
+      // A standing friend (the bunny, the sleepy cat) is never knocked by the roll back from the wall: its +2 is
+      // earned on the way out. A returning ball that would reach one poofs just short of it (a poofing ball pushes nothing).
+      let shyOfFriend = false;
+      const lead = r + B.amongMargin + ball.speed * FEEL.wall.spareFriendsAhead;
       specs.forEach((s, i) => {
         const b = bodies.current[i];
         if (!b || runtime.current[i]?.hidden) return;
@@ -643,6 +647,9 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
         // Past it down the lane (toward the back wall): beyond its foot and wherever its head lies.
         if (bz > Math.min(t.z, hz) - r - B.pastMargin) past = false;
         if (segmentDistance(bx, bz, t.x, t.z, hx, hz) < r + s.card[0] + B.amongMargin) near = true;
+        if (s.kind === "friend" && !runtime.current[i]?.down && Math.hypot(bx - t.x, bz - t.z) < lead + s.card[0]) {
+          shyOfFriend = true;
+        }
       });
       if (past && !f.wentPast.has(ball.id)) {
         f.wentPast.add(ball.id);
@@ -653,7 +660,7 @@ const PinsWorld = memo(function PinsWorld({ pins, setSlowed }: { pins: Pins; set
       // does not count: once it has bounced it is on its way back.)
       const back = f.wentPast.has(ball.id) || ball.bounces > 0;
       const settled = !ball.rolling || ball.speed < FEEL.wall.poofBelow;
-      if ((!back && near && ball.speed < B.slowSpeed) || (back && settled)) game.burst(ball.id);
+      if ((!back && near && ball.speed < B.slowSpeed) || (back && settled) || (ball.bounces > 0 && shyOfFriend)) game.burst(ball.id);
       else if (ball.rolling) clear = false;
     }
     return clear;

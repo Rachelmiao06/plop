@@ -177,6 +177,11 @@ export const FEEL = {
     fullSpeed: 7,
     countWithin: 3.5,
     poofBelow: 0.8,
+    /**
+     * The friend (bunny, sleepy cat) keeps its +2 from the way out: a ball rolling back from the wall poofs just short
+     * of a standing friend, this many seconds of its travel ahead (plus its radius and a small margin).
+     */
+    spareFriendsAhead: 0.12,
   },
 
   /** How the ball presses the snow (passed to the snow scene's `pressGroove`). */
