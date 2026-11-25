@@ -25,6 +25,7 @@ import { artGeometry, bodyGeometry } from "@/features/scenery/three/standeeGeome
 
 import { FEEL, LOOK, type ThrowerLook } from "../content";
 import type { Bowling } from "../simulation";
+import { motionShare } from "./motion";
 
 const DEG = Math.PI / 180;
 const drawingLight = new Vector3(...standee3d.shading.from).normalize();
@@ -132,6 +133,7 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
     phase: "ready" as string,
     look: "" as ThrowerLook | "",
     wasAirborne: false,
+    charged: false,
     landedAt: -100,
   });
 
@@ -167,6 +169,12 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
         s.moving += (movingGoal - s.moving) * Math.min(1, dt * 10);
         s.step += Math.abs(dx) * L.shuffle.stepsPerUnit * Math.PI;
         const shuffleLift = Math.abs(Math.sin(s.step)) * L.shuffle.lift * s.moving;
+
+        // Press: a tiny squash, like a soft toy under a finger. Full charge: a quick puff-up.
+        if (t.phase === "pulling" && s.phase !== "pulling") s.squash.speed += L.pressSquash * 14;
+        const charged = !!t.ball?.charged;
+        if (charged && !s.charged) s.squash.speed -= L.chargePop * 14;
+        s.charged = charged;
 
         // Release: stretch up and snap forward. Landing: squash, then the happy bounce.
         if (t.phase === "thrown" && s.phase !== "thrown") {
@@ -217,11 +225,13 @@ export const ThrowerStandee = forwardRef<ThrowerHandle, { paper: PaperColors }>(
         );
         s.yaw.step(yawGoal, dt, L.turn.stiffness, L.turn.damping);
 
+        // "Reduce motion": hops, bounces and squash keep only a share; leaning still shows the pull.
+        const m = motionShare();
         const sink = propSettings(LOOK.thrower.art[look])!.sink;
-        g.position.set(t.x + shiverX, ground - sink + t.hopHeight + bounce + shuffleLift, t.foot.z);
+        g.position.set(t.x + shiverX, ground - sink + (t.hopHeight + bounce + shuffleLift) * m, t.foot.z);
         y.rotation.y = s.yaw.value;
         b.rotation.set(s.tiltX.value, 0, s.tiltZ.value + shiverZ);
-        const q = Math.max(-0.3, Math.min(0.3, s.squash.value));
+        const q = Math.max(-0.3, Math.min(0.3, s.squash.value)) * m;
         b.scale.set(1 + q * 0.5, 1 - q, 1 + q * 0.5);
       },
       hits(raycaster) {

@@ -11,6 +11,7 @@ import {
   CircleGeometry,
   DoubleSide,
   IcosahedronGeometry,
+  type Group,
   type InstancedMesh,
   type Mesh,
   MeshBasicMaterial,
@@ -35,11 +36,16 @@ import { Bowling } from "../simulation";
 import { type Vec2, lerp } from "../vec";
 import { Clumps } from "./clumps";
 import { readPalette } from "./look";
+import { motionShare } from "./motion";
 import { ballMaterial, ballOutlineMaterial } from "./snowballLook";
 import { ThrowerStandee, type ThrowerHandle } from "./ThrowerStandee";
 
 /** The fixed drawing light the ball's shade side comes from (see LOOK.ball.light). */
 const ballLight = new Vector3(...LOOK.ball.light).normalize();
+
+/** Turns a squash amount from LOOK.ballSquash into a spring kick that peaks at about that amount. */
+const KICK = 30;
+const UP = new Vector3(0, 1, 0);
 
 /** Drawing sizes (scene units). Not feel numbers: they only change how marks look. */
 const MAX_BALLS = 6;
@@ -131,6 +137,7 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
   const dashes = useMemo(laneDashes, []);
 
   const throwerRef = useRef<ThrowerHandle>(null);
+  const ballGroups = useRef<(Group | null)[]>([]);
   const ballRefs = useRef<(Mesh | null)[]>([]);
   const outlineRefs = useRef<(Mesh | null)[]>([]);
   const clumpRef = useRef<InstancedMesh>(null);
@@ -149,8 +156,14 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
   const endRef = useRef<Mesh>(null);
   const dashesRef = useRef<InstancedMesh>(null);
   const io = useRef<{ keyboard: KeyboardInput; feedback: Feedback } | null>(null);
-  /** Per ball ("pull" while pulled, then its id): where the snow was last pressed, the spin, and distance rolled. */
-  const marks = useRef(new Map<string | number, { pressed: Vec2 | null; spin: Quaternion; rolled: number }>());
+  /**
+   * Per ball ("pull" while pulled, then its id): where the snow was last pressed, the spin, distance
+   * rolled, and its springy squash (value, speed; above 0 = squashed flat, below 0 = stretched).
+   */
+  const marks = useRef(
+    new Map<string | number, { pressed: Vec2 | null; spin: Quaternion; rolled: number; squash: { q: number; v: number } }>(),
+  );
+  const seenTicks = useRef(0);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -173,11 +186,17 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     const stopUnlock = unlockAudioOnFirstTouch();
     const map = marks.current;
     const off = game.subscribe((e) => {
-      if (e.type === "pressed") map.set("pull", { pressed: null, spin: new Quaternion(), rolled: 0 });
+      const kick = (key: string | number, amount: number) => {
+        const m = map.get(key);
+        if (m) m.squash.v += amount * KICK;
+      };
+      if (e.type === "pressed") map.set("pull", { pressed: null, spin: new Quaternion(), rolled: 0, squash: { q: 0, v: 0 } });
+      if (e.type === "charged") kick("pull", LOOK.ballSquash.charge);
       if (e.type === "launched") {
         const pulled = map.get("pull");
         map.delete("pull");
         if (pulled) map.set(e.ballId, { ...pulled, rolled: 0 });
+        kick(e.ballId, -LOOK.ballSquash.launch * (0.5 + 0.5 * e.plan.power));
       }
       if (e.type === "cancelled") {
         map.delete("pull");
@@ -242,12 +261,21 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
   useFrame((state, delta) => {
     const inputs = io.current;
     if (!inputs) return;
-    const dt = Math.min(delta, 0.1);
+    // Game time: slowed for a moment during a hit-stop (the pins ask for one when the ball meets them).
+    const dt = game.slowFrame(Math.min(delta, 0.1));
     const want = wantThrower.current;
     if (want && game.thrower.id !== want) game.setThrower(want); // only takes between throws
     inputs.keyboard.update(dt);
     game.step(dt);
-    inputs.feedback.update();
+    inputs.feedback.update(dt);
+
+    // Each crunch tick while pulling gives the ball a tiny squash.
+    const ticks = inputs.feedback.beats.ticks;
+    if (ticks !== seenTicks.current) {
+      seenTicks.current = ticks;
+      const m = marks.current.get("pull");
+      if (m) m.squash.v += LOOK.ballSquash.tick * KICK;
+    }
 
     const feel = game.feel;
     const t = game.thrower;
@@ -273,6 +301,8 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
 
     // ---- Balls.
     const shown: { key: string | number; at: Vec2; radius: number; rolled: number; dir: Vec2; scale: number }[] = [];
+    const motion = motionShare();
+    const sq = LOOK.ballSquash;
     if (pulled) {
       shown.push({
         key: "pull",
@@ -296,11 +326,20 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
     }
     ballRefs.current.forEach((mesh, i) => {
       const outline = outlineRefs.current[i];
-      if (!mesh || !outline) return;
+      const holder = ballGroups.current[i];
+      if (!mesh || !outline || !holder) return;
       const b = shown[i];
       mesh.visible = outline.visible = !!b;
       if (!b) return;
       const mark = marks.current.get(b.key);
+      // Squash spring: flattens (q > 0) or stretches along the roll (q < 0), always upright.
+      let q = 0;
+      if (mark) {
+        const s = mark.squash;
+        s.v += (-s.q * sq.stiffness - s.v * sq.damping) * dt;
+        s.q += s.v * dt;
+        q = Math.max(-sq.max, Math.min(sq.max, s.q)) * motion;
+      }
       if (mark) {
         // Spin about the ground axis across the roll direction.
         const turned = b.rolled - mark.rolled;
@@ -310,14 +349,21 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
           scratch.turn.setFromAxisAngle(scratch.axis, turned / b.radius);
           mark.spin.premultiply(scratch.turn);
         }
-        mesh.quaternion.copy(mark.spin);
       }
-      const r = b.radius * b.scale;
-      mesh.scale.setScalar(Math.max(0.001, r));
-      mesh.position.set(b.at.x, snow.heightAt(b.at.x, b.at.z) + r * (1 - feel.ball.sink), b.at.z);
-      outline.position.copy(mesh.position);
+      // The holder below is turned to the roll; undo that turn so the spin stays as rolled.
+      const yaw = Math.atan2(b.dir.x, b.dir.z);
+      if (mark) mesh.quaternion.setFromAxisAngle(UP, -yaw).multiply(mark.spin);
+      const r = Math.max(0.001, b.radius * b.scale);
+      mesh.scale.setScalar(r);
       outline.quaternion.copy(mesh.quaternion);
       outline.scale.copy(mesh.scale);
+      // The holder carries position and squash, turned to the roll so a stretch points the way it goes.
+      const side = 1 + q / 2;
+      const up = q >= 0 ? 1 - q : side;
+      const along = q >= 0 ? side : 1 - q;
+      holder.rotation.set(0, yaw, 0);
+      holder.scale.set(side, up, along);
+      holder.position.set(b.at.x, snow.heightAt(b.at.x, b.at.z) + r * (up - feel.ball.sink), b.at.z);
     });
 
     // ---- Aim line: dots on the snow from the ball to where it will stop, and a ring there.
@@ -367,7 +413,12 @@ export function BowlingStage({ thrower, onGame }: BowlingStageProps = {}) {
         <ThrowerStandee ref={throwerRef} paper={looks.colors} />
       </Suspense>
       {Array.from({ length: MAX_BALLS }, (_, i) => (
-        <group key={i}>
+        <group
+          key={i}
+          ref={(g) => {
+            ballGroups.current[i] = g;
+          }}
+        >
           <mesh
             ref={(m) => {
               ballRefs.current[i] = m;

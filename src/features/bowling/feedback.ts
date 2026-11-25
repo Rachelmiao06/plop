@@ -1,39 +1,67 @@
 /**
  * Sound and vibration for the throw, driven by the game's state and events.
- * Sound comes from the shared engine in `src/lib/audio.ts` (not changed here).
- * Vibration lives in this feature for now (`haptics.ts`); a shared `src/lib/haptics.ts` is a later issue.
+ * Sound comes from the shared engine in `src/lib/audio.ts`, vibration from `src/lib/haptics.ts`.
+ *
+ * Each key moment gets a beat you can feel (vibration on phones that can), hear and see:
+ * press (a soft pat, a tap), pulling (crunch ticks that quicken as the ball grows), full charge
+ * (a clunk and a stronger pulse), letting go (the whoosh and a launch pulse). The drawing side of each
+ * beat (squash, hop) lives in the stage; it reads `beats` to stay in step with the ticks.
  */
-import { playWhoosh, setCrunch, stopCrunch } from "@/lib/audio";
+import { playThump, playWhoosh, setCrunch, stopCrunch } from "@/lib/audio";
+import { haptic } from "@/lib/haptics";
 
-import { vibrate } from "./haptics";
 import type { Bowling } from "./simulation";
 import { clamp01, lerp } from "./vec";
 
 export type Feedback = {
-  /** Call once per frame, after `bowling.step`. Keeps the rolling crunch in step with the balls. */
-  update(): void;
+  /** Call once per frame, after `bowling.step`, with the same (game-time) frame length. */
+  update(dt: number): void;
+  /** Counts that go up on each beat, so the drawing can kick a squash in the same frame. */
+  readonly beats: { ticks: number };
   dispose(): void;
 };
 
 export function connectFeedback(game: Bowling): Feedback {
   let crunching = false;
+  let tickPhase = 0;
+  const beats = { ticks: 0 };
 
   const off = game.subscribe((e) => {
-    const h = game.feel.haptics;
+    const b = game.feel.beats;
     switch (e.type) {
+      case "pressed":
+        tickPhase = 0;
+        playThump(b.pressThump);
+        haptic("tap");
+        break;
       case "charged":
-        vibrate(h.charged);
+        playThump(b.chargeThump);
+        haptic("charge");
         break;
       case "launched":
         // A soft push of air as the ball sets off; the crunch carries the roll.
         playWhoosh(e.plan.power * 0.5);
-        vibrate(lerp(h.launchWeak, h.launchStrong, e.plan.power));
+        haptic("launch", e.plan.power);
         break;
     }
   });
 
   return {
-    update() {
+    beats,
+    update(dt) {
+      // Pulling: crunch ticks, quicker for a bigger ball, only while it actually rolls.
+      const pulled = game.thrower.ball;
+      if (pulled) {
+        const b = game.feel.beats;
+        const rate = lerp(b.ticksSmall, b.ticksBig, pulled.size) * clamp01(pulled.speed / b.tickFullSpeed);
+        tickPhase += rate * dt;
+        if (tickPhase >= 1) {
+          tickPhase -= Math.floor(tickPhase);
+          beats.ticks++;
+          haptic("tick", pulled.size);
+        }
+      }
+
       // One crunch channel: follow whichever ball is rolling hardest.
       const s = game.feel.sound;
       let speed = 0;
@@ -46,7 +74,6 @@ export function connectFeedback(game: Bowling): Feedback {
           size = ballSize;
         }
       };
-      const pulled = game.thrower.ball;
       if (pulled) consider(pulled.speed, pulled.size);
       for (const ball of game.balls) if (ball.rolling) consider(ball.speed, ball.plan.size);
 

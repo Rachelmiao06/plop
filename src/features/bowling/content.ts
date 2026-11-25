@@ -141,11 +141,20 @@ export const FEEL = {
     crunchSilentBelow: 0.08,
   },
 
-  /** Phone vibration, in milliseconds. Phones that cannot vibrate ignore it. */
-  haptics: {
-    charged: 18,
-    launchWeak: 12,
-    launchStrong: 35,
+  /**
+   * The little beats you feel in the hand (vibration where the phone can, and a sound and a squash
+   * everywhere). The vibration patterns themselves are in `src/lib/haptics.ts`.
+   */
+  beats: {
+    /** Crunch ticks while pulling: ticks per second for the smallest and the biggest ball... */
+    ticksSmall: 5,
+    ticksBig: 13,
+    /** ...when the ball rolls at least this fast; slower rolls tick slower, a still ball not at all. */
+    tickFullSpeed: 1.4,
+    /** Loudness of the soft pat when you press the thrower (0..1 on the thump sound's size scale). */
+    pressThump: 0,
+    /** And of the little crunch "clunk" when the pull reaches full charge. */
+    chargeThump: 0.25,
   },
 };
 
@@ -194,7 +203,29 @@ export const LOOK = {
     shuffle: { stepsPerUnit: 3.4, rock: 0.11, lift: 0.035, leanInto: 0.08, fullSpeed: 2.2 },
     /** A little pop when the player changes. */
     swapSquash: 0.18,
+    /** Pressing the thrower: a tiny squash, like a finger pressing a soft toy (share of height, as a kick). */
+    pressSquash: 0.12,
+    /** Reaching full charge: a quick puff-up (negative squash = stretch) on top of the strain shiver. */
+    chargePop: 0.1,
   },
+
+  /** Springy squash of the snowball itself (kept upright: the squash never turns with the roll). */
+  ballSquash: {
+    /** Each crunch tick while pulling gives the ball a tiny squash kick. */
+    tick: 0.06,
+    /** Full charge: a bigger squash. */
+    charge: 0.16,
+    /** Letting go: a stretch along the way it is thrown. */
+    launch: 0.18,
+    /** The spring it settles on (wobbly but quick). */
+    stiffness: 320,
+    damping: 13,
+    /** Never squashes more than this share either way. */
+    max: 0.25,
+  },
+
+  /** With "reduce motion" on: squash, stretch and hops keep this share (vibration and sound stay). */
+  reducedMotion: 0.3,
 
   ball: {
     /** The --ink outline: width in scene units (the cut-outs' line is about 1.2% of their height), and how uneven. */

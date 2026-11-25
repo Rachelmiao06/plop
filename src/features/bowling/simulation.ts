@@ -111,6 +111,7 @@ export class Bowling {
   private listeners = new Set<BowlListener>();
   private nextBallId = 1;
   private rollClock = 0;
+  private slow = { left: 0, length: 1, slowest: 1 };
 
   /** `feel` is read live. `ground` tells it how packed the snow is (the snow scene's `useSnow()` fits). */
   constructor(feel: Feel, ground: Ground = FRESH_SNOW, throwerId = "one") {
@@ -238,6 +239,32 @@ export class Bowling {
   /** Drop a pull without throwing (the ball crumbles). */
   cancel(reason: "short" | "interrupted" = "interrupted"): void {
     if (this.thrower.phase === "pulling") this.crumble(reason);
+  }
+
+  /**
+   * Hit-stop: slow the whole throw down to `slowest` (share of normal speed) for a moment, easing back
+   * to full speed over `seconds` of real time. The stage turns real frames into game time with
+   * `slowFrame`; other features (the pins' physics) read `timeScale` to slow down with it.
+   */
+  hitStop(seconds: number, slowest: number): void {
+    if (seconds <= 0) return;
+    this.slow = { left: seconds, length: seconds, slowest: clamp01(slowest) };
+  }
+
+  /** How fast game time runs right now (1 = normal, less during a hit-stop). */
+  get timeScale(): number {
+    const s = this.slow;
+    if (s.left <= 0) return 1;
+    const u = 1 - s.left / s.length; // 0 at the hit .. 1 when back to normal
+    return lerp(s.slowest, 1, u * u);
+  }
+
+  /** A real frame length turned into game time (and the hit-stop counted down). Call once per frame. */
+  slowFrame(realSeconds: number): number {
+    if (this.slow.left <= 0) return realSeconds;
+    const scaled = realSeconds * this.timeScale;
+    this.slow.left -= realSeconds;
+    return scaled;
   }
 
   /** Advance by `seconds` (any frame length; long ones are split up). */
