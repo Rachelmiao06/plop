@@ -20,3 +20,4 @@ One line per decision: date, what, why.
 - 2026-11-24 · Dust and clumps are thrown by the snow itself whenever it is pressed or hit, so every feature gets them without extra code.
 - 2026-11-24 · Zoom is written by hand, not drei CameraControls: the camera only moves along its fixed viewing line, and the view is clamped back to the centre at full size. Two unclaimed fingers are a pinch; a feature calls `claimSnowPointer` to keep a finger for its own drag.
 - 2026-11-24 · The snow stays a CPU height grid (not a GPU displacement map), because later features need `heightAt`. Measured cost is small.
+- 2026-11-24 · Snow rolling and landing sounds are real CC0 recordings from Freesound (`public/assets/audio/`, credits there), sliced and re-pitched by the engine; only the whoosh is synthesized. Pure synthesis sounded like scratching paper, not fluffy snow. This replaces issue #9's "no sound files".
