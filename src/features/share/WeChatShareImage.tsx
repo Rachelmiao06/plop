@@ -5,8 +5,8 @@
  */
 import { SHARE } from "./content";
 
-export function WeChatShareImage() {
-  const { src, size } = SHARE.squareImage;
+/** `src` / `size`: another square card (the invite page uses its own). Default: the game's share card. */
+export function WeChatShareImage({ src = SHARE.squareImage.src, size = SHARE.squareImage.size }: { src?: string; size?: number }) {
   return (
     // A plain <img> on purpose: WeChat reads the raw src, not an optimiser URL.
     // eslint-disable-next-line @next/next/no-img-element
