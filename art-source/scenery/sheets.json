@@ -235,7 +235,7 @@
       "min_piece": 15
     },
     {
-      "file": "far-1-panorama.png",
+      "file": "far-2-panorama-tileable.png",
       "grid": "1x1",
       "names": [
         "far-hills"
@@ -245,16 +245,16 @@
       "max_side": 2200,
       "seal": [
         [
-          36,
-          560,
-          36,
-          620
+          2,
+          571,
+          2,
+          603
         ],
         [
-          2150,
-          550,
-          2150,
-          620
+          2169,
+          571,
+          2169,
+          603
         ]
       ]
     },

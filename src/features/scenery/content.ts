@@ -118,11 +118,12 @@ export const props = {
   "mice-lantern": { label: "Two mice with a lantern under a pine", height: 1.0, group: "mid", sink: 0.05, set: "doodle", role: "frame", emitsLight: [[0.365, 0.16]] },
   "bench-cat": { label: "Bench with a sleeping cat", height: 0.6, group: "mid", sink: 0.04, set: "doodle", role: "frame" },
   "otter-cocoa": { label: "Otter with a cocoa mug", height: 0.5, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
-  // Kept as spares (Rachel: no need to use every new drawing): each repeats a moment already in the street.
-  "mug-cocoa": { label: "Cocoa mug character in a blue scarf", height: 0.5, group: "friend", sink: 0.03, set: "doodle", spare: true },
-  "mouse-letter": { label: "Mouse carrying a letter", height: 0.42, group: "friend", sink: 0.03, set: "doodle", spare: true },
+  // The mug and the mouse join the street as small bystanders; the sled waits in a phone corner. The red mailbox stays
+  // a spare (the penguins' postbox is the post office).
+  "mug-cocoa": { label: "Cocoa mug character in a blue scarf", height: 0.5, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
+  "mouse-letter": { label: "Mouse carrying a letter", height: 0.42, group: "friend", sink: 0.03, set: "doodle", role: "frame" },
   "mailbox-red": { label: "Red mailbox with a flag", height: 0.75, group: "mid", sink: 0.05, set: "doodle", spare: true },
-  "sled-red": { label: "Red sled with a green blanket", height: 0.34, group: "small", sink: 0.03, set: "doodle", spare: true },
+  "sled-red": { label: "Red sled with a green blanket", height: 0.34, group: "small", sink: 0.03, set: "doodle", role: "frame" },
 
   // Ground details and life (doodle-7).
   "pond-frozen": { label: "Frozen pond", height: 0.34, group: "small", sink: 0.04, set: "doodle", role: "frame" },
@@ -279,7 +280,7 @@ export const lane = {
 export const throwers: [PropId, PropId] = ["thrower-bucket", "thrower-redhat"];
 
 /** The area shown on the top-down map. */
-export const mapArea = { minX: -7.8, maxX: 7.8, minZ: -12.2, maxZ: 2.2 };
+export const mapArea = { minX: -7.8, maxX: 7.8, minZ: -12.2, maxZ: 2.8 };
 
 export type Placement = {
   prop: PropId;
@@ -293,6 +294,11 @@ export type Placement = {
   side: "left" | "right" | "far";
   /** Stands this high above the snow instead of in it (the red bird on the stump). Default 0. */
   lift?: number;
+  /**
+   * Only on this kind of screen. "portrait": a phone held upright (narrower than `village.portraitAspect`), which
+   * sees only the lane, so a few small cut-outs stand low in its bottom corners. Default: every screen.
+   */
+  view?: "portrait" | "landscape";
 };
 
 /*
@@ -335,6 +341,7 @@ export const layout: Placement[] = [
   { prop: "cottage-snow", x: -5.55, z: -5.6, scale: 0.95, side: "left" },
   { prop: "pine-snow-tall", x: -7.6, z: -7.4, scale: 0.85, flip: true, side: "left" },
   { prop: "bush-snow", x: -2.65, z: -4.55, scale: 0.8, side: "left" },
+  { prop: "mug-cocoa", x: -2.45, z: -6.45, scale: 0.9, side: "left" },
   { prop: "rabbit", x: -3.1, z: -4.35, flip: true, side: "left" },
   // the pond corner, with the street lamp lighting the snow (its glow: `village.lampGlow`)
   { prop: "pond-frozen", x: -3.55, z: -3.7, scale: 1.15, side: "left" },
@@ -357,6 +364,7 @@ export const layout: Placement[] = [
   { prop: "skier", x: 2.6, z: -3.0, side: "right" },
   { prop: "penguins-postbox", x: 3.6, z: -1.75, side: "right" },
   { prop: "snowballs", x: 2.75, z: -0.6, side: "right" },
+  { prop: "mouse-letter", x: 4.4, z: -1.05, flip: true, side: "right" },
   { prop: "pine-snow-tall", x: 7.4, z: -6.0, scale: 0.85, side: "right" },
   { prop: "bush-snow", x: 6.4, z: -2.9, scale: 0.8, flip: true, side: "right" },
 
@@ -366,6 +374,13 @@ export const layout: Placement[] = [
   { prop: "bush-snow", x: -3.3, z: 2.15, scale: 0.7, side: "left" },
   { prop: "pine-snow-short", x: 3.85, z: 1.85, scale: 0.9, side: "right" },
   { prop: "bush-snow", x: 3.7, z: 0.7, scale: 0.85, flip: true, side: "right" },
+
+  // A phone held upright sees only the lane, so a few small friends stand low in its bottom corners, in front of
+  // the line and wide of the pull (all under the near height limit, so they never cover the thrower or the pins).
+  { prop: "mug-cocoa", x: -0.36, z: 1.7, scale: 0.85, view: "portrait", side: "left" },
+  { prop: "sled-red", x: -0.3, z: 2.15, scale: 0.9, view: "portrait", side: "left" },
+  { prop: "otter-cocoa", x: 0.5, z: 1.75, scale: 0.9, flip: true, view: "portrait", side: "right" },
+  { prop: "mouse-letter", x: 0.38, z: 2.2, view: "portrait", side: "right" },
 ];
 
 /**
@@ -556,6 +571,9 @@ export const village = {
     radiusShare: 1 / 3,
   },
 
+  /** Narrower than this (width / height) is a phone held upright: the game's own switch (`GAME.phoneView.maxAspect`). */
+  portraitAspect: 0.8,
+
   /** Side props move out by this much more than the thrower's extra slide room, to keep the roll lane open. */
   sideMargin: 0,
 
@@ -687,11 +705,11 @@ export const backdrop = {
   /** Far hills band: height on the wall (width follows the drawing), how far its foot sinks into the snow. */
   hillsHeight: 0.95,
   /**
-   * The share of `far-hills.webp`'s width that holds the drawing (its first and last 9 columns are empty), so no
-   * white gap shows where copies meet. The two ends do not match, so copies alternate mirrored and each joint meets
-   * its own mirror image. A version Rachel draws to tile would be best.
+   * The share of `far-hills.webp`'s width that holds the drawing (the cut leaves a clear margin at both ends), so
+   * no gap shows where copies meet. Rachel drew this panorama to tile, so copies sit side by side, never mirrored
+   * (`scripts/prep_far_hills.py` eased her right end by a few pixels so both lines meet exactly).
    */
-  hillsCrop: [10 / 2126, 2116 / 2126] as [number, number],
+  hillsCrop: [18.5 / 2188, 2169.5 / 2188] as [number, number],
   hillsSink: 0.12,
   /** The far hills fade this much toward `--snow-shadow` (distance haze), so they sit behind the village on the lit snow. */
   haze: 0.3,

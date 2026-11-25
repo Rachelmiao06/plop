@@ -201,7 +201,10 @@ Three new sheets, cut by the slicer like the others: `tree-christmas`, `otter-co
 `cafe-stump`, `penguins-postbox`, `cottage-snow`, `mice-lantern`; `street-lamp`, `mailbox-red`, `bench-cat`, `sled-red`
 (the steam lines stay with their mug; the sled's see-through gaps are `holes` in `sheets.json`).
 Rachel asked for a slightly bigger, richer village, not every drawing, so eight are placed and four are spares
-(`mug-cocoa`, `mouse-letter`, `mailbox-red`, `sled-red`, each repeating a moment already in the street).
+(`mug-cocoa`, `mouse-letter`, `mailbox-red`, `sled-red`). Later the mug joined the street by the blue cottage, the mouse
+with the letter heads for the post office, and on a phone held upright the mug, the sled, the otter and the mouse
+stand low in the bottom corners (`view: "portrait"` placements; a phone sees only the lane, and the near-height limit
+keeps them small, so no pine). The red mailbox stays a spare (the penguins' postbox is the post office).
 
 - **The street:** along the back left a row of the Christmas tree (the landmark, beside the pins, never behind them),
   the tree-stump café and the cocoa stall (the cocoa corner, fairy lights strung in front) and the red cottage; the
@@ -220,3 +223,12 @@ Rachel asked for a slightly bigger, richer village, not every drawing, so eight 
   the snow cottage's eave and the igloo's window and door tops (`icicleEdge`). Nothing reads them yet; the lamp glow
   and chimney smoke still use `village.lampGlow` and `village.chimneys` (the snow cottage has its own drawn smoke
   curl, so it is not in `village.chimneys`).
+
+### Tileable far hills
+
+`far-hills.webp` is cut from Rachel's panorama drawn to tile (`far-2-panorama-tileable-original.png`, unchanged).
+Its ends met within 7 px (hill line) and 1 px (ground line); `scripts/prep_far_hills.py` eases the last 127 px on
+the right (open hill only) so both lines meet exactly, writing `far-2-panorama-tileable.png`, which the slicer cuts
+(seal lines at both edges keep the white inside the hills). The band lays whole copies side by side (no mirroring),
+a copy's middle straight back; `backdrop.hillsCrop` drops the cut's clear margins, and the shader samples with the
+gradient of the unbroken coordinate so the joint draws no line.
