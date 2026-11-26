@@ -394,12 +394,19 @@ export const hudCss = `
 
 /* The first-time share hint: the note pops in, the arrow nudges toward the button now and then. */
 .plop-hud-hint {
-  animation: plop-hud-hint var(--hud-hint-pop) cubic-bezier(0.3, 1.4, 0.5, 1) var(--hud-hint-delay) both;
+  animation:
+    plop-hud-hint var(--hud-hint-pop) cubic-bezier(0.3, 1.4, 0.5, 1) var(--hud-hint-delay) both,
+    plop-hud-hint-bob calc(var(--hud-hint-nudge) * 1.6) ease-in-out calc(var(--hud-hint-delay) + var(--hud-hint-pop)) infinite;
   transform-origin: 0% 100%;
 }
 @keyframes plop-hud-hint {
-  from { opacity: 0; transform: translateY(8px) scale(0.6) rotate(-6deg); }
-  to { opacity: 1; transform: rotate(-3deg); }
+  from { opacity: 0; transform: translateY(8px) scale(0.6) rotate(-9deg); }
+  to { opacity: 1; transform: rotate(-5deg); }
+}
+/* The words float a little, like a doodle drifting on the snow. */
+@keyframes plop-hud-hint-bob {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  50% { transform: rotate(-4deg) translateY(-3px); }
 }
 .plop-hud-hint-arrow {
   animation:
@@ -417,7 +424,7 @@ export const hudCss = `
 @media (prefers-reduced-motion: reduce) {
   .plop-hud-hint {
     animation: none;
-    transform: rotate(-3deg);
+    transform: rotate(-5deg);
   }
   .plop-hud-hint-arrow {
     animation: none;
