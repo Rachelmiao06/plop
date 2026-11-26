@@ -44,18 +44,6 @@ export function wagerFor(code: unknown): Wager | null {
   return INVITE.wagers.lines.find((l) => l.code === code) ?? null;
 }
 
-/**
- * The end card's wager lines once the match is over: the small stake ("赌注 · 输的人学企鹅走路 🐧") and the result,
- * "QA 输了，快去学企鹅走路吧！" for the loser, or "平局！这次谁都不用学企鹅走路 😆". `loser` and `winner` null: a tie.
- * Never mean; it only names the loser with the preset line.
- */
-export function wagerResult(code: unknown, loser: string | null, winner: string | null = null): { stake: string; result: string } | null {
-  const w = wagerFor(code);
-  if (!w) return null;
-  const W = INVITE.wagers;
-  return { stake: W.stakeLine(w.zh, w.emoji), result: loser ? W.lost(loser, w.lost(winner ?? "")) : W.tie(w.noOne) };
-}
-
 /** Reads the page's search params (Next.js hands them over as string | string[] | undefined). */
 export function readInvite(params: Record<string, string | string[] | undefined>): Invite {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

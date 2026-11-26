@@ -184,7 +184,7 @@ for (const m of MODES) {
 }
 
 // The invite's way into the game: what "接受挑战" opens must keep everything the invite brought, or the end card loses
-// the inviter's score ("Moss has 18 · so close", who lost the wager). Read back the way Game.tsx reads its address.
+// the inviter's score ("Moss has 18 · so close", who the wager's emoji lands on). Read back the way Game.tsx reads its address.
 {
   const { invitePath, readInvite, gamePath, cleanName, cleanScore, cleanWager, cleanGroup } = await import(
     "../src/features/invite/link.ts"
@@ -200,6 +200,12 @@ for (const m of MODES) {
   );
   assert.equal(new URL(gamePath({ ...opened, score: 0 }), "https://x").searchParams.get("score"), "0", "a score of 0 is kept too");
   assert.equal(gamePath({ name: "Moss", group: "qaTest01" }), "/?g=qaTest01&from=Moss", "without a score or wager, none is added");
+  checks++;
+  // The end card shows the wager as an effect only (Rachel, 2026-11-26): the preset's emoji, never a result line.
+  const mod = await import("../src/features/invite/link.ts");
+  assert.equal(mod.wagerFor(opened.wager)?.emoji, "🐧", "the wager the game gets is its emoji, for the effect");
+  assert.equal(mod.wagerFor("nope"), null, "an unknown wager has no effect");
+  assert.equal(mod.wagerResult, undefined, "no wager result text is made for the end card");
   checks++;
 }
 

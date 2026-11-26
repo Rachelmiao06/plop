@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { MatchEnd, type EndPlayer } from "@/features/hud";
-import { INVITE, invitePath, wagerResult, type WagerCode } from "@/features/invite";
+import { INVITE, invitePath, wagerFor, type WagerCode } from "@/features/invite";
 
 type Case = { label: string; players: [EndPlayer, EndPlayer]; solo?: boolean; rival?: { name: string; score: number }; team?: boolean };
 
@@ -34,14 +34,12 @@ export function WagerTester() {
   const c = CASES[which];
   // Alone after an invite, the other side of the result is the inviter.
   const players: [EndPlayer, EndPlayer] = c.rival ? [c.players[0], { name: c.rival.name, look: "redHat", total: c.rival.score }] : c.players;
-  const [a, b] = players;
-  const [loser, winner] = a.total > b.total ? [b.name, a.name] : b.total > a.total ? [a.name, b.name] : [null, null];
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
       <header>
         <h1 className="font-heading text-4xl font-bold text-ink-deep">Wager test</h1>
         <p className="font-sans text-sm">
-          The end card settles the invite&apos;s wager. Invite link for this one:{" "}
+          The end card shows the invite&apos;s wager as its emoji landing on the loser (no words). Invite link for this one:{" "}
           <a className="underline" href={invitePath({ group: "wagerTst", name: "Moss", score: 18, wager: code })}>
             {invitePath({ group: "wagerTst", name: "Moss", score: 18, wager: code })}
           </a>
@@ -67,7 +65,7 @@ export function WagerTester() {
           players={players}
           solo={c.solo ? { best: 20 } : null}
           rival={!!c.rival}
-          wager={wagerResult(code, loser, winner)}
+          wager={{ emoji: wagerFor(code)!.emoji }}
           onAgain={() => {}}
           onChoose={() => {}}
         />

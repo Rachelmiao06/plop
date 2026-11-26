@@ -101,8 +101,11 @@ export type MatchEndProps = {
   solo?: { best: number | null } | null;
   /** Alone after a friend's invite: the second player is them (the scene and the result line become you vs them). */
   rival?: boolean;
-  /** The invite's preset wager, settled by the game: the small stake line and "QA 输了，快去学企鹅走路吧！". */
-  wager?: { stake: string; result: string } | null;
+  /**
+   * The invite's preset wager, as an effect only (Rachel: no wager words on the end card): its emoji drops onto the
+   * loser's head after the snowballs (a tie: between the two). Only when there are two sides.
+   */
+  wager?: { emoji: string } | null;
   /** Team up: one team total, both snowmen crowned, no winner. */
   team?: boolean;
   /** The match's rounds, for the share poster (it falls back to last time's start choice). */
@@ -116,7 +119,7 @@ export type MatchEndProps = {
 /**
  * After the last round, in steps (Rachel: one crowded card was too much). Step 1 is the result and nothing else: the
  * winner pelts the loser with snowballs (Celebration.tsx), and once they have landed one line says who won and by how
- * much ("Red Hat 13 : 6 赢啦！"), then the wager if the invite had one; "Next" and "Play again". Step 2 is the board
+ * much ("Red Hat 13 : 6 赢啦！"); an invite's wager is only its emoji landing on the loser, no words; "Next" and "Play again". Step 2 is the board
  * (the game's prompt and the group board), "Make a poster" (step 3, the poster sheet) and "Play again". Never mean.
  */
 export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, onChoose, children }: MatchEndProps) {
@@ -182,6 +185,7 @@ export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, o
         crowns={team || tie ? [true, true] : [winner === 0 || newBest, winner === 1]}
         onSettled={() => setSettled(true)}
         totals={!twoSided && !team}
+        stake={wager && twoSided ? { emoji: wager.emoji, on: winner === null ? null : winner === 0 ? 1 : 0 } : null}
       />
       <div
         inert={!settled}
@@ -192,14 +196,6 @@ export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, o
           {result}
         </p>
         {sub && <p className="mt-1 font-heading text-lg leading-tight">{sub}</p>}
-        {wager && (
-          <div className="mt-3">
-            <p className="font-heading text-sm leading-tight opacity-75">{wager.stake}</p>
-            <p className="mt-1 font-heading text-xl leading-tight text-balance text-ink-deep">
-              <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{wager.result}</span>
-            </p>
-          </div>
-        )}
         <div className="mt-5 flex gap-2.5">
           <Button
             ref={next}

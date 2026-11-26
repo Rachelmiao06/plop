@@ -287,6 +287,13 @@ export const content = {
     /** Each hit: a soft plop (the recorded snowball, smallest size) and a light buzz. */
     plop: 0.05,
     buzz: 0.5,
+    /**
+     * The invite's wager, no words (Rachel: "可以加个特效，但不用这行字"): once the snowballs are done, its emoji drops
+     * onto the loser's head with a springy bounce and a sparkle of her star; a tie, it pops between the two. Reduced
+     * motion: the emoji sits there still. Size (px), how far it drops (px), how long (ms), the delay after the show
+     * settles (ms), its resting tilt (deg), the star's size (px) and how long it lasts (ms).
+     */
+    stake: { size: 34, drop: 56, ms: 720, delay: 120, tilt: 8, star: 30, starMs: 900 },
   },
 
   /** Burst of star and surprise lines when the set is cleared. */

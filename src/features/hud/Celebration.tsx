@@ -11,11 +11,13 @@
  * - **team:** both throw snowballs up and the snow falls back on them like confetti.
  * - **soloBest / soloCheer:** alone, snow confetti and the crown popping on for a new best; otherwise a happy hop.
  *
+ * With an invite's wager, its emoji drops onto the loser's head once the show is over (a tie: between the two). No words.
+ *
  * Tapping or pressing a key anywhere jumps to the end. Reduced motion: no barrage, just the crown and one puff.
  * Everything moves on the compositor (Web Animations on transform and opacity, one small spring written per frame),
  * so it stays smooth on a phone. Feel numbers: `content.celebrate`.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { playThump } from "@/lib/audio";
 import { haptic } from "@/lib/haptics";
@@ -37,6 +39,7 @@ const ART = {
   puff: "/assets/effects/snow-puff.webp",
   ring: "/assets/effects/snow-ring.webp",
   mound: "/assets/scenery/snow-mound.webp",
+  star: "/assets/effects/star.webp",
 };
 /** The top ball of Rachel's snowball pile (365 × 299): its centre and radius in the image's pixels. */
 const BALL = { w: 365, h: 299, x: 184, y: 51, r: 48 };
@@ -89,6 +92,7 @@ export function Celebration({
   crowns,
   onSettled,
   totals = true,
+  stake = null,
 }: {
   players: readonly [EndPlayer, EndPlayer];
   kind: CelebrationKind;
@@ -100,6 +104,8 @@ export function Celebration({
   onSettled: () => void;
   /** Show each snowman's total under its name (off when the result line carries the score). */
   totals?: boolean;
+  /** The invite's wager as an effect: its emoji, and who it lands on (null: a tie, between the two). */
+  stake?: { emoji: string; on: Seat | null } | null;
 }) {
   const reduce = useReducedMotion();
   const solo = kind === "soloBest" || kind === "soloCheer";
@@ -669,6 +675,7 @@ export function Celebration({
       mood={moods[s]}
       hideTotal={hideTotal}
       showTotal={done}
+      stake={done && stake && stake.on === s ? stake.emoji : null}
       refs={(key, el) => {
         (els.current[key] as (Element | null)[])[s] = el;
       }}
@@ -691,7 +698,15 @@ export function Celebration({
           </p>
         </div>
       ) : (
-        <div className="flex items-end justify-center gap-6">{seats.map((s) => seat(s, !totals))}</div>
+        <div className="relative flex items-end justify-center gap-6">
+          {seats.map((s) => seat(s, !totals))}
+          {/* A tie: the wager pops between the two, nobody owes it. */}
+          {done && stake && stake.on === null && (
+            <span className="absolute left-1/2" style={{ top: e.face * 0.42, marginLeft: -c.stake.size / 2 }}>
+              <StakeDrop emoji={stake.emoji} />
+            </span>
+          )}
+        </div>
       )}
       {/* Snowballs, splats and falling snow fly over the faces here. */}
       <div ref={layer} aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-visible" />
@@ -707,6 +722,7 @@ function Finisher({
   mood,
   hideTotal,
   showTotal,
+  stake,
   refs,
 }: {
   player: EndPlayer;
@@ -715,6 +731,8 @@ function Finisher({
   mood: Mood;
   hideTotal: boolean;
   showTotal: boolean;
+  /** The wager's emoji landing on this one's head (the loser), or nothing. */
+  stake: string | null;
   refs: (key: keyof Els, el: Element | null) => void;
 }) {
   const face = e.face;
@@ -774,6 +792,11 @@ function Finisher({
               transformOrigin: "50% 100%",
             }}
           />
+          {stake && (
+            <span className="absolute z-10" style={{ left: FACE_LEFT + face * 0.56 - c.stake.size / 2, top: FACE_TOP - c.stake.size * 0.62 }}>
+              <StakeDrop emoji={stake} />
+            </span>
+          )}
           {crown && (
             <div ref={(el) => refs("crown", el)} className="absolute -top-1 left-1/2 -ml-[22px]">
               <div className={styles.crown}>
@@ -796,5 +819,41 @@ function Finisher({
         </p>
       )}
     </div>
+  );
+}
+
+/** The wager's emoji dropping in with a springy bounce and a sparkle of Rachel's star (still with reduced motion). */
+function StakeDrop({ emoji }: { emoji: string }) {
+  const k = c.stake;
+  return (
+    <span
+      aria-hidden
+      className="relative block"
+      style={
+        {
+          width: k.size,
+          height: k.size,
+          "--hud-stake": `${k.ms}ms`,
+          "--hud-stake-drop": `${k.drop}px`,
+          "--hud-stake-tilt": `${k.tilt}deg`,
+          "--hud-burst": `${k.starMs}ms`,
+        } as CSSProperties
+      }
+    >
+      <span
+        className={`block text-center leading-none select-none ${styles.stake}`}
+        style={{ fontSize: k.size * 0.9, lineHeight: `${k.size}px`, animationDelay: `${k.delay}ms` }}
+      >
+        {emoji}
+      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- small decorative doodle */}
+      <img
+        src={ART.star}
+        alt=""
+        draggable={false}
+        className={`absolute ${styles.burst}`}
+        style={{ width: k.star, left: k.size * 0.62, top: -k.star * 0.45, animationDelay: `${k.delay + k.ms * 0.4}ms` }}
+      />
+    </span>
   );
 }

@@ -12,7 +12,6 @@ export {
   inviteTitle,
   readInvite,
   wagerFor,
-  wagerResult,
   type Invite,
   type Wager,
   type WagerCode,
