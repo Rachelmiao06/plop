@@ -10,7 +10,9 @@ Sharing the game, especially as a link in WeChat. Mounted in `src/app/page.tsx`;
   `InviteSheet.tsx`, "邀请朋友，署名：小美": the name from the game's start card (`readNames` from `@/features/game`, or the
   snowman's default, so an invite is never unsigned) with "改名字 · change" to change it (saved back to the game's
   names), and,
-  once you have a best score from a match alone, a tick to include it. "发送邀请 / send invite" builds
+  once you have a best score from a match alone, a tick to include it, and an optional preset wager ("加个赌注": no
+  wager or one of six lines from `@/features/invite`'s `INVITE.wagers`; its code goes in the link as `w=`, and the
+  share text adds "赌注：输的人请喝热可可 ☕"). "发送邀请 / send invite" builds
   `/invite?g=<group>&from=<name>&score=<n>` (with `@/features/invite`'s `invitePath`) and shares it: inside WeChat it copies the
   link and opens the card page, where the "tap ···" note shows so WeChat's menu sends it as a real chat card;
   elsewhere the system share sheet, or copy. The sheet's "只分享游戏 / just share the game" line is the old share:

@@ -1,12 +1,15 @@
 /**
- * The invite link: `/invite?g=<group>&from=<name>&score=<n>`. Only a random group id (so everyone invited by the same
- * person shares one group leaderboard), a first name (at most `INVITE.link.nameMax` characters) and a score travel
- * in it, nothing else. Used by the share feature to make a link and by the invite page to read it.
+ * The invite link: `/invite?g=<group>&from=<name>&score=<n>&w=<wager>`. Only a random group id (so everyone invited
+ * by the same person shares one group leaderboard), a first name (at most `INVITE.link.nameMax` characters), a score
+ * and a preset wager's short code (`INVITE.wagers`) travel in it, nothing else. Used by the share feature to make a link and by the invite page to read it.
  * Plain functions, safe on the server and in the browser.
  */
 import { INVITE } from "./content";
 
-export type Invite = { group: string | null; name: string | null; score: number | null };
+export type WagerCode = (typeof INVITE.wagers.lines)[number]["code"];
+export type Wager = (typeof INVITE.wagers.lines)[number];
+
+export type Invite = { group: string | null; name: string | null; score: number | null; wager?: WagerCode | null };
 
 const GROUP = new RegExp(`^[A-Za-z0-9_-]{${INVITE.link.groupLength}}$`);
 
@@ -31,14 +34,40 @@ export function cleanScore(raw: unknown): number | null {
   return Math.min(INVITE.link.scoreMax, Math.round(n));
 }
 
+/** A preset wager's code exactly as listed in `INVITE.wagers`, or nothing (anything else in a link is dropped). */
+export function cleanWager(raw: unknown): WagerCode | null {
+  return INVITE.wagers.lines.find((l) => l.code === raw)?.code ?? null;
+}
+
+/** The preset line for a code, or nothing. */
+export function wagerFor(code: unknown): Wager | null {
+  return INVITE.wagers.lines.find((l) => l.code === code) ?? null;
+}
+
+/**
+ * The end card's wager line once the match is over: who lost and what they owe ("小美要请喝热可可啦 ☕"), or the tie
+ * line. `loser` null: a tie. Never mean; it only names the loser with the preset line.
+ */
+export function wagerResult(code: unknown, loser: string | null): { zh: string; en: string } | null {
+  const w = wagerFor(code);
+  if (!w) return null;
+  if (!loser) return { zh: `${INVITE.wagers.tie.zh} · ${w.zh}`, en: INVITE.wagers.tie.en };
+  return { zh: `${loser} ${w.loserZh} ${w.emoji}`, en: `${loser} ${w.loserEn}` };
+}
+
 /** Reads the page's search params (Next.js hands them over as string | string[] | undefined). */
 export function readInvite(params: Record<string, string | string[] | undefined>): Invite {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  return { group: cleanGroup(one(params.g)), name: cleanName(one(params.from)), score: cleanScore(one(params.score)) };
+  return {
+    group: cleanGroup(one(params.g)),
+    name: cleanName(one(params.from)),
+    score: cleanScore(one(params.score)),
+    wager: cleanWager(one(params.w)),
+  };
 }
 
 /** The path (no origin) of an invite. */
-export function invitePath({ group, name, score }: Invite): string {
+export function invitePath({ group, name, score, wager }: Invite): string {
   const q = new URLSearchParams();
   const g = cleanGroup(group);
   if (g) q.set("g", g);
@@ -46,20 +75,24 @@ export function invitePath({ group, name, score }: Invite): string {
   const s = cleanScore(score);
   if (n) q.set("from", n);
   if (s !== null) q.set("score", String(s));
+  const w = cleanWager(wager);
+  if (w) q.set("w", w);
   const query = q.toString();
   return query ? `/invite?${query}` : "/invite";
 }
 
 /**
  * Where "接受挑战" goes: the game, keeping the group (for its leaderboard) and the inviter's name (so the game can
- * say "vs {name}" one day): `/?g=<group>&from=<name>`.
+ * say "vs {name}" one day) and the wager, if any: `/?g=<group>&from=<name>&w=<wager>`.
  */
-export function gamePath(name: string | null, group: string | null = null): string {
+export function gamePath(name: string | null, group: string | null = null, wager: unknown = null): string {
   const q = new URLSearchParams();
   const g = cleanGroup(group);
   const n = cleanName(name);
+  const w = cleanWager(wager);
   if (g) q.set("g", g);
   if (n) q.set("from", n);
+  if (w) q.set("w", w);
   const query = q.toString();
   return query ? `/?${query}` : "/";
 }

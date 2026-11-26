@@ -21,7 +21,7 @@ import { SHARE, WeChatHint } from "@/features/share";
 import { track } from "@/lib/analytics";
 
 import { INVITE } from "./content";
-import { gamePath, inviteDescription, inviteTitle, type Invite } from "./link";
+import { gamePath, inviteDescription, inviteTitle, wagerFor, type Invite } from "./link";
 
 // Card and button edges in a 100 x 100 box, stretched to fit (strokes do not stretch).
 const EDGE = "M3 4 C 30 2, 70 5, 97 3 C 98.5 35, 96.5 70, 98 97 C 70 99, 30 96.5, 2 98 C 3.5 70, 1.5 35, 3 4 Z";
@@ -80,7 +80,7 @@ function withName(text: string, name: string) {
   );
 }
 
-export function InviteCard({ group, name, score }: Invite) {
+export function InviteCard({ group, name, score, wager }: Invite) {
   /** True at the snowball's burst: the card pops out of the puff. */
   const shown = useLoaded();
   const router = useRouter();
@@ -113,6 +113,7 @@ export function InviteCard({ group, name, score }: Invite) {
   }, []);
 
   const { words, art, timing } = INVITE;
+  const stake = wagerFor(wager);
   const invite = name ? words.invite : words.inviteNoName;
 
   return (
@@ -153,8 +154,22 @@ export function InviteCard({ group, name, score }: Invite) {
                 <Bi zh={withScore(words.score.zh, score)} en={words.score.en.replace("{score}", String(score))} />
               </p>
             )}
+            {/* The inviter's preset wager, quiet: a pencil underline, no box. */}
+            {stake && (
+              <p className="relative mx-auto mt-3 w-fit text-lg">
+                <Bi
+                  zh={
+                    <>
+                      <span className="text-base opacity-75">{INVITE.wagers.stake.zh}：</span>
+                      <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{stake.zh}</span> {stake.emoji}
+                    </>
+                  }
+                  en={`${INVITE.wagers.stake.en}: ${stake.en}`}
+                />
+              </p>
+            )}
             <Link
-              href={gamePath(name, group)}
+              href={gamePath(name, group, wager)}
               className="plop-invite-btn relative mx-auto mt-6 block w-[min(70vw,250px)] px-6 py-3 text-ink-deep outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>

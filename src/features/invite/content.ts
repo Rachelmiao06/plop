@@ -12,6 +12,27 @@ export const INVITE = {
     groupLength: 8,
   },
 
+  /**
+   * Preset wagers the inviter can add (Rachel: presets only, never typed): a short code travels in the link (`w=`),
+   * checked against this list. The end card names the loser with the line. Kind and silly, never mean.
+   */
+  wagers: {
+    label: { zh: "加个赌注（可以不选）", en: "add a wager (optional)" },
+    none: { zh: "不赌", en: "no wager" },
+    /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕". */
+    stake: { zh: "赌注", en: "the wager" },
+    /** A tie: nobody pays. */
+    tie: { zh: "平手！赌注留到下一局", en: "a tie: the wager waits for the next match" },
+    lines: [
+      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", en: "Loser buys hot cocoa", loserZh: "要请喝热可可啦", loserEn: "buys the hot cocoa" },
+      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", en: "Loser sings a song", loserZh: "要唱一首歌啦", loserEn: "sings a song" },
+      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", en: "Loser waddles like a penguin", loserZh: "要学企鹅走路啦", loserEn: "waddles like a penguin" },
+      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", en: "Loser posts a silly selfie", loserZh: "要发一张丑照啦", loserEn: "posts a silly selfie" },
+      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", en: "Loser buys ice cream", loserZh: "要请吃冰淇淋啦", loserEn: "buys the ice cream" },
+      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", en: "Loser gives the winner 3 compliments", loserZh: "要夸赢家三句啦", loserEn: "gives the winner 3 compliments" },
+    ],
+  },
+
   /** The group's board on the card (when the link has a group): how many rows. */
   board: { limit: 5 },
 

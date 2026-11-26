@@ -43,3 +43,13 @@ WeChat ignores Open Graph without an Official Account. It takes the page `<title
 - `review/` screenshots (the old envelope sequence is history; the white flow is in `src/features/loading/review/white/`).
 
 Reduce motion: no poof and no bounce; the card simply appears.
+
+## Wagers (preset only)
+
+The inviter can add one optional wager in the invite sheet (share feature): "不赌 · no wager" or one of six preset
+lines in `INVITE.wagers` (热可可, 唱歌, 学企鹅走路, 丑照, 冰淇淋, 夸赢家三句). Only its short code travels in the link
+(`w=cocoa`); `cleanWager` drops anything not on the list, so nothing typed ever shows. The invite card shows it under
+"X invites you" ("赌注：输的人学企鹅走路 🐧", a wavy berry underline, no box), "接受挑战" carries it into the game
+(`gamePath(name, group, wager)`), and the end card settles it (`wagerResult`): "小雪要学企鹅走路啦 🐧" for the loser,
+or "平手！赌注留到下一局" on a tie. Who loses: alone against the inviter's score, the lower of the two; two players
+on one phone, the lower total; a team never loses, so no line. `/dev/wager` shows the end card for each.
