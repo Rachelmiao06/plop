@@ -32,8 +32,10 @@ export function WagerTester() {
   const [code, setCode] = useState<WagerCode>("cocoa");
   const [which, setWhich] = useState(0);
   const c = CASES[which];
-  const [a, b] = c.players;
-  const loser = c.solo ? (a.total > c.rival!.score ? c.rival!.name : a.total < c.rival!.score ? a.name : null) : a.total > b.total ? b.name : b.total > a.total ? a.name : null;
+  // Alone after an invite, the other side of the result is the inviter.
+  const players: [EndPlayer, EndPlayer] = c.rival ? [c.players[0], { name: c.rival.name, look: "redHat", total: c.rival.score }] : c.players;
+  const [a, b] = players;
+  const [loser, winner] = a.total > b.total ? [b.name, a.name] : b.total > a.total ? [a.name, b.name] : [null, null];
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
       <header>
@@ -62,10 +64,10 @@ export function WagerTester() {
       <div className="relative mx-auto w-full max-w-sm">
         <MatchEnd
           key={`${which}-${code}`}
-          players={c.players}
+          players={players}
           solo={c.solo ? { best: 20 } : null}
-          rival={c.rival ?? null}
-          wager={wagerResult(code, loser)}
+          rival={!!c.rival}
+          wager={wagerResult(code, loser, winner)}
           onAgain={() => {}}
           onChoose={() => {}}
         />

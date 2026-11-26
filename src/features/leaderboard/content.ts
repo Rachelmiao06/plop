@@ -251,6 +251,12 @@ export const TEXT = {
     done: (name: string) => `nice one, ${name}!`,
     again: "change name",
     privacy: "only your nickname and score are kept, nothing else",
+    /** The end card's step 2 when two played on one phone: one prompt, a row each, one button. */
+    askBoth: "your names for the board",
+    buttonBoth: "Pop us on",
+    nameFor: (player: string) => `${player}'s nickname for the board`,
+    /** The opt-in for "今日最惨", short, in each row (one language: Rachel). */
+    optInShort: "laugh at my worst throw today",
   },
   /** What the server's error codes mean, in friendly words. */
   errors: {
@@ -263,6 +269,7 @@ export const TEXT = {
     bad_mode: "a match is turns, together or a team",
     bad_stats: "those match numbers look off. try again?",
     bad_kind: "that sticker isn't one of ours",
+    same_names: "two different names, please",
     rate_limited: "slow down a little, snow takes time ✿",
     server: "the board is napping. try again in a moment",
   } as Record<string, string>,

@@ -88,6 +88,7 @@ export function Celebration({
   winner,
   crowns,
   onSettled,
+  totals = true,
 }: {
   players: readonly [EndPlayer, EndPlayer];
   kind: CelebrationKind;
@@ -97,6 +98,8 @@ export function Celebration({
   crowns: readonly [boolean, boolean];
   /** The show is over (or was skipped): the rest of the card may settle in. */
   onSettled: () => void;
+  /** Show each snowman's total under its name (off when the result line carries the score). */
+  totals?: boolean;
 }) {
   const reduce = useReducedMotion();
   const solo = kind === "soloBest" || kind === "soloCheer";
@@ -688,7 +691,7 @@ export function Celebration({
           </p>
         </div>
       ) : (
-        <div className="flex items-end justify-center gap-6">{seats.map((s) => seat(s, false))}</div>
+        <div className="flex items-end justify-center gap-6">{seats.map((s) => seat(s, !totals))}</div>
       )}
       {/* Snowballs, splats and falling snow fly over the faces here. */}
       <div ref={layer} aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-visible" />

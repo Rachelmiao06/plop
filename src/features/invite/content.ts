@@ -21,15 +21,20 @@ export const INVITE = {
     none: "no wager",
     /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕" (the lines are Chinese: the fun is there). */
     stake: "赌注",
-    /** A tie: nobody pays (the end card shows both lines until its redesign). */
-    tie: { zh: "平手！赌注留到下一局", en: "a tie: the wager waits for the next match" },
+    /**
+     * The end card's result (Rachel: "QA 输了，快去学企鹅走路吧！"): the small stake line, then `lost` for the loser (the
+     * winner's name for the lines that need it), or `tie` + `noOne` ("平局！这次谁都不用学企鹅走路 😆"). Chinese only.
+     */
+    stakeLine: (zh: string, emoji: string) => `赌注 · ${zh} ${emoji}`,
+    lost: (loser: string, what: string) => `${loser} 输了，${what}`,
+    tie: (noOne: string) => `平局！${noOne} 😆`,
     lines: [
-      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", loserZh: "要请喝热可可啦", loserEn: "buys the hot cocoa" },
-      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", loserZh: "要唱一首歌啦", loserEn: "sings a song" },
-      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", loserZh: "要学企鹅走路啦", loserEn: "waddles like a penguin" },
-      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", loserZh: "要发一张丑照啦", loserEn: "posts a silly selfie" },
-      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", loserZh: "要请吃冰淇淋啦", loserEn: "buys the ice cream" },
-      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", loserZh: "要夸赢家三句啦", loserEn: "gives the winner 3 compliments" },
+      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", lost: () => "快请大家喝热可可吧 ☕", noOne: "这次谁都不用请热可可" },
+      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", lost: () => "快给大家唱一首歌吧 🎤", noOne: "这次谁都不用唱歌" },
+      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", lost: () => "快去学企鹅走路吧！", noOne: "这次谁都不用学企鹅走路" },
+      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", lost: () => "快发一张丑照吧 📸", noOne: "这次谁都不用发丑照" },
+      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", lost: () => "快请大家吃冰淇淋吧 🍦", noOne: "这次谁都不用请冰淇淋" },
+      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", lost: (winner: string) => `夸 ${winner} 三句吧 💐`, noOne: "这次谁都不用夸人" },
     ],
   },
 

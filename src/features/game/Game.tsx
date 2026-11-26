@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, cleanWager, INVITE, wagerResult } from "@/features/invite";
-import { GroupBoard, GroupNotices, SubmitScore, teamName } from "@/features/leaderboard";
+import { GroupBoard, GroupNotices, SubmitScore, SubmitScores, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
 import { getGroupId } from "@/features/share/group";
@@ -231,18 +231,17 @@ export function Game() {
   }, [state.phase, state.players, state.rounds, state.scores, bestBefore]);
 
   const solo = state.players === 1;
-  const bestThrow = (() => {
-    const [a, b] = state.best;
-    const pick = !b || solo || (a && a.points >= b.points) ? (a ? { p: 0, ...a } : null) : { p: 1, ...b };
-    return pick && pick.points > 0 ? { name: players[pick.p].name, points: pick.points, round: pick.round + 1 } : null;
-  })();
   const rival = solo && invite.name && invite.score !== null ? { name: invite.name, score: invite.score } : null;
   // The invite's preset wager, settled on the end card: the loser and what they owe (a team or a tie: nobody pays).
   const wager = (() => {
     if (state.phase !== "over" || !invite.wager || together) return null;
     const [mine, theirs] = state.scores;
-    if (solo) return rival ? wagerResult(invite.wager, mine > rival.score ? rival.name : mine < rival.score ? names[0] : null) : null;
-    return wagerResult(invite.wager, mine > theirs ? names[1] : theirs > mine ? names[0] : null);
+    // Who lost and who won: alone, against the inviter's score; two on one phone, the lower and higher totals.
+    const [me, them] = solo ? [mine, rival?.score ?? null] : [mine, theirs];
+    if (them === null) return null;
+    const [mineName, theirName] = solo ? [names[0], rival!.name] : [names[0], names[1]];
+    if (me === them) return wagerResult(invite.wager, null, null);
+    return me > them ? wagerResult(invite.wager, theirName, mineName) : wagerResult(invite.wager, mineName, theirName);
   })();
   const rule = state.phase === "playing" ? ruleFor(game.setFor(state.round)) : null;
 
@@ -354,12 +353,12 @@ export function Game() {
         <MatchEnd
           players={[
             { ...players[0], total: state.scores[0] },
-            { ...players[1], total: state.scores[1] },
+            // Alone after a friend's invite, the other side of the result scene is them (their name and score).
+            rival ? { name: rival.name, look: players[1].look, total: rival.score } : { ...players[1], total: state.scores[1] },
           ]}
           solo={solo ? { best: bestBefore } : null}
           team={together}
-          bestThrow={bestThrow}
-          rival={rival}
+          rival={!!rival}
           wager={wager}
           onAgain={() => begin(state.rounds, state.players, true)}
           onChoose={() => {
@@ -382,8 +381,8 @@ export function Game() {
                   remember={false}
                 />
               ) : (
-                <>
-                  {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
+                solo ? (
+                  // Alone: one row, under the name from the start card (one tap).
                   <SubmitScore
                     group={group}
                     score={state.scores[0]}
@@ -393,18 +392,19 @@ export function Game() {
                     defaultName={typed[0] || undefined}
                     onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
                   />
-                  {!solo && (
-                    <SubmitScore
-                      group={group}
-                      score={state.scores[1]}
-                      rounds={state.rounds}
-                      mode={state.mode}
-                      stats={stats.of(1)}
-                      defaultName={typed[1] || undefined}
-                      remember={false}
-                    />
-                  )}
-                </>
+                ) : (
+                  // Taking turns: ONE prompt, a row per player (their face, start-card name, score), one "Pop us on".
+                  <SubmitScores
+                    group={group}
+                    rounds={state.rounds}
+                    mode={state.mode}
+                    players={[
+                      { ...players[0], score: state.scores[0], stats: stats.of(0) },
+                      { ...players[1], score: state.scores[1], stats: stats.of(1) },
+                    ]}
+                    onSubmitted={([r]) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
+                  />
+                )
               )}
               <GroupBoard group={group} me={together ? teamName(names[0], names[1]) : typed[0] || undefined} limit={GAME.board.limit} />
             </>
