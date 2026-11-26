@@ -14,27 +14,20 @@ export const INVITE = {
 
   /**
    * Preset wagers the inviter can add (Rachel: presets only, never typed): a short code travels in the link (`w=`),
-   * checked against this list. The end card names the loser with the line. Kind and silly, never mean.
+   * checked against this list. The end card shows only the emoji, landing on the loser (no words). Kind and silly.
    */
   wagers: {
     label: "add a wager (optional)",
     none: "no wager",
     /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕" (the lines are Chinese: the fun is there). */
     stake: "赌注",
-    /**
-     * The end card's result (Rachel: "QA 输了，快去学企鹅走路吧！"): the small stake line, then `lost` for the loser (the
-     * winner's name for the lines that need it), or `tie` + `noOne` ("平局！这次谁都不用学企鹅走路 😆"). Chinese only.
-     */
-    stakeLine: (zh: string, emoji: string) => `赌注 · ${zh} ${emoji}`,
-    lost: (loser: string, what: string) => `${loser} 输了，${what}`,
-    tie: (noOne: string) => `平局！${noOne} 😆`,
     lines: [
-      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", lost: () => "快请大家喝热可可吧 ☕", noOne: "这次谁都不用请热可可" },
-      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", lost: () => "快给大家唱一首歌吧 🎤", noOne: "这次谁都不用唱歌" },
-      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", lost: () => "快去学企鹅走路吧！", noOne: "这次谁都不用学企鹅走路" },
-      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", lost: () => "快发一张丑照吧 📸", noOne: "这次谁都不用发丑照" },
-      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", lost: () => "快请大家吃冰淇淋吧 🍦", noOne: "这次谁都不用请冰淇淋" },
-      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", lost: (winner: string) => `夸 ${winner} 三句吧 💐`, noOne: "这次谁都不用夸人" },
+      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可" },
+      { code: "song", emoji: "🎤", zh: "输的人唱一首歌" },
+      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路" },
+      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照" },
+      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋" },
+      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句" },
     ],
   },
 

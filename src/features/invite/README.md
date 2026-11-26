@@ -50,6 +50,7 @@ The inviter can add one optional wager in the invite sheet (share feature): "不
 lines in `INVITE.wagers` (热可可, 唱歌, 学企鹅走路, 丑照, 冰淇淋, 夸赢家三句). Only its short code travels in the link
 (`w=cocoa`); `cleanWager` drops anything not on the list, so nothing typed ever shows. The invite card shows it under
 "X invites you" ("赌注：输的人学企鹅走路 🐧", a wavy berry underline, no box), "接受挑战" carries it into the game
-(`gamePath({ name, group, score, wager })`, which keeps the score too, so the end card can say who lost), and the end card settles it (`wagerResult`): "小雪要学企鹅走路啦 🐧" for the loser,
-or "平手！赌注留到下一局" on a tie. Who loses: alone against the inviter's score, the lower of the two; two players
-on one phone, the lower total; a team never loses, so no line. `/dev/wager` shows the end card for each.
+(`gamePath({ name, group, score, wager })`, which keeps the score too, so the end card knows who lost). The end card
+shows the wager as an effect only, no words (Rachel): after the snowballs its emoji drops onto the loser's head with a
+bounce and a star sparkle; on a tie it pops between the two. Who loses: alone against the inviter's score, the lower
+of the two; two players on one phone, the lower total; a team never loses, so no effect. `/dev/wager` shows each.

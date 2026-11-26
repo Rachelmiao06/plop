@@ -28,6 +28,7 @@ export const styles = {
   howBall: "plop-hud-how-ball",
   howTouch: "plop-hud-how-touch",
   howKey: "plop-hud-how-key",
+  stake: "plop-hud-stake",
 } as const;
 
 export const hudCss = `
@@ -363,7 +364,37 @@ export const hudCss = `
   transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* The invite's wager on the end card, no words: its emoji drops onto the loser's head and bounces (Rachel). */
+.plop-hud-stake {
+  animation: plop-hud-stake var(--hud-stake) cubic-bezier(0.3, 0, 0.4, 1) both;
+  transform-origin: 50% 100%;
+}
+@keyframes plop-hud-stake {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--hud-stake-drop) * -1)) scale(0.5) rotate(-18deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.18, 0.8) rotate(4deg);
+  }
+  62% {
+    transform: translateY(-9px) scale(0.92, 1.08) rotate(-3deg);
+  }
+  80% {
+    transform: translateY(0) scale(1.05, 0.95) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(var(--hud-stake-tilt));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .plop-hud-stake {
+    animation: none;
+    transform: rotate(var(--hud-stake-tilt));
+  }
   .plop-hud-enter,
   .plop-hud-glow,
   .plop-hud-pop,

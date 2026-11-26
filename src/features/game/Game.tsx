@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
-import { cleanName, cleanScore, cleanWager, INVITE, wagerResult } from "@/features/invite";
+import { cleanName, cleanScore, cleanWager, INVITE, wagerFor } from "@/features/invite";
 import { GroupBoard, GroupNotices, SubmitScore, SubmitScores, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
@@ -232,17 +232,10 @@ export function Game() {
 
   const solo = state.players === 1;
   const rival = solo && invite.name && invite.score !== null ? { name: invite.name, score: invite.score } : null;
-  // The invite's preset wager, settled on the end card: the loser and what they owe (a team or a tie: nobody pays).
-  const wager = (() => {
-    if (state.phase !== "over" || !invite.wager || together) return null;
-    const [mine, theirs] = state.scores;
-    // Who lost and who won: alone, against the inviter's score; two on one phone, the lower and higher totals.
-    const [me, them] = solo ? [mine, rival?.score ?? null] : [mine, theirs];
-    if (them === null) return null;
-    const [mineName, theirName] = solo ? [names[0], rival!.name] : [names[0], names[1]];
-    if (me === them) return wagerResult(invite.wager, null, null);
-    return me > them ? wagerResult(invite.wager, theirName, mineName) : wagerResult(invite.wager, mineName, theirName);
-  })();
+  // The invite's preset wager on the end card, as an effect only (Rachel: no words): its emoji lands on whoever lost
+  // (alone, against the inviter's score; two on one phone, the lower total). A team has no loser, so no effect.
+  const stake = state.phase === "over" && !together && (!solo || rival) ? wagerFor(invite.wager) : null;
+  const wager = stake ? { emoji: stake.emoji } : null;
   const rule = state.phase === "playing" ? ruleFor(game.setFor(state.round)) : null;
 
   return (
