@@ -83,6 +83,63 @@ export function dayFor(round: number, rounds: number, feel = GAME): number {
   return (Math.min(round, rounds - 1) / (rounds - 1)) * feel.evening.lastRound;
 }
 
+/** What the safety net does when the game has sat in one step too long (see `GAME.timing.watchdog`). */
+export type StallStep =
+  /** The throw never got its result: count it as the cards lie. */
+  | "count"
+  /** Counted, but the pins never said they stand again: go on as if they did. */
+  | "ready"
+  /** The hand-over (next player, next round or the end card) never came: do it now. */
+  | "pass";
+
+type WatchLimits = { rolling: number; counted: number; passing: number; lastCounted: number; lastPassing: number };
+
+/** Is the throw being played the match's last one (every player who throws in the last round has thrown)? */
+export function onLastThrow(state: GameState): boolean {
+  if (state.phase !== "playing" || state.round < state.rounds - 1) return false;
+  if (state.mode === "together") return state.thrown[0] && state.thrown[1];
+  const last = state.players === 2 ? 1 : 0;
+  return state.active === last && state.stage !== "aim";
+}
+
+/** The step the safety net takes after `seconds` of play in this state, or null while all is well. */
+export function stallStep(state: GameState, seconds: number, limits: WatchLimits = GAME.timing.watchdog): StallStep | null {
+  if (state.phase !== "playing") return null;
+  const last = onLastThrow(state);
+  if (state.stage === "rolling") {
+    // Together: one has thrown and the other is still choosing their shot. That is waiting, not a stall.
+    if (state.mode === "together" && !(state.thrown[0] && state.thrown[1])) return null;
+    return seconds > limits.rolling ? "count" : null;
+  }
+  if (state.stage === "counted") return seconds > (last ? limits.lastCounted : limits.counted) ? "ready" : null;
+  if (state.stage === "passing") return seconds > (last ? limits.lastPassing : limits.passing) ? "pass" : null;
+  return null;
+}
+
+/**
+ * The safety net's clock: feed it the game state and the seconds of play since the last call; it says which step to
+ * take when the game has sat still too long, then starts timing again (so a step that did not help comes once more
+ * after another full wait, never every frame). Any change of step, turn, round or throw restarts it.
+ */
+export function createWatchdog(limits: WatchLimits = GAME.timing.watchdog) {
+  let key = "";
+  let still = 0;
+  return {
+    tick(state: GameState, seconds: number): StallStep | null {
+      const now = `${state.phase}|${state.stage}|${state.round}|${state.active}|${state.thrown[0]}${state.thrown[1]}|${state.turnId}`;
+      if (now !== key) {
+        key = now;
+        still = 0;
+        return null;
+      }
+      still += Math.max(0, seconds);
+      const step = stallStep(state, still, limits);
+      if (step) still = 0;
+      return step;
+    },
+  };
+}
+
 export function createGame(feel = GAME) {
   let state: GameState = {
     phase: "choosing",
@@ -290,6 +347,15 @@ export function createGame(feel = GAME) {
     /** The pins stand again (after their bounce, or the next round's set has hopped in). */
     pinsReady() {
       if (state.stage === "counted") set({ stage: "passing", down: 0 });
+    },
+
+    /** The throw as the cards lie right now (the safety net counts a throw that never got its result with it). */
+    liveCount: (): ThrowCount => ({ down: state.down, fullClear: false, bonus: 0 }),
+    /** The safety net's step on the rules (`stallStep`); the bridge adds what the pins need (`applyStall`). */
+    stall(step: StallStep) {
+      if (step === "count") this.result(this.liveCount());
+      if (step === "ready") this.pinsReady();
+      if (step === "pass") this.passTurn();
     },
 
     /** Hand the ball to the next player, or start the next round, or end the match. */
