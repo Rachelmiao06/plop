@@ -7,7 +7,7 @@
 **A cute, calm stress-relief toy: paper bowling on snow.**
 Pull back, roll a snowball bigger, let go, and watch a little crowd of paper friends tumble.
 
-[**▶ Play it now**](https://plop-two.vercel.app) &nbsp;·&nbsp; [How to play](#how-to-play) &nbsp;·&nbsp; [Friends & boards](#friends-boards-and-wagers) &nbsp;·&nbsp; [Run it yourself](#run-it-yourself)
+[**▶ Play it now**](https://plop-two.vercel.app) &nbsp;·&nbsp; [Why it exists](#why-it-exists) &nbsp;·&nbsp; [Modes](#modes-and-variations) &nbsp;·&nbsp; [How to play](#how-to-play) &nbsp;·&nbsp; [Friends & boards](#friends-boards-and-wagers) &nbsp;·&nbsp; [Run it yourself](#run-it-yourself)
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-3a2a1c?style=flat-square&logo=nextdotjs&logoColor=white)
 ![Three.js](https://img.shields.io/badge/Three.js-React_Three_Fiber-8fb3e8?style=flat-square&logo=threedotjs&logoColor=white)
@@ -19,6 +19,32 @@ Pull back, roll a snowball bigger, let go, and watch a little crowd of paper fri
 
 A snowman in a cosy village made entirely of Rachel's hand-drawn paper cut-outs. Press on the snowman and drag back,
 and the snowball at its feet rolls and grows. Let go, and it rolls through the crowd and knocks them over. Plop!
+
+## Why it exists
+
+Three small ideas became one game.
+
+- **Real snow, paper people.** The look started from a contrast: soft, wet, real snow against flat cardboard
+  cut-out characters. Everything that stands up is a paper card; everything you touch (the snowball, the groove it
+  leaves, the falling flakes) behaves like snow. That is why the cut-outs flop instead of tumbling like toys.
+- **Boston is cold and there is always too much snow, and never the right time for a snowball fight.** The
+  snow is on the ground, but it is too icy, too cold, or you are on your way to class. Plop! is the snowball fight
+  you can have from a warm room, in a minute, without getting wet.
+- **The Christmas game that travels through WeChat.** Every December a silly little game goes around the group
+  chats and everyone sends their score to see who did better. Plop! is built for that moment: no sign-up, one tap to
+  send a challenge (a link, or a poster for Moments), and a group board so a chat becomes a small league.
+
+## Modes and variations
+
+| | What changes |
+|---|---|
+| **Match length** | 3 rounds (a few minutes) or 5 rounds. |
+| **Who plays** | **Turns** (two friends alternate), **Together** (both snowmen on the line at once, aiming at the same crowd) or **Just me** (one throw a round, against your own best). |
+| **Round rules** | Every round is the same bowling-pin crowd of paper friends with one small twist: *Strike!* (just bowl), *Hit the star* (+2), *Let the bunny be* (+2 if it stays standing), *Little mound* (a soft snow mound slows a straight ball), *Sleepy cat* (don't wake it). |
+| **Light** | Afternoon in round 1, sunset in the middle, a lamp-lit evening by the last round. |
+| **Challenges** | A wager on the end card (the loser waddles like a penguin), and a group board that ranks everyone who opens the same invite. |
+
+Fresh snow (**N**) smooths the lane between throws, so no two matches leave the same grooves.
 
 ## A look inside
 
