@@ -127,6 +127,30 @@ export const SNOWBALL = {
   waitNote: 2.2,
 } as const;
 
+/**
+ * Sticker reactions on friends' lines: four of Rachel's effect doodles, one per person per line, changeable. The
+ * owner sees who reacted the next time they open the game or the invite page. Preset only.
+ */
+export const REACTIONS = {
+  kinds: ["star", "wow", "lol", "music"] as const,
+  art: {
+    star: { src: "/assets/effects/star.webp", w: 205, h: 178 },
+    wow: { src: "/assets/effects/surprise-lines.webp", w: 264, h: 145 },
+    lol: { src: "/assets/effects/snow-puff.webp", w: 306, h: 235 },
+    music: { src: "/assets/effects/music-notes.webp", w: 284, h: 234 },
+  },
+  /** Sets and changes per IP and group per window, in the server's memory. */
+  rateLimit: { max: 30, windowSeconds: 60 },
+  /** Hold a friend's row this long (ms) to open the stickers. */
+  holdMs: 420,
+  /** The doodle size in the picker and next to the score (px). */
+  pickSize: 30,
+  countSize: 15,
+  /** How far back the "X reacted" note looks, and how many it reads at most. */
+  inboxDays: 14,
+  inboxMax: 30,
+} as const;
+
 /** When a funny title fits (see `titles.ts` for the order). Matches and throws count only games that sent numbers. */
 export const TITLE_RULES = {
   /** 雪球大王 needs at least this many on the board (alone you are not a king of anything). */
@@ -161,6 +185,22 @@ export const TEXT = {
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
   champ: "the snowball champion",
+  reactions: {
+    names: {
+      star: { zh: "厉害", en: "awesome" },
+      wow: { zh: "哇", en: "wow" },
+      lol: { zh: "笑死", en: "lol" },
+      music: { zh: "好听", en: "lovely" },
+    },
+    open: (name: string) => `stick a sticker on ${name}`,
+    hint: "按住或点 + 贴个贴纸 · hold or tap + for a sticker",
+    pick: (zh: string, en: string) => `${zh} · ${en}`,
+    remove: "take it back",
+    gotZh: (name: string, more: number) => (more > 0 ? `${name}和另外${more}人给你贴了贴纸` : `${name}给你点了个`),
+    gotEn: (name: string, more: number) => (more > 0 ? `${name} and ${more} more stuck stickers on you` : `${name} gave you a`),
+    nice: { zh: "好耶", en: "Yay" },
+    failed: "没贴上 · didn't stick, try again",
+  },
   toPass: (n: number, name: string) => `还差${n}分超过${name} · ${n} to pass ${name}`,
   onTop: "你是第一！ · you're #1!",
   /** "X just passed you" (`OvertakeNotice`). Never mean: a little huff, then a way back. */
@@ -220,6 +260,7 @@ export const TEXT = {
     bad_rounds: "a match is 3 or 5 rounds",
     bad_mode: "a match is turns, together or a team",
     bad_stats: "those match numbers look off. try again?",
+    bad_kind: "that sticker isn't one of ours",
     rate_limited: "slow down a little, snow takes time ✿",
     server: "the board is napping. try again in a moment",
   } as Record<string, string>,

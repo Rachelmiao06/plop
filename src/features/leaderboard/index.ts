@@ -6,6 +6,7 @@ export { ChampPodium } from "./ChampPodium";
 export { SplatNotice, type SplatNoticeProps } from "./SplatNotice";
 export { OvertakeNotice, type OvertakeNoticeProps } from "./OvertakeNotice";
 export { GroupNotices, type GroupNoticesProps } from "./GroupNotices";
+export { ReactionNotice, type ReactionNoticeProps } from "./ReactionNotice";
 export { SubmitScore, type SubmitScoreProps } from "./SubmitScore";
 export { readNickname } from "./api";
 export type { BoardEntry, Submitted } from "./api";

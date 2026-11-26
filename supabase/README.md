@@ -27,6 +27,12 @@ each line in **scores** for the board's funny titles: `full_clears`, `best_strea
 `throws`, `full_power_throws`, `dry_matches` (matches in a row without a full clear), `stats_matches`. Only numbers
 about play. The game's server writes them through `submit_score_v2`.
 
+## Stickers
+
+Table **reactions** ([`migrations/0005_reactions.sql`](migrations/0005_reactions.sql), created 2026-11-25): one row per
+friend's sticker on another player's line: `group_id`, `from_name`, `to_name`, `kind` (star, wow, lol, music),
+`updated_at`, `seen_at`. Same rules as the other tables: row-level security on, no public access.
+
 ## Snowballs
 
 Table **snowballs** ([`migrations/0003_snowballs.sql`](migrations/0003_snowballs.sql), created 2026-11-25): one row

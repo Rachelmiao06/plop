@@ -31,6 +31,7 @@ export const lb = {
   glint: "plop-lb-glint",
   twinkle: "plop-lb-twinkle",
   rowTap: "plop-lb-row-tap",
+  stickerPop: "plop-lb-sticker-pop",
 } as const;
 
 /** content.ts motion numbers as CSS variables; put them on the sheet. */
@@ -241,12 +242,20 @@ export const boardCss = `
 .plop-lb-row-tap:hover { background-color: color-mix(in oklab, var(--snow-shadow) 45%, transparent); }
 .plop-lb-row-tap:active { scale: 0.985; }
 
+/* A sticker popping in, like it was slapped on. */
+.plop-lb-sticker-pop { animation: plop-lb-sticker-pop 420ms cubic-bezier(0.34, 1.7, 0.64, 1) both; }
+@keyframes plop-lb-sticker-pop {
+  from { opacity: 0; scale: 0.2; }
+  60% { opacity: 1; scale: 1.2; }
+  to { opacity: 1; scale: 1; }
+}
+
 .plop-lb-input::placeholder { color: color-mix(in oklab, var(--ink) 45%, var(--paper)); }
 .plop-lb-input:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .plop-lb-note, .plop-lb-bob, .plop-lb-row, .plop-lb-crown, .plop-lb-podium, .plop-lb-star,
   .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble, .plop-lb-hop-on, .plop-lb-squashed,
-  .plop-lb-sway, .plop-lb-smug, .plop-lb-drop-keep, .plop-lb-drop-fade, .plop-lb-glint, .plop-lb-twinkle { animation: none; }
+  .plop-lb-sway, .plop-lb-smug, .plop-lb-drop-keep, .plop-lb-drop-fade, .plop-lb-glint, .plop-lb-twinkle, .plop-lb-sticker-pop { animation: none; }
   .plop-lb-squash { transition: none; }
 }
 `;

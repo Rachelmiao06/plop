@@ -2,10 +2,12 @@
 
 /**
  * The notes a returning player may get when opening the game or the invite page, one at a time: first "you got hit"
- * (`SplatNotice`), then "X just passed you" (`OvertakeNotice`). Either button that starts a match ends the queue.
+ * (`SplatNotice`), then "X just passed you" (`OvertakeNotice`), then "小美给你点了个 ⭐" (`ReactionNotice`). A button that
+ * starts a match ends the queue.
  */
 import { useState } from "react";
 import { OvertakeNotice } from "./OvertakeNotice";
+import { ReactionNotice } from "./ReactionNotice";
 import { SplatNotice } from "./SplatNotice";
 
 export type GroupNoticesProps = {
@@ -17,12 +19,13 @@ export type GroupNoticesProps = {
 };
 
 export function GroupNotices({ group, me, onPlay }: GroupNoticesProps) {
-  const [step, setStep] = useState<"splat" | "overtake" | "done">("splat");
+  const [step, setStep] = useState<"splat" | "overtake" | "reactions" | "done">("splat");
   const play = (name: string) => {
     setStep("done");
     onPlay(name);
   };
   if (step === "splat") return <SplatNotice group={group} me={me} onThrowBack={play} onDone={() => setStep("overtake")} />;
-  if (step === "overtake") return <OvertakeNotice group={group} me={me} onRevenge={play} onDone={() => setStep("done")} />;
+  if (step === "overtake") return <OvertakeNotice group={group} me={me} onRevenge={play} onDone={() => setStep("reactions")} />;
+  if (step === "reactions") return <ReactionNotice group={group} me={me} onDone={() => setStep("done")} />;
   return null;
 }
