@@ -183,4 +183,24 @@ for (const m of MODES) {
   checks++;
 }
 
-console.log(`match flow: ${checks} checks passed (every mode, 3 and 5 rounds, with and without a missing step)`);
+// The invite's way into the game: what "接受挑战" opens must keep everything the invite brought, or the end card loses
+// the inviter's score ("Moss has 18 · so close", who lost the wager). Read back the way Game.tsx reads its address.
+{
+  const { invitePath, readInvite, gamePath, cleanName, cleanScore, cleanWager, cleanGroup } = await import(
+    "../src/features/invite/link.ts"
+  );
+  const sent = { group: "qaTest01", name: "Bub b", score: 17, wager: "penguin" };
+  const opened = readInvite(Object.fromEntries(new URL(invitePath(sent), "https://x").searchParams));
+  assert.deepEqual(opened, sent, "the invite page reads back what the invite link carries");
+  const game = new URL(gamePath(opened), "https://x").searchParams;
+  assert.deepEqual(
+    { group: cleanGroup(game.get("g")), name: cleanName(game.get("from")), score: cleanScore(game.get("score")), wager: cleanWager(game.get("w")) },
+    sent,
+    "接受挑战 keeps the group, the inviter's name, their score and the wager",
+  );
+  assert.equal(new URL(gamePath({ ...opened, score: 0 }), "https://x").searchParams.get("score"), "0", "a score of 0 is kept too");
+  assert.equal(gamePath({ name: "Moss", group: "qaTest01" }), "/?g=qaTest01&from=Moss", "without a score or wager, none is added");
+  checks++;
+}
+
+console.log(`match flow: ${checks} checks passed (every mode, 3 and 5 rounds, with and without a missing step; the invite's way into the game)`);

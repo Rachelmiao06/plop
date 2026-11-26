@@ -100,10 +100,11 @@ function Choice({
       <PencilFrame seed={seed} radius={22} overshoot={picked ? 7 : 3} />
       <span className="relative flex w-[5.5rem] shrink-0 items-end justify-center">{picture}</span>
       <span className="relative min-w-0 flex-1">
-        <span className={`flex items-center gap-1.5 font-heading text-xl leading-none text-ink ${picked ? "font-bold" : ""}`}>
-          {name.en}
+        {/* The name and its chip each stay on one line (at 375 px "Team up" and "one team 组队" used to break apart). */}
+        <span className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 font-heading text-xl leading-none text-ink ${picked ? "font-bold" : ""}`}>
+          <span className="whitespace-nowrap">{name.en}</span>
           {tag && (
-            <span className="rounded-full bg-butter/70 px-2 py-0.5 font-heading text-sm leading-none font-normal text-ink">
+            <span className="shrink-0 rounded-full bg-butter/70 px-1.5 py-0.5 font-heading text-sm leading-none font-normal whitespace-nowrap text-ink">
               {tag.en} <span className="font-sans text-[11px] text-ink/85">{tag.zh}</span>
             </span>
           )}

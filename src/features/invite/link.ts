@@ -82,16 +82,19 @@ export function invitePath({ group, name, score, wager }: Invite): string {
 }
 
 /**
- * Where "接受挑战" goes: the game, keeping the group (for its leaderboard) and the inviter's name (so the game can
- * say "vs {name}" one day) and the wager, if any: `/?g=<group>&from=<name>&w=<wager>`.
+ * Where "接受挑战" goes: the game, keeping everything the invite brought: the group (for its leaderboard), the
+ * inviter's name and score (the end card's "Moss has 18 · so close" and who lost), and the wager:
+ * `/?g=<group>&from=<name>&score=<n>&w=<wager>`. `scripts/check-match.mjs` checks nothing is dropped.
  */
-export function gamePath(name: string | null, group: string | null = null, wager: unknown = null): string {
+export function gamePath({ name = null, group = null, score = null, wager = null }: Partial<Invite> = {}): string {
   const q = new URLSearchParams();
   const g = cleanGroup(group);
   const n = cleanName(name);
+  const s = cleanScore(score);
   const w = cleanWager(wager);
   if (g) q.set("g", g);
   if (n) q.set("from", n);
+  if (s !== null) q.set("score", String(s));
   if (w) q.set("w", w);
   const query = q.toString();
   return query ? `/?${query}` : "/";
