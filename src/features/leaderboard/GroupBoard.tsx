@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * One invite group's board: a small paper list, best first. Each row has a rank doodle, one of the two snowman
- * faces (the same face for the same name), the nickname and the best score in handwriting, a tiny note of the
- * match length, and the viewer's own row scribbled over in butter crayon with a "you're #2!" note.
- * It refreshes itself whenever `<SubmitScore>` lands a score for the same group anywhere on the page.
+ * One invite group's board: the snowman pile (better scores stand on the heads of the ones below, `SnowmanPile`)
+ * with a compact paper list underneath for exact numbers: a rank doodle, the snowman's face, the nickname, a tiny
+ * note of the match length and the best score, the viewer's own row scribbled over in butter crayon with a
+ * "you're #2!" note. It refreshes itself whenever `<SubmitScore>` lands a score for the same group anywhere on
+ * the page. `BoardSheet` is the same board drawn from scores you hand it (the test page uses it).
  */
 import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { SnowmanFace, StarDoodle } from "@/features/hud/Doodles";
@@ -13,6 +14,7 @@ import { BOARD, TEXT } from "./content";
 import { CrayonHighlight, PaperSheet, RankMark } from "./Doodles";
 import { lb } from "./boardStyles";
 import { nameKey } from "./rules";
+import { lookFor, SnowmanPile } from "./SnowmanPile";
 
 export type GroupBoardProps = {
   /** The invite group id (`?g=` on the link). */
@@ -26,9 +28,6 @@ export type GroupBoardProps = {
 
 type State = { status: "loading" } | { status: "failed" } | { status: "ready"; scores: BoardEntry[] };
 
-/** The same nickname always gets the same snowman. */
-const lookFor = (name: string) =>
-  Array.from(nameKey(name)).reduce((h, c) => (h * 31 + c.codePointAt(0)!) >>> 0, 7) % 2 ? "redHat" : "bucket";
 
 export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoardProps) {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -58,12 +57,37 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
     };
   }, [group, limit, load]);
 
+  return (
+    <BoardSheet
+      seed={group.charCodeAt(0) + group.charCodeAt(7)}
+      state={state}
+      viewer={viewer}
+      landed={landed}
+      className={className}
+    />
+  );
+}
+
+export type BoardSheetProps = {
+  seed: number;
+  state: State;
+  /** The viewer's `nameKey`, or "" for nobody. */
+  viewer: string;
+  /** Change it to scribble the viewer's highlight in again. */
+  landed?: number;
+  className?: string;
+};
+
+export type BoardState = State;
+
+/** The board drawn from what it is given: title, the snowman pile, the compact list, "you're #2!". */
+export function BoardSheet({ seed, state, viewer, landed = 0, className }: BoardSheetProps) {
   const mine = state.status === "ready" && viewer ? state.scores.findIndex((s) => nameKey(s.name) === viewer) : -1;
   const { face, rowTilt, noteIn, noteOvershoot } = BOARD.look;
 
   return (
-    <PaperSheet seed={group.charCodeAt(0) + group.charCodeAt(7)} label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
-      <div className="mb-2 flex items-center justify-center gap-1.5">
+    <PaperSheet seed={seed} label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
+      <div className="mb-1 flex items-center justify-center gap-1.5">
         <span className={lb.star}>
           <StarDoodle size={20} />
         </span>
@@ -77,38 +101,40 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
       )}
 
       {state.status === "ready" && state.scores.length > 0 && (
-        <ol className="flex flex-col gap-1">
-          {state.scores.map((s, i) => {
-            const isMe = i === mine;
-            return (
-              <li
-                key={nameKey(s.name)}
-                className={`relative isolate flex items-center gap-2 px-1.5 py-1 ${lb.row}`}
-                style={{ "--lb-i": i, "--lb-tilt": `${(i % 2 ? 1 : -1) * rowTilt}deg` } as CSSProperties}
-                aria-current={isMe ? "true" : undefined}
-              >
-                {isMe && <CrayonHighlight key={landed} />}
-                <RankMark rank={i + 1} />
-                <span className={isMe ? lb.hop : "inline-block"}>
-                  <SnowmanFace look={lookFor(s.name)} size={face} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-heading text-xl leading-tight">
-                    {s.name}
-                    {isMe && <span className="ml-1.5 text-base opacity-70">({TEXT.you})</span>}
+        <>
+          <SnowmanPile scores={state.scores} viewer={viewer} />
+          <div aria-hidden className="mx-auto -mt-0.5 mb-2 h-[3px] w-[85%] rounded-full bg-snow-shadow/70" />
+          <ol className="flex flex-col" aria-label={TEXT.list}>
+            {state.scores.map((s, i) => {
+              const isMe = i === mine;
+              return (
+                <li
+                  key={nameKey(s.name)}
+                  className={`relative isolate flex items-center gap-1.5 px-1 py-px ${lb.row}`}
+                  style={{ "--lb-i": i, "--lb-tilt": `${(i % 2 ? 1 : -1) * rowTilt}deg` } as CSSProperties}
+                  aria-current={isMe ? "true" : undefined}
+                >
+                  {isMe && <CrayonHighlight key={landed} />}
+                  <span className="origin-center scale-75">
+                    <RankMark rank={i + 1} />
                   </span>
-                  <span className="block font-sans text-[11px] leading-tight opacity-70">
-                    {TEXT.rounds(s.bestRounds)}
-                    {s.bestMode === "together" && ` · ${TEXT.together}`}
-                    {s.bestMode === "team" && ` · ${TEXT.team}`}
-                    {s.plays > 1 && ` · ${TEXT.latest(s.latest)}`}
+                  <SnowmanFace look={s.bestMode === "team" ? "bucket" : lookFor(s.name)} size={face} />
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-heading text-lg leading-tight">{s.name}</span>
+                    {isMe && <span className="ml-1 font-heading text-sm opacity-70">({TEXT.you})</span>}
+                    <span className="ml-1.5 font-sans text-[10px] leading-tight opacity-65">
+                      {TEXT.rounds(s.bestRounds)}
+                      {s.bestMode === "together" && ` · ${TEXT.together}`}
+                      {s.bestMode === "team" && ` · ${TEXT.team}`}
+                      {s.plays > 1 && ` · ${TEXT.latest(s.latest)}`}
+                    </span>
                   </span>
-                </span>
-                <span className="font-heading text-3xl leading-none font-bold text-ink-deep tabular-nums">{s.best}</span>
-              </li>
-            );
-          })}
-        </ol>
+                  <span className="font-heading text-xl leading-none font-bold text-ink-deep tabular-nums">{s.best}</span>
+                </li>
+              );
+            })}
+          </ol>
+        </>
       )}
 
       {mine >= 0 && (

@@ -7,11 +7,26 @@ nickname. Try it at `/dev/leaderboard`.
 ```tsx
 import { GroupBoard, SubmitScore } from "@/features/leaderboard";
 
-<GroupBoard group={g} />                       // the paper list, best first (top 10)
+<GroupBoard group={g} />                       // the snowman pile + a compact list, best first (top 10)
 <SubmitScore group={g} score={total} rounds={3} mode="turns" />   // nickname prompt after a match
 ```
 
-- `GroupBoard` props: `group`, optional `me` (whose row to highlight; default the remembered nickname), `limit`.
+- `GroupBoard` props: `group`, optional `me` (whose snowman and row to highlight; default the remembered nickname), `limit`.
+- `BoardSheet` is the same board drawn from scores you hand it (`state`, `viewer`); `/dev/leaderboard` uses it for
+  fake groups of 2, 5 and 10 with buttons that make someone overtake someone.
+
+## The snowman pile (`SnowmanPile.tsx`, numbers in `PILE`)
+
+Each player is a little snowman from Rachel's thrower cut-outs (bucket or red hat, chosen from the nickname, so the
+same name is always the same snowman, sometimes facing the other way, leaning a hair) with a paper name tag on its
+belly (nickname and best score). Better scores stand higher, literally on the heads of the ones below, in a human
+pyramid: #1 alone on top in the crown, then 2, 3 and 4 per row (`PILE.rows` says how many per row for 1 to 10
+players; a row is never wider than the one under it). Whoever has someone on their head is squashed (a little more
+for every row stacked above) and gets Rachel's surprise lines beside the head. A team entry is both snowmen side by
+side. The viewer's snowman has a soft butter glow and a butter tag. When a rank changes, the climber crouches,
+hops over in an arc in front of everyone and plops onto the head below with a squish and Rachel's snow puff; the one
+going down slides over first; someone new drops in from above. Nothing moves when nothing changed, and nothing
+animates with reduced motion. The compact list underneath keeps the exact numbers and full names.
 - `SubmitScore` props: `group`, `score`, `rounds` (3 | 5), `mode` ("turns" | "together"), optional `defaultName`,
   `remember` (default true; pass false for a second player on the same phone), `onSubmitted({ entry, rank })`.
 - When a score lands, every `GroupBoard` for that group on the page refreshes by itself (a `plop:scores` window
@@ -48,12 +63,13 @@ spam and is never written anywhere.
 ## Files
 
 `content.ts` limits, look numbers and words · `rules.ts` checks and `maxScore` · `rateLimit.ts` ·
-`api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` · `SubmitScore.tsx` ·
+`api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` (and `BoardSheet`) ·
+`SnowmanPile.tsx` · `SubmitScore.tsx` ·
 `Doodles.tsx` paper sheet, rank marks (pencil circle in butter / snow / blush, crown on #1), butter crayon highlight ·
 `boardStyles.ts` the small scoped stylesheet: rows and the note spring in; idle motion (the crown rocks and hops,
-the #1 circle wobbles, the title star twinkles, your snowman hops now and then, the "you're #2!" note bobs, your
-highlight scribbles in from the left and again when your score lands), all tuned in `BOARD.motion` and off with
-reduced motion · `review/` screenshots.
+the #1 circle wobbles, the title star twinkles, the "you're #2!" note bobs, your highlight scribbles in from the left
+and again when your score lands; the pile pops in row by row, squashes spring, the startled lines twitch, your glow
+breathes), tuned in `BOARD.motion` and `PILE`, off with reduced motion · `review/` screenshots.
 
 ## Asked of other features
 

@@ -15,7 +15,10 @@ export const lb = {
   podium: "plop-lb-podium",
   star: "plop-lb-star",
   scribble: "plop-lb-scribble",
-  hop: "plop-lb-hop",
+  pileIn: "plop-lb-pile-in",
+  squash: "plop-lb-squash",
+  oof: "plop-lb-oof",
+  glow: "plop-lb-glow",
 } as const;
 
 /** content.ts motion numbers as CSS variables; put them on the sheet. */
@@ -31,8 +34,6 @@ export function motionVars(): CSSProperties {
     "--lb-star-tilt": `${m.starTilt}deg`,
     "--lb-star-swell": 1 + m.starSwell,
     "--lb-scribble-in": `${m.scribbleIn}s`,
-    "--lb-hop-loop": `${m.meHopLoop}s`,
-    "--lb-hop": `${-m.meHop}px`,
     "--lb-bob-loop": `${m.noteBobLoop}s`,
     "--lb-bob": `${-m.noteBob}px`,
   } as CSSProperties;
@@ -110,24 +111,38 @@ export const boardCss = `
   to { clip-path: inset(-20% -2% -20% -2%); }
 }
 
-/* Your snowman's tiny happy hop now and then. */
-.plop-lb-hop {
-  display: inline-block;
+/* The pile pops in from the bottom row up on first view. */
+.plop-lb-pile-in {
   transform-origin: 50% 100%;
-  animation: plop-lb-hop var(--lb-hop-loop) ease-in-out infinite;
+  animation: plop-lb-pile-in 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: var(--lb-pile-delay, 0s);
 }
-@keyframes plop-lb-hop {
-  0%, 62%, 100% { transform: translateY(0) scale(1, 1); }
-  70% { transform: translateY(0) scale(1.06, 0.92); }
-  78% { transform: translateY(var(--lb-hop)) scale(0.96, 1.05); }
-  86% { transform: translateY(0) scale(1.04, 0.95); }
-  92% { transform: translateY(0) scale(1, 1); }
+@keyframes plop-lb-pile-in {
+  from { opacity: 0; transform: translateY(-14px) scale(0.86, 1.1); }
+  55% { opacity: 1; transform: translateY(0) scale(1.06, 0.92); }
+  to { opacity: 1; transform: none; }
+}
+/* Being stood on: the squash springs in (it waits for a climber to land; the delay is set by the pile). */
+.plop-lb-squash { transition: transform 420ms cubic-bezier(0.34, 1.7, 0.64, 1); }
+/* A squashed snowman's startled lines twitch now and then. */
+.plop-lb-oof { animation: plop-lb-oof 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes plop-lb-oof {
+  0%, 70%, 100% { transform: scale(1); opacity: 0.9; }
+  78% { transform: scale(1.25); opacity: 1; }
+  86% { transform: scale(0.95); }
+}
+/* Your glow breathes softly. */
+.plop-lb-glow { animation: plop-lb-glow 3s ease-in-out infinite; }
+@keyframes plop-lb-glow {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.06; }
 }
 
 .plop-lb-input::placeholder { color: color-mix(in oklab, var(--ink) 45%, var(--paper)); }
 .plop-lb-input:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .plop-lb-note, .plop-lb-bob, .plop-lb-row, .plop-lb-crown, .plop-lb-podium, .plop-lb-star,
-  .plop-lb-scribble, .plop-lb-hop { animation: none; }
+  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow { animation: none; }
+  .plop-lb-squash { transition: none; }
 }
 `;
