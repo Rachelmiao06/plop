@@ -16,6 +16,13 @@ const CASES: Case[] = [
       { name: "Mimi", look: "redHat", total: 21 },
     ],
   },
+  {
+    label: "versus: 小美 wins",
+    players: [
+      { name: "小美", look: "bucket", total: 19 },
+      { name: "Mimi", look: "redHat", total: 12 },
+    ],
+  },
   { label: "alone vs the inviter's 18: you lose", players: [{ name: "小雪", look: "bucket", total: 12 }, { name: "-", look: "redHat", total: 0 }], solo: true, rival: { name: "Moss", score: 18 } },
   { label: "alone vs the inviter's 18: you win", players: [{ name: "小雪", look: "bucket", total: 23 }, { name: "-", look: "redHat", total: 0 }], solo: true, rival: { name: "Moss", score: 18 } },
   {
