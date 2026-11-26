@@ -41,7 +41,8 @@ export const POSTER = {
     team: (a: string, b: string, total: number) => `${a} & ${b} 一起打了 ${total} 分`,
     wins: (name: string) => `${name} 赢啦`,
     tie: "平局！",
-    score: (a: number, b: number) => `${a} : ${b}`,
+    /** Between the two numbers, each under its own snowman (this phone's player on the left). */
+    colon: ":",
     scan: "扫码来挑战",
   },
 

@@ -246,6 +246,8 @@ export async function drawPoster(data: PosterData): Promise<HTMLCanvasElement> {
   art(ctx, star, 205, 135, 120, -14);
   art(ctx, notes, 880, 130, 140, 10);
 
+  // Players in the game's order: this phone's player first (player 1 taking turns; you, not the inviter, alone
+  // against an invite), on the left, then the other on the right. Never reordered by who won (Rachel).
   const [p1, p2] = data.players;
   if (data.kind === "solo") {
     const ground = 730;
@@ -263,9 +265,10 @@ export async function drawPoster(data: PosterData): Promise<HTMLCanvasElement> {
       const winner = p1.total > p2.total ? 0 : p2.total > p1.total ? 1 : null;
       if (winner !== null) art(ctx, star, xs[winner] + 150, ground - 300, 90, 12);
       [p1, p2].forEach((p, i) => text(ctx, p.name, xs[i], 752, 56, { family, color: colors.ink, max: 400 }));
-      // Who won, then the score, big.
+      // Who won, then the score, big: each number under its own snowman (this phone's player first), ":" between.
       text(ctx, winner === null ? t.tie : t.wins([p1, p2][winner].name), cx, 860, 92, { family, color: colors.berryDeep, bold: true });
-      text(ctx, t.score(p1.total, p2.total), cx, 985, 120, { family, color: colors.inkDeep, bold: true });
+      [p1, p2].forEach((p, i) => text(ctx, String(p.total), xs[i], 985, 120, { family, color: colors.inkDeep, bold: true }));
+      text(ctx, t.colon, cx, 980, 120, { family, color: colors.inkDeep, bold: true });
     } else {
       art(ctx, star, xs[0] + 150, ground - 300, 80, -10);
       art(ctx, star, xs[1] + 150, ground - 300, 80, 12);
