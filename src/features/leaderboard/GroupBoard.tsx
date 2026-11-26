@@ -1,22 +1,19 @@
 "use client";
 
 /**
- * One invite group's board: the snowman pile (better scores stand on the heads of the ones below, `SnowmanPile`)
- * with a compact paper list underneath for exact numbers: a rank doodle, the snowman's face, the nickname, a tiny
- * note of the match length and the best score, the viewer's own row scribbled over in butter crayon with a
- * "you're #2!" note. It refreshes itself whenever `<SubmitScore>` lands a score for the same group anywhere on
- * the page. Tap a friend's snowman to throw a snowball at them (one per friend per hour, `/api/snowballs`); each
- * snowman shows how often it was hit today. `BoardSheet` is the same board drawn from scores you hand it (the test
+ * One invite group's board, a ranked list (Rachel's approved design): #1 on a little podium as her sassy snowman
+ * (`ChampPodium`), then clean rows with your own row pinned at the bottom (`RankedList`). It refreshes itself
+ * whenever `<SubmitScore>` lands a score for the same group anywhere on the page. Tap a friend's row to throw a
+ * snowball at them (one per friend per hour, `/api/snowballs`); each avatar shows how often it was hit today. `BoardSheet` is the same board drawn from scores you hand it (the test
  * page uses it).
  */
-import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
-import { SnowmanFace, StarDoodle } from "@/features/hud/Doodles";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { announceBall, fetchBoard, fetchHits, onBall, onLanded, readNickname, subscribeNickname, throwSnowball, type BoardEntry } from "./api";
 import { BOARD, SNOWBALL, TEXT } from "./content";
-import { CrayonHighlight, PaperSheet, RankMark } from "./Doodles";
-import { lb } from "./boardStyles";
+import { PaperSheet } from "./Doodles";
 import { nameKey } from "./rules";
-import { lookFor, SnowmanPile, type ThrowOutcome } from "./SnowmanPile";
+import { ChampPodium } from "./ChampPodium";
+import { RankedList, type ThrowOutcome } from "./RankedList";
 import { titleFor, type TitleId } from "./titles";
 import { saveSeen, snapshot } from "./overtake";
 
@@ -127,11 +124,8 @@ export type BoardSheetProps = {
 
 export type BoardState = State;
 
-/** The board drawn from what it is given: title, the snowman pile, the compact list, "you're #2!". */
-export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, onThrow, hint = true }: BoardSheetProps) {
-  const mine = state.status === "ready" && viewer ? state.scores.findIndex((s) => nameKey(s.name) === viewer) : -1;
-  const { face, rowTilt, noteIn, noteOvershoot, listTop } = BOARD.look;
-  const [all, setAll] = useState(false);
+/** The board drawn from what it is given: the title, #1 on its podium, the ranked list with your row pinned. */
+export function BoardSheet({ state, viewer, className, hits, onThrow, hint = true }: BoardSheetProps) {
   const scores = state.status === "ready" ? state.scores : [];
   // Each player's funny title (at most one; `titles.ts`), by nickname key.
   const titles = Object.fromEntries(
@@ -140,96 +134,32 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
       return t ? [[nameKey(s.name), t]] : [];
     }),
   ) as Record<string, TitleId>;
-  // The list: the top few and your own line; the rest behind "see all".
-  const rows = scores
-    .map((s, i) => ({ s, i }))
-    .filter(({ i }) => all || i < listTop || i === mine);
+  const top = scores[0];
 
   return (
-    <PaperSheet seed={seed} label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
-      <div className="mb-1 flex items-center justify-center gap-1.5">
-        <span className={lb.star}>
-          <StarDoodle size={20} />
-        </span>
-        <h2 className="font-heading text-2xl leading-none font-bold text-ink-deep">{TEXT.title}</h2>
-      </div>
+    <PaperSheet label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
+      <h2 className="mb-1 text-center leading-tight">
+        <span className="block font-heading text-2xl font-bold text-ink-deep">{TEXT.title}</span>
+        <span className="block font-heading text-sm opacity-70">{TEXT.titleEn}</span>
+      </h2>
 
       {state.status === "loading" && <p className="py-4 text-center font-heading text-lg opacity-75">{TEXT.loading}</p>}
       {state.status === "failed" && <p className="py-4 text-center font-heading text-lg">{TEXT.failed}</p>}
-      {state.status === "ready" && state.scores.length === 0 && (
-        <p className="py-4 text-center font-heading text-lg">{TEXT.empty}</p>
-      )}
+      {state.status === "ready" && scores.length === 0 && <p className="py-4 text-center font-heading text-lg">{TEXT.empty}</p>}
 
-      {state.status === "ready" && state.scores.length > 0 && (
+      {top && (
         <>
-          {hint && onThrow && viewer && state.scores.length > 1 && (
-            <p className="-mt-0.5 mb-1 text-center font-heading text-sm leading-tight opacity-75">
+          {/* A new #1 gets the "deal with it" moment again (a new key). */}
+          <ChampPodium key={nameKey(top.name)} entry={top} title={titles[nameKey(top.name)]} me={nameKey(top.name) === viewer} />
+          {hint && onThrow && viewer && scores.length > 1 && (
+            <p className="mt-2 mb-1 text-center font-heading text-sm leading-tight opacity-75">
               {TEXT.snowball.hintZh} · {TEXT.snowball.hint}
             </p>
           )}
-          <SnowmanPile scores={state.scores} viewer={viewer} hits={hits} onThrow={onThrow} titles={titles} />
-          <ol className="mt-3 flex flex-col" aria-label={TEXT.list}>
-            {rows.map(({ s, i }, n) => {
-              const isMe = i === mine;
-              const gap = n > 0 && rows[n - 1].i !== i - 1;
-              return (
-                <li
-                  key={nameKey(s.name)}
-                  className={`relative isolate flex items-center gap-1.5 px-1 py-px ${lb.row}`}
-                  style={{ "--lb-i": i, "--lb-tilt": `${(i % 2 ? 1 : -1) * rowTilt}deg` } as CSSProperties}
-                  aria-current={isMe ? "true" : undefined}
-                >
-                  {gap && (
-                    <span aria-hidden className="absolute -top-2 left-3 font-heading text-xs leading-none opacity-50">
-                      ⋮
-                    </span>
-                  )}
-                  {isMe && <CrayonHighlight key={landed} />}
-                  <span className="origin-center scale-75">
-                    <RankMark rank={i + 1} />
-                  </span>
-                  <SnowmanFace look={s.bestMode === "team" ? "bucket" : lookFor(s.name)} size={face} />
-                  <span className="min-w-0 flex-1 truncate">
-                    <span className="font-heading text-lg leading-tight">{s.name}</span>
-                    {isMe && <span className="ml-1 font-heading text-sm opacity-70">({TEXT.you})</span>}
-                    {titles[nameKey(s.name)] && (
-                      <span className="ml-1.5 font-heading text-sm text-berry-deep" title={TEXT.titles[titles[nameKey(s.name)]].en}>
-                        {TEXT.titles[titles[nameKey(s.name)]].zh}
-                      </span>
-                    )}
-                    <span className="ml-1.5 font-sans text-[10px] leading-tight opacity-65">
-                      {TEXT.rounds(s.bestRounds)}
-                      {s.bestMode === "together" && ` · ${TEXT.together}`}
-                      {s.bestMode === "team" && ` · ${TEXT.team}`}
-                      {s.plays > 1 && ` · ${TEXT.latest(s.latest)}`}
-                    </span>
-                  </span>
-                  <span className="font-heading text-xl leading-none font-bold text-ink-deep tabular-nums">{s.best}</span>
-                </li>
-              );
-            })}
-          </ol>
-          {scores.length > listTop + (mine >= listTop ? 1 : 0) && (
-            <button
-              type="button"
-              onClick={() => setAll((a) => !a)}
-              className="mx-auto mt-1 block font-heading text-sm text-ink underline decoration-dotted underline-offset-4 opacity-75 hover:opacity-100"
-            >
-              {all ? TEXT.fewer : TEXT.seeAll(scores.length)}
-            </button>
-          )}
+          <div className="mt-2">
+            <RankedList scores={scores} viewer={viewer} hits={hits} titles={titles} onThrow={onThrow} />
+          </div>
         </>
-      )}
-
-      {mine >= 0 && (
-        <p
-          key={`${viewer}-${mine}`}
-          className={`mx-auto mt-2 w-fit font-heading text-xl leading-tight font-bold text-ink-deep ${lb.note}`}
-          style={{ "--lb-note-in": `${noteIn}s`, "--lb-note-over": noteOvershoot } as CSSProperties}
-          role="status"
-        >
-          <span className={lb.bob}>{TEXT.youAre(mine + 1)}</span>
-        </p>
       )}
     </PaperSheet>
   );

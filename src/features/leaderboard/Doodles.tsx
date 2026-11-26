@@ -31,7 +31,7 @@ export function PaperSheet({ children, className = "", label }: { seed?: number;
  * The rank: 1 to 3 written inside a little pencil circle coloured butter, snow and blush (the winner also wears
  * the score panel's crown); from 4 on just the number, in pencil.
  */
-export function RankMark({ rank }: { rank: number }) {
+export function RankMark({ rank, crown = true }: { rank: number; crown?: boolean }) {
   const fill = BOARD.look.podium[rank - 1];
   const ring = useMemo(() => pencilCircle(14, 15, 10.5, rank * 13 + 5, { wobble: 0.8, step: 5 }), [rank]);
   return (
@@ -41,7 +41,7 @@ export function RankMark({ rank }: { rank: number }) {
           <path d={ring} fill={fill} {...stroke} />
         </svg>
       )}
-      {rank === 1 && (
+      {rank === 1 && crown && (
         <span className="absolute -top-3.5 left-1/2 -ml-[9px]" aria-hidden>
           <span className={`block ${lb.crown}`}>
             <CrownDoodle size={18} />

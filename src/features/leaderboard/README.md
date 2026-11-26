@@ -7,7 +7,7 @@ nickname. Try it at `/dev/leaderboard`.
 ```tsx
 import { GroupBoard, SubmitScore } from "@/features/leaderboard";
 
-<GroupBoard group={g} />                       // the snowman pile + a compact list, best first (top 10)
+<GroupBoard group={g} />                       // #1 on a podium, then the ranked list, best first (top 10)
 <SubmitScore group={g} score={total} rounds={3} mode="turns" />   // nickname prompt after a match
 ```
 
@@ -15,34 +15,33 @@ import { GroupBoard, SubmitScore } from "@/features/leaderboard";
 - `BoardSheet` is the same board drawn from scores you hand it (`state`, `viewer`); `/dev/leaderboard` uses it for
   fake groups of 2, 5 and 10 with buttons that make someone overtake someone.
 
-## The look: no boxes (Rachel, 2026-11-25)
+## The look: a ranked list, #1 on a podium (Rachel's approved design, 2026-11-25)
 
-Rachel finds boxes inside boxes heavy and cheap, so nothing on the board has a frame: `PaperSheet` is now just a
-wrapper (no paper, no pencil edge, no shadow), the snowmen stand straight on Rachel's far hills (pines, little
-houses, its own ground line, faded at the sides), names and scores are handwritten on each snowman's belly with a
-soft paper-white halo instead of a tag, today's hits are a clump of snow stuck to the head with "×3", and notes
-("you're #2!", "再等42分钟") are handwriting without a pill. Depth is light, not 3D: a soft shadow under each
-snowman's feet and on the cut-out. The list underneath shows the top 3 and your own line; "看全部 · see all" opens
-the rest. The "you got hit" note fills the screen as a snowy scene with one button. On the invite page the board is
-folded behind "看看这场雪仗 · see the board" under the play button, so the first screen has one action.
+Rachel found the snowman pile ugly and asked for a classic ranked list, with only #1 special. No frames inside
+frames and no pills (`PaperSheet` is just a wrapper).
 
-## The snowman pile (`SnowmanPile.tsx`, numbers in `PILE`)
-
-Each player is a little snowman from Rachel's thrower cut-outs (bucket or red hat, chosen from the nickname, so the
-same name is always the same snowman, sometimes facing the other way, leaning a hair) with its nickname and best
-score written on its belly. Better scores stand higher, literally on the heads of the ones below, in a human
-pyramid: #1 alone on top in the crown, then 2, 3 and 4 per row (`PILE.rows` says how many per row for 1 to 10
-players; a row is never wider than the one under it). Whoever has someone on their head is squashed (a little more
-for every row stacked above) and gets Rachel's surprise lines beside the head. A team entry is both snowmen side by
-side. The viewer's snowman has a soft butter glow and a bolder name. When a rank changes, the climber crouches,
-hops over in an arc in front of everyone and plops onto the head below with a squish and Rachel's snow puff; the one
-going down slides over first; someone new drops in from above. Nothing moves when nothing changed, and nothing
-animates with reduced motion. The compact list underneath keeps the exact numbers and full names.
-- `SubmitScore` props: `group`, `score`, `rounds` (3 | 5), `mode` ("turns" | "together"), optional `defaultName`,
-  `remember` (default true; pass false for a second player on the same phone), `onSubmitted({ entry, rank })`.
-- When a score lands, every `GroupBoard` for that group on the page refreshes by itself (a `plop:scores` window
-  event), so the end card and the invite page need no wiring between them.
-- Render them only when the page has a group id; without one there is no board.
+- **Header:** "雪仗排行榜 · our snowy board".
+- **#1 on top** (`ChampPodium.tsx`, numbers in `CHAMP`): Rachel's sassy snowman (hands in pockets, sunglasses,
+  leaning; bucket or red hat to match #1) on her snow mound with a gentle sway, the crown doodle with sparkles above,
+  name, score and title below. When the board opens, or someone new takes #1, the **"deal with it" moment** plays:
+  sunglasses drop from above, spinning a little, land on the face with a squash and a bounce, a glint flashes on the
+  lens, and the snowman gives a smug little lift; an original jingle plays with it (`jingle.ts`: synthesized "dun
+  dun dun, dun-dun" and a "ting", about 1.5 s, only with sound effects on and after a tap). Reduced motion: no drop,
+  no jingle, glasses simply on.
+- **Art slots** (`CHAMP.art`): `sassy`, `bare` (the same pose without sunglasses) and `glasses`. Until Rachel's
+  no-sunglasses versions arrive, `bare` points at the sassy art and `glasses` at a stand-in cut from it
+  (`sunglasses-standin.webp`), with `bareHasGlasses: true` so the falling pair fades onto the drawn ones. When the
+  new art comes: point `bare` and `glasses` at the files and set `bareHasGlasses` to false. Cleaned sources (red rim
+  and grey speckles removed) are in `art-source/leaderboard/`.
+- **The rows** (`RankedList.tsx`, numbers in `LIST`): rank (pencil medal circles in butter, snow and blush for 1 to
+  3, plain numbers after), a small avatar (the snowman face in a soft rounded square), the name with the funny title
+  as a second line, the score on the right. Row 1 has a pale butter wash.
+- **Your row** is pinned at the bottom, outlined in butter, with "还差 N 分超过 {name} · N to pass {name}" (or
+  "你是第一！").
+- **Tapping a friend's row** throws a snowball from your avatar to theirs (`Flight.tsx`). Today's hits show as a tiny
+  snow mark with a number on the avatar.
+- **Notes elsewhere:** the "you got hit" and "X just passed you" notes fill the screen as snowy scenes with one
+  button each. On the invite page the board is folded behind "看看这场雪仗 · see the board" under the play button.
 
 ## Snowballs (`/api/snowballs`, numbers and words in `SNOWBALL` / `TEXT.snowball`)
 
@@ -123,12 +122,13 @@ spam and is never written anywhere.
 
 `content.ts` limits, look numbers and words · `rules.ts` checks and `maxScore` · `rateLimit.ts` ·
 `api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` (and `BoardSheet`) ·
-`SnowmanPile.tsx` (the pile and the snowball throw) · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
+`ChampPodium.tsx` (#1 and the sunglasses) · `jingle.ts` · `RankedList.tsx` (rows, your pinned row, taps) ·
+`Flight.tsx` (the snowball in the air) · `looks.ts` (which snowman a name gets) · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
 `Doodles.tsx` paper sheet, rank marks (pencil circle in butter / snow / blush, crown on #1), butter crayon highlight ·
 `boardStyles.ts` the small scoped stylesheet: rows and the note spring in; idle motion (the crown rocks and hops,
 the #1 circle wobbles, the title star twinkles, the "you're #2!" note bobs, your highlight scribbles in from the left
-and again when your score lands; the pile pops in row by row, squashes spring, the startled lines twitch, your glow
-breathes), tuned in `BOARD.motion` and `PILE`, off with reduced motion · `review/` screenshots.
+and again when your score lands; #1 sways, the sunglasses drop, glint and the smug lift, the crown sparkles), tuned in
+`BOARD.motion` and `CHAMP`, off with reduced motion · `review/` screenshots.
 
 ## Asked of other features
 

@@ -71,6 +71,7 @@ const sorted = (s: BoardEntry[]) => [...s].sort((a, b) => b.best - a.best);
 function FakeBoard({ title, me, scores: start }: (typeof GROUPS)[number]) {
   const [scores, setScores] = useState(start);
   const [landed, setLanded] = useState(0);
+  const [replay, setReplay] = useState(0);
   // Fake snowballs: each friend can be hit once a "session" here, then the board says to wait.
   const [hits, setHits] = useState<Record<string, number>>({ [nameKey(start[0].name)]: 2 });
   const [hitOnce, setHitOnce] = useState<Set<string>>(new Set());
@@ -113,8 +114,11 @@ function FakeBoard({ title, me, scores: start }: (typeof GROUPS)[number]) {
         <Button size="sm" variant="ghost" onClick={() => setScores(start)}>
           reset
         </Button>
+        <Button size="sm" variant="ghost" onClick={() => setReplay((n) => n + 1)}>
+          replay sunglasses
+        </Button>
       </div>
-      <BoardSheet seed={title.length * 13} state={{ status: "ready", scores }} viewer={nameKey(me)} landed={landed} hits={hits} onThrow={onThrow} />
+      <BoardSheet key={replay} seed={title.length * 13} state={{ status: "ready", scores }} viewer={nameKey(me)} landed={landed} hits={hits} onThrow={onThrow} />
     </div>
   );
 }
@@ -126,9 +130,9 @@ export function PileTester() {
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-4">
       <header>
-        <h1 className="font-heading text-4xl font-bold text-ink-deep">Snowman pile</h1>
+        <h1 className="font-heading text-4xl font-bold text-ink-deep">Ranked board</h1>
         <p className="font-sans text-sm">
-          Fake groups, nothing is sent to the server. Press a button to watch an overtake; tap a friend&apos;s snowman to
+          Fake groups, nothing is sent to the server. Press a button to watch an overtake (a new #1 gets the sunglasses); tap a friend&apos;s row to
           throw a snowball (tap the same one again: &quot;wait&quot;).
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
