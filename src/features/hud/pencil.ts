@@ -249,3 +249,38 @@ export function raggedFill(width: number, h: number, jitter: number[]) {
   }
   return `${d} L-4 ${h + 2} Z`;
 }
+
+/**
+ * An open hand-drawn line along a cubic curve from `a` to `d` (controls `b`, `c`), as pencil pieces of varying
+ * weight: for doodled arrows. Same seeded wobble as the outlines, no overshoot (the ends are the arrow's).
+ */
+export function pencilCurveStrokes(a: Pt, b: Pt, c: Pt, d: Pt, seed: number, width: number, opts?: LineOptions) {
+  const at = (t: number): Pt => {
+    const u = 1 - t;
+    return {
+      x: u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t * t * t * d.x,
+      y: u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t * t * t * d.y,
+    };
+  };
+  const step = opts?.step ?? 6;
+  let length = 0;
+  for (let i = 1, prev = at(0); i <= 40; i++) {
+    const p = at(i / 40);
+    length += Math.hypot(p.x - prev.x, p.y - prev.y);
+    prev = p;
+  }
+  const n = Math.max(4, Math.round(length / step));
+  const wob = wobbleFn(seed, opts?.wobble ?? content.pencil.wobble);
+  const pts: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const p = at(t);
+    const q = at(Math.min(1, t + 0.01));
+    const r = at(Math.max(0, t - 0.01));
+    const len = Math.hypot(q.x - r.x, q.y - r.y) || 1;
+    // The wobble fades out at both ends, so the arrow starts and lands where it is aimed.
+    const off = wob(i * step) * Math.sin(Math.PI * t);
+    pts.push({ x: p.x + (-(q.y - r.y) / len) * off, y: p.y + ((q.x - r.x) / len) * off });
+  }
+  return pressuredStrokes(pts, seed, width);
+}
