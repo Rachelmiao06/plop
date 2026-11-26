@@ -23,6 +23,18 @@ for the winner (or two for a tie) and "play again". Alone, the best total per le
 `lastOfRound`, `passTurn` (next player, next round, or over), and each throw's points (`pointsFor`: per card,
 full clear, and the pins' special bonus) flying into the total (`gain`).
 
+## The safety net (the end card always comes)
+
+`createWatchdog` in `rules.ts` watches the loop: when the game sits in one step longer than `GAME.timing.watchdog`
+(a throw with no result, the pins never standing again, a hand-over that never comes), `GameBridge` takes the step
+anyway (`applyStall`: the throw is counted as the cards lie, `game.stall`), so the next turn and the end card always
+come. It runs on seconds of play (frames drawn, at most `frameCap` each): a tab in the background counts nothing and the
+match carries on, and ends, when it comes back; a slow phone gets as long as its physics needs. The last throw of the
+match waits less (`lastCounted`, `lastPassing`). A backup in `Game.tsx` takes over only when the canvas has drawn
+nothing for `stoppedAfter` seconds while the page is visible (a lost WebGL context). In development each step logs
+`[plop] safety net: …` in the console. `npm run check:match` (`scripts/check-match.mjs`, in CI) plays whole matches on
+the real rules for every mode and length, with and without a missing step, and checks the end and the totals.
+
 ## Evening and sounds
 
 The light follows the match (`GAME.evening`, `dayFor` in rules.ts): afternoon at round 1, spread evenly to `lastRound`
