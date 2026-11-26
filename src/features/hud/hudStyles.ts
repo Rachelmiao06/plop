@@ -29,6 +29,8 @@ export const styles = {
   howTouch: "plop-hud-how-touch",
   howKey: "plop-hud-how-key",
   stake: "plop-hud-stake",
+  hint: "plop-hud-hint",
+  hintArrow: "plop-hud-hint-arrow",
 } as const;
 
 export const hudCss = `
@@ -390,7 +392,36 @@ export const hudCss = `
   }
 }
 
+/* The first-time share hint: the note pops in, the arrow nudges toward the button now and then. */
+.plop-hud-hint {
+  animation: plop-hud-hint var(--hud-hint-pop) cubic-bezier(0.3, 1.4, 0.5, 1) var(--hud-hint-delay) both;
+  transform-origin: 0% 100%;
+}
+@keyframes plop-hud-hint {
+  from { opacity: 0; transform: translateY(8px) scale(0.6) rotate(-6deg); }
+  to { opacity: 1; transform: rotate(-3deg); }
+}
+.plop-hud-hint-arrow {
+  animation:
+    plop-hud-hint-in var(--hud-hint-pop) ease-out var(--hud-hint-delay) both,
+    plop-hud-hint-nudge var(--hud-hint-nudge) ease-in-out calc(var(--hud-hint-delay) + var(--hud-hint-pop)) infinite;
+}
+@keyframes plop-hud-hint-in {
+  from { opacity: 0; }
+}
+@keyframes plop-hud-hint-nudge {
+  0%, 60%, 100% { transform: translate(0, 0); }
+  75% { transform: translate(-3px, 4px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .plop-hud-hint {
+    animation: none;
+    transform: rotate(-3deg);
+  }
+  .plop-hud-hint-arrow {
+    animation: none;
+  }
   .plop-hud-stake {
     animation: none;
     transform: rotate(var(--hud-stake-tilt));

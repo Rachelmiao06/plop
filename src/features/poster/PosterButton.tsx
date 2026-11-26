@@ -22,6 +22,8 @@ type Props = {
   team: boolean;
   /** The match's rounds; when not given, last time's start choice on this device. */
   rounds?: number | null;
+  /** A small quiet link instead of a big button (the end card: sharing is the big one). */
+  quiet?: boolean;
   className?: string;
 };
 
@@ -40,7 +42,7 @@ export function posterLink({ players, team }: Pick<Props, "players" | "team">, g
   return invitePath({ group, name: cleanName(a.name), score: team ? null : a.total });
 }
 
-export function PosterButton({ players, solo, team, rounds, className }: Props) {
+export function PosterButton({ players, solo, team, rounds, quiet, className }: Props) {
   const [open, setOpen] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -76,7 +78,11 @@ export function PosterButton({ players, solo, team, rounds, className }: Props) 
           setOpen(true);
           void make();
         }}
-        className={`plop-poster-open relative h-11 w-full rounded-full border-2 border-ink bg-snow-white font-heading text-xl font-bold text-ink-deep outline-none hover:bg-paper focus-visible:ring-2 focus-visible:ring-ring ${className ?? ""}`}
+        className={
+          quiet
+            ? `plop-poster-open font-heading text-lg text-ink underline decoration-wavy underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring ${className ?? ""}`
+            : `plop-poster-open relative h-11 w-full rounded-full border-2 border-ink bg-snow-white font-heading text-xl font-bold text-ink-deep outline-none hover:bg-paper focus-visible:ring-2 focus-visible:ring-ring ${className ?? ""}`
+        }
       >
         {w}
       </button>

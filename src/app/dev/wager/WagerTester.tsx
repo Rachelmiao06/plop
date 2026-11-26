@@ -19,6 +19,14 @@ const CASES: Case[] = [
   { label: "alone vs the inviter's 18: you lose", players: [{ name: "小雪", look: "bucket", total: 12 }, { name: "-", look: "redHat", total: 0 }], solo: true, rival: { name: "Moss", score: 18 } },
   { label: "alone vs the inviter's 18: you win", players: [{ name: "小雪", look: "bucket", total: 23 }, { name: "-", look: "redHat", total: 0 }], solo: true, rival: { name: "Moss", score: 18 } },
   {
+    label: "team",
+    team: true,
+    players: [
+      { name: "小美", look: "bucket", total: 9 },
+      { name: "Mimi", look: "redHat", total: 11 },
+    ],
+  },
+  {
     label: "versus: a tie",
     players: [
       { name: "小美", look: "bucket", total: 16 },
@@ -65,7 +73,13 @@ export function WagerTester() {
           players={players}
           solo={c.solo ? { best: 20 } : null}
           rival={!!c.rival}
+          team={!!c.team}
           wager={{ emoji: wagerFor(code)!.emoji }}
+          challenge={
+            c.team
+              ? { name: c.players[0].name, score: null, wager: code }
+              : { ...(c.solo || c.players[0].total >= c.players[1].total ? { name: c.players[0].name, score: c.players[0].total } : { name: c.players[1].name, score: c.players[1].total }), wager: code }
+          }
           onAgain={() => {}}
           onChoose={() => {}}
         />

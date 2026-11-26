@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { PosterButton } from "@/features/poster";
 
 import { Celebration, type CelebrationKind } from "./Celebration";
+import { ChallengeButton, type Challenge } from "./ChallengeButton";
 import { content, type SnowmanLook } from "./content";
 import { PaperFill, PencilFrame, SnowmanFace } from "./Doodles";
 import { useEvening } from "./hooks";
@@ -106,6 +107,8 @@ export type MatchEndProps = {
    * loser's head after the snowballs (a tie: between the two). Only when there are two sides.
    */
   wager?: { emoji: string } | null;
+  /** Step 1's big "发给朋友来挑战": who signs the challenge, their score, the wager (the game decides). */
+  challenge?: Challenge | null;
   /** Team up: one team total, both snowmen crowned, no winner. */
   team?: boolean;
   /** The match's rounds, for the share poster (it falls back to last time's start choice). */
@@ -122,7 +125,7 @@ export type MatchEndProps = {
  * much ("Red Hat 13 : 6 赢啦！"); an invite's wager is only its emoji landing on the loser, no words; "Next" and "Play again". Step 2 is the board
  * (the game's prompt and the group board), "Make a poster" (step 3, the poster sheet) and "Play again". Never mean.
  */
-export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, onChoose, children }: MatchEndProps) {
+export function MatchEnd({ players, solo, rival, wager, challenge, team, rounds, onAgain, onChoose, children }: MatchEndProps) {
   const [a, b] = players;
   // Two sides to the scene: a versus match, or you against the inviter's score.
   const twoSided = !team && (!solo || !!rival);
@@ -155,7 +158,7 @@ export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, o
         <p className="font-heading text-xl leading-tight text-ink">{result}</p>
         {children && <div className="mt-3 flex flex-col items-center gap-3">{children}</div>}
         {/* Step 3: the poster, a saved image with a QR code (the way to spread on WeChat Moments). */}
-        <PosterButton players={players} solo={!!solo && !rival} team={!!team} rounds={rounds} className="mt-4" />
+        <PosterButton players={players} solo={!!solo && !rival} team={!!team} rounds={rounds} quiet className="mt-3" />
         <Button
           ref={again}
           size="lg"
@@ -196,12 +199,14 @@ export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, o
           {result}
         </p>
         {sub && <p className="mt-1 font-heading text-lg leading-tight">{sub}</p>}
-        <div className="mt-5 flex gap-2.5">
+        {/* One tap to challenge a friend: the big one (Rachel: sharing in one step). */}
+        {challenge && <ChallengeButton challenge={challenge} className="mt-5" />}
+        <div className={`${challenge ? "mt-7" : "mt-5"} flex gap-2.5`}>
           <Button
             ref={next}
             size="lg"
             onClick={() => setStep(2)}
-            className="h-12 flex-1 rounded-full bg-butter font-heading text-2xl font-bold text-ink-deep hover:bg-butter/80"
+            className="h-12 flex-1 rounded-full border-2 border-ink bg-paper font-heading text-2xl font-bold text-ink-deep hover:bg-snow-white"
           >
             {t.end.next}
           </Button>

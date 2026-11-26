@@ -4,4 +4,4 @@ export { WeChatShareImage } from "./WeChatShareImage";
 export { WeChatHint } from "./WeChatHint";
 export { SHARE } from "./content";
 export { ensureGroupId, getGroupId } from "./group";
-export { isWeChat } from "./actions";
+export { copy, isWeChat, systemShare } from "./actions";
