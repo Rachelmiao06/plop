@@ -158,7 +158,7 @@ export function MatchEnd({ players, solo, rival, wager, challenge, team, rounds,
         <p className="font-heading text-xl leading-tight text-ink">{result}</p>
         {children && <div className="mt-3 flex flex-col items-center gap-3">{children}</div>}
         {/* Step 3: the poster, a saved image with a QR code (the way to spread on WeChat Moments). */}
-        <PosterButton players={players} solo={!!solo && !rival} team={!!team} rounds={rounds} quiet className="mt-3" />
+        <PosterButton players={players} solo={!!solo && !rival} team={!!team} rounds={rounds} link={challenge} quiet className="mt-3" />
         <Button
           ref={again}
           size="lg"
@@ -200,7 +200,9 @@ export function MatchEnd({ players, solo, rival, wager, challenge, team, rounds,
         </p>
         {sub && <p className="mt-1 font-heading text-lg leading-tight">{sub}</p>}
         {/* One tap to challenge a friend: the big one (Rachel: sharing in one step). */}
-        {challenge && <ChallengeButton challenge={challenge} className="mt-5" />}
+        {challenge && (
+          <ChallengeButton challenge={challenge} poster={{ players, solo: !!solo && !rival, team: !!team, rounds }} className="mt-5" />
+        )}
         <div className={`${challenge ? "mt-7" : "mt-5"} flex gap-2.5`}>
           <Button
             ref={next}
