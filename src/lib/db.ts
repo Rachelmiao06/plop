@@ -206,3 +206,179 @@ function trim(store: DemoStore, group: string) {
     for (const id of groups.slice(0, groups.length - DEMO_LIMITS.maxGroups)) delete store[id];
   }
 }
+
+// ---------------------------------------------------------------------------------------------------- Snowballs
+//
+// Friends throw snowballs at each other on a group board (src/features/leaderboard/README.md, "Snowballs"). One row
+// per throw: who threw and who got hit, by nickname, in one group (supabase/migrations/0003_snowballs.sql). Callers
+// validate first (`checkSnowball`); the one-per-friend-per-hour rule is enforced here (atomically in Supabase).
+
+export type ThrowInput = { group: string; from: string; to: string; cooldownSeconds: number };
+export type ThrowResult = { thrown: boolean; retrySeconds: number };
+export type Hit = { from: string; at: string };
+
+/** True if this nickname has a line on the group's board (you can only hit someone who is on it). */
+export async function onBoard(group: string, name: string): Promise<boolean> {
+  if (backend() === "demo") return Boolean(demo()[group]?.[keyOf(name)]);
+  const { count, error } = await supabase()
+    .from("scores")
+    .select("id", { count: "exact", head: true })
+    .eq("group_id", group)
+    .eq("name_key", keyOf(name));
+  if (error) throw new Error(`on board failed: ${error.message}`);
+  return (count ?? 0) > 0;
+}
+
+export async function throwSnowball(input: ThrowInput): Promise<ThrowResult> {
+  if (backend() === "demo") return demoThrow(input);
+  const { data, error } = await supabase().rpc("throw_snowball", {
+    p_group: input.group,
+    p_from: input.from,
+    p_from_key: keyOf(input.from),
+    p_to: input.to,
+    p_to_key: keyOf(input.to),
+    p_cooldown_seconds: input.cooldownSeconds,
+  });
+  if (error) throw new Error(`throw_snowball failed: ${error.message}`);
+  const row = (Array.isArray(data) ? data[0] : data) as { thrown: boolean; retry_seconds: number };
+  return { thrown: row.thrown, retrySeconds: row.retry_seconds };
+}
+
+/** How many snowballs each name in the group got since `since`, by lower-case name. */
+export async function hitsSince(group: string, since: Date): Promise<Record<string, number>> {
+  const keys =
+    backend() === "demo"
+      ? demoBalls()
+          .filter((b) => b.group === group && b.at >= since.getTime())
+          .map((b) => b.toKey)
+      : await (async () => {
+          const { data, error } = await supabase()
+            .from("snowballs")
+            .select("to_key")
+            .eq("group_id", group)
+            .gte("thrown_at", since.toISOString())
+            .limit(5000);
+          if (error) throw new Error(`hits failed: ${error.message}`);
+          return (data as { to_key: string }[]).map((r) => r.to_key);
+        })();
+  const counts: Record<string, number> = {};
+  for (const k of keys) counts[k] = (counts[k] ?? 0) + 1;
+  return counts;
+}
+
+/** Snowballs that hit this name and were not seen yet (newest first), and who it may not hit again yet. */
+export async function snowballInbox(
+  group: string,
+  me: string,
+  since: Date,
+  max: number,
+  cooldownSeconds: number,
+): Promise<{ hits: Hit[]; cooldowns: Record<string, number> }> {
+  const key = keyOf(me);
+  const now = Date.now();
+  const coolFrom = now - cooldownSeconds * 1000;
+  if (backend() === "demo") {
+    const mine = demoBalls().filter((b) => b.group === group);
+    const hits = mine
+      .filter((b) => b.toKey === key && !b.seen && b.at >= since.getTime())
+      .sort((a, b) => b.at - a.at)
+      .slice(0, max)
+      .map((b) => ({ from: b.from, at: new Date(b.at).toISOString() }));
+    return { hits, cooldowns: cooldownsOf(mine.filter((b) => b.fromKey === key && b.at > coolFrom).map((b) => [b.toKey, b.at]), cooldownSeconds, now) };
+  }
+  const db = supabase();
+  const [inbox, thrown] = await Promise.all([
+    db
+      .from("snowballs")
+      .select("from_name, thrown_at")
+      .eq("group_id", group)
+      .eq("to_key", key)
+      .is("seen_at", null)
+      .gte("thrown_at", since.toISOString())
+      .order("thrown_at", { ascending: false })
+      .limit(max),
+    db
+      .from("snowballs")
+      .select("to_key, thrown_at")
+      .eq("group_id", group)
+      .eq("from_key", key)
+      .gt("thrown_at", new Date(coolFrom).toISOString())
+      .limit(500),
+  ]);
+  if (inbox.error) throw new Error(`inbox failed: ${inbox.error.message}`);
+  if (thrown.error) throw new Error(`cooldowns failed: ${thrown.error.message}`);
+  return {
+    hits: (inbox.data as { from_name: string; thrown_at: string }[]).map((r) => ({ from: r.from_name, at: r.thrown_at })),
+    cooldowns: cooldownsOf(
+      (thrown.data as { to_key: string; thrown_at: string }[]).map((r) => [r.to_key, Date.parse(r.thrown_at)]),
+      cooldownSeconds,
+      now,
+    ),
+  };
+}
+
+/** Marks every snowball that hit this name in the group as seen. */
+export async function markSnowballsSeen(group: string, me: string): Promise<void> {
+  const key = keyOf(me);
+  if (backend() === "demo") {
+    for (const b of demoBalls()) if (b.group === group && b.toKey === key) b.seen = true;
+    saveBalls();
+    return;
+  }
+  const { error } = await supabase()
+    .from("snowballs")
+    .update({ seen_at: new Date().toISOString() })
+    .eq("group_id", group)
+    .eq("to_key", key)
+    .is("seen_at", null);
+  if (error) throw new Error(`seen failed: ${error.message}`);
+}
+
+/** Seconds left before each friend may be hit again, from the latest throw at them. */
+function cooldownsOf(throws: [string, number][], cooldownSeconds: number, now: number) {
+  const out: Record<string, number> = {};
+  for (const [to, at] of throws) {
+    const left = Math.ceil((at + cooldownSeconds * 1000 - now) / 1000);
+    if (left > 0) out[to] = Math.max(out[to] ?? 0, left);
+  }
+  return out;
+}
+
+type DemoBall = { group: string; from: string; fromKey: string; to: string; toKey: string; at: number; seen: boolean };
+
+const BALLS_FILE = join(tmpdir(), "plop-snowballs-demo.json");
+const gb = globalThis as { __plopBalls?: DemoBall[] };
+
+function demoBalls(): DemoBall[] {
+  if (!gb.__plopBalls) {
+    gb.__plopBalls = [];
+    try {
+      if (existsSync(BALLS_FILE)) gb.__plopBalls = JSON.parse(readFileSync(BALLS_FILE, "utf8")) as DemoBall[];
+    } catch {
+      // A broken file just means no snowballs yet.
+    }
+  }
+  return gb.__plopBalls;
+}
+
+function saveBalls() {
+  try {
+    writeFileSync(BALLS_FILE, JSON.stringify(demoBalls()));
+  } catch {
+    // Read-only disk: memory is enough for a demo.
+  }
+}
+
+async function demoThrow(input: ThrowInput): Promise<ThrowResult> {
+  const now = Date.now();
+  const fromKey = keyOf(input.from);
+  const toKey = keyOf(input.to);
+  const old = demoBalls().filter((b) => now - b.at < 8 * 86_400_000).slice(-5000);
+  gb.__plopBalls = old;
+  const last = Math.max(0, ...old.filter((b) => b.group === input.group && b.fromKey === fromKey && b.toKey === toKey).map((b) => b.at));
+  const left = Math.ceil((last + input.cooldownSeconds * 1000 - now) / 1000);
+  if (last && left > 0) return { thrown: false, retrySeconds: left };
+  old.push({ group: input.group, from: input.from, fromKey, to: input.to, toKey, at: now, seen: false });
+  saveBalls();
+  return { thrown: true, retrySeconds: 0 };
+}

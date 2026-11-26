@@ -13,7 +13,9 @@
  *    inviter for WeChat's chat card, and the first image in the body must be the invite's own square card.
  * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
  *    taken and then listed, a rude nickname and an impossible score are refused. The test page `/dev/leaderboard`
- *    is one of the pages in step 3.
+ *    is one of the pages in step 3. Then snowballs (`/api/snowballs`): a throw at someone not on the board, at
+ *    yourself or from a rude name is refused, a throw lands and counts, the same friend again must wait, the hit
+ *    shows in the inbox until marked seen.
  * 8. The web app manifest ("add to home screen"): the home page links `/manifest.webmanifest`, it answers JSON
  *    named "Plop!" with `display: standalone`, and each of its icons (192, 512 and a maskable one) loads as an image.
  * 9. Fetches a page that does not exist: it must answer 404.
@@ -232,6 +234,26 @@ async function main() {
     await expect("GET lists it", await get(`${base}/api/scores?g=${group}`), 200, (j) => j.scores?.[0]?.name === "Smoke");
     await expect("POST rude name", await post({ ...good, name: "傻逼" }), 400, (j) => j.error === "rude_name");
     await expect("POST impossible score", await post({ ...good, score: 9999 }), 400, (j) => j.error === "bad_score");
+
+    console.log("\nSnowballs API (/api/snowballs):");
+    const ball = (body) =>
+      fetch(base + "/api/snowballs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group, ...body }),
+        signal: AbortSignal.timeout(TIMEOUT),
+      });
+    await expect("GET bad group", await get(base + "/api/snowballs?g=nope"), 400, (j) => j.error === "bad_group");
+    await expect("throw at someone not on the board", await ball({ action: "throw", from: "Pal", to: "Nobody" }), 404, (j) => j.error === "not_on_board");
+    await expect("throw at yourself", await ball({ action: "throw", from: "Smoke", to: "smoke" }), 400, (j) => j.error === "same_person");
+    await expect("rude thrower", await ball({ action: "throw", from: "傻逼", to: "Smoke" }), 400, (j) => j.error === "rude_name");
+    await expect("throw lands", await ball({ action: "throw", from: "Pal", to: "Smoke" }), 200, (j) => j.thrown === true && j.today >= 1);
+    await expect("same friend again waits", await ball({ action: "throw", from: "Pal", to: "Smoke" }), 200, (j) => j.thrown === false && j.retrySeconds > 0);
+    await expect("GET counts today", await get(`${base}/api/snowballs?g=${group}`), 200, (j) => j.today?.smoke >= 1);
+    await expect("inbox has the hit", await ball({ action: "inbox", me: "Smoke" }), 200, (j) => j.hits?.[0]?.from === "Pal");
+    await expect("mark seen", await ball({ action: "seen", me: "Smoke" }), 200, (j) => j.ok === true);
+    await expect("inbox empty after seen", await ball({ action: "inbox", me: "Smoke" }), 200, (j) => Array.isArray(j.hits) && j.hits.length === 0);
+    await expect("bad action", await ball({ action: "melt", me: "Smoke" }), 400, (j) => j.error === "bad_action");
 
     console.log("\nWeb app manifest (add to home screen):");
     try {

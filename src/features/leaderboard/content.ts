@@ -110,6 +110,31 @@ export const PILE = {
   },
 } as const;
 
+/**
+ * Snowballs between friends: tap a friend's snowman on the board to throw one. They see a splat and "you got hit"
+ * the next time they open the game or the invite page, with a "throw back" button. Preset words only.
+ */
+export const SNOWBALL = {
+  /** One throw per friend per this many minutes (the database checks it). */
+  cooldownMinutes: 60,
+  /** Throws per IP and group per window, in the server's memory, on top of the per-friend rule. */
+  rateLimit: { max: 20, windowSeconds: 60 },
+  /** "Today" for the count on each snowman starts at midnight in this UTC offset (China, no daylight saving). */
+  dayUtcOffsetHours: 8,
+  /** How far back the "you got hit" note looks, and how many throws it reads at most. */
+  inboxDays: 7,
+  inboxMax: 20,
+  /** The throw on the board: seconds of flight, arc height (share of the distance, at least `arcMin` px). */
+  flight: 0.62,
+  arc: 0.45,
+  arcMin: 50,
+  /** The snowball's size (px) and the splat's (share of a slot's width). */
+  ball: 16,
+  splat: 0.9,
+  /** How long the "in a bit" note stays when a friend was hit too recently (seconds). */
+  waitNote: 2.2,
+} as const;
+
 export const TEXT = {
   title: "our snowy board",
   loading: "warming up the snow…",
@@ -123,6 +148,19 @@ export const TEXT = {
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
   pile: "who's standing on whom",
+  snowball: {
+    hint: "tap a friend to throw ❄",
+    hintZh: "点朋友扔个雪球",
+    throwAt: (name: string) => `throw a snowball at ${name}`,
+    hits: (n: number) => `被砸了${n}次`,
+    hitsEn: (n: number) => (n === 1 ? "hit once today" : `hit ${n} times today`),
+    wait: (minutes: number) => `再等${minutes}分钟 · in ${minutes} min`,
+    failed: "雪球没扔出去 · missed, try again",
+    gotYouZh: (name: string, more: number) => (more > 0 ? `你被${name}和另外${more}人砸了一脸雪！` : `你被${name}砸了一脸雪！`),
+    gotYouEn: (name: string, more: number) => (more > 0 ? `${name} and ${more} more got you!` : `${name} got you!`),
+    back: { zh: "砸回去", en: "Throw back" },
+    later: "later · 下次吧",
+  },
   list: "the exact scores",
   submit: {
     label: "put your score on the board",

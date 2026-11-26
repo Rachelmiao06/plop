@@ -94,3 +94,35 @@ export function subscribeNickname(cb: () => void) {
     window.removeEventListener("storage", onStorage);
   };
 }
+
+// ------------------------------------------------------------------------------------- snowballs
+
+export type ThrowAnswer = { backend: Backend; thrown: boolean; retrySeconds: number; today: number };
+export type Inbox = { backend: Backend; hits: { from: string; at: string }[]; cooldowns: Record<string, number> };
+
+/** Today's hits per snowman in a group, by lower-case nickname. */
+export function fetchHits(group: string) {
+  return call<{ backend: Backend; today: Record<string, number> }>(`/api/snowballs?g=${encodeURIComponent(group)}`);
+}
+
+const snowball = <T>(body: Record<string, unknown>) =>
+  call<T>("/api/snowballs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+export const throwSnowball = (group: string, from: string, to: string) => snowball<ThrowAnswer>({ action: "throw", group, from, to });
+export const fetchInbox = (group: string, me: string) => snowball<Inbox>({ action: "inbox", group, me });
+export const markSeen = (group: string, me: string) => snowball<{ ok: true }>({ action: "seen", group, me });
+
+const BALL_EVENT = "plop:snowball";
+
+export type BallDetail = { group: string; to: string; today: number };
+
+/** A snowball landed: every board for that group updates its count. */
+export function announceBall(detail: BallDetail) {
+  window.dispatchEvent(new CustomEvent<BallDetail>(BALL_EVENT, { detail }));
+}
+
+export function onBall(fn: (detail: BallDetail) => void) {
+  const handler = (e: Event) => fn((e as CustomEvent<BallDetail>).detail);
+  window.addEventListener(BALL_EVENT, handler);
+  return () => window.removeEventListener(BALL_EVENT, handler);
+}

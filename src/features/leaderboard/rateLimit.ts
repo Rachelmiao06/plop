@@ -3,7 +3,7 @@
  * Best effort: each server instance counts on its own (Vercel may run a few), which is enough to stop a
  * stuck button or a casual spammer. Not a security wall; the score check is what keeps the board honest.
  */
-import { BOARD } from "./content";
+import { BOARD, SNOWBALL } from "./content";
 
 type Window = { start: number; count: number };
 
@@ -11,9 +11,16 @@ const store = ((globalThis as { __plopRate?: Map<string, Window> }).__plopRate ?
 
 /** True if this submit is allowed (and counts it), false if the caller should slow down. */
 export function allowSubmit(ip: string, group: string, now = Date.now()) {
-  const { max, windowSeconds } = BOARD.rateLimit;
+  return allow(`${ip}|${group}`, BOARD.rateLimit, now);
+}
+
+/** The same for snowball throws (its own count, `SNOWBALL.rateLimit`). */
+export function allowThrow(ip: string, group: string, now = Date.now()) {
+  return allow(`snowball|${ip}|${group}`, SNOWBALL.rateLimit, now);
+}
+
+function allow(key: string, { max, windowSeconds }: { max: number; windowSeconds: number }, now: number) {
   const span = windowSeconds * 1000;
-  const key = `${ip}|${group}`;
   const w = store.get(key);
   if (!w || now - w.start >= span) {
     store.set(key, { start: now, count: 1 });

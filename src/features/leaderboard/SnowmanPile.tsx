@@ -7,14 +7,14 @@
  * another, they hop over in an arc and plop down onto the one below, with a squish and a puff of snow; the one
  * going down slides to its new place first. Only changes animate. All numbers are in `PILE` (content.ts).
  */
-import { useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
-import { CrownDoodle } from "@/features/hud/Doodles";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { CrownDoodle, SnowballDots } from "@/features/hud/Doodles";
 import type { SnowmanLook } from "@/features/hud/content";
 import { useSize } from "@/features/hud/hooks";
 import { pencilCircle, pencilRoundRect } from "@/features/hud/pencil";
 import type { BoardEntry } from "./api";
 import { lb } from "./boardStyles";
-import { PILE, TEXT } from "./content";
+import { PILE, SNOWBALL, TEXT } from "./content";
 import { nameKey } from "./rules";
 
 const ART: Record<SnowmanLook, string> = {
@@ -107,9 +107,21 @@ export type SnowmanPileProps = {
   scores: BoardEntry[];
   /** The viewer's `nameKey`, or "" for nobody. */
   viewer: string;
+  /** Today's snowball hits per snowman, by `nameKey`. */
+  hits?: Record<string, number>;
+  /**
+   * Tap a friend to throw a snowball (only when there is a viewer). Answer what happened: it flew, the friend was
+   * hit too recently (minutes to wait), or it failed.
+   */
+  onThrow?: (to: BoardEntry) => Promise<ThrowOutcome>;
 };
 
-export function SnowmanPile({ scores, viewer }: SnowmanPileProps) {
+export type ThrowOutcome = { thrown: true } | { waitMinutes: number } | { failed: true };
+
+type Point = { x: number; y: number };
+type FlightPlan = { id: number; from: Point; to: Point; target: string; size: number };
+
+export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps) {
   const box = useRef<HTMLDivElement>(null);
   const { w } = useSize(box);
   const slotW = w > 0 ? Math.min(PILE.maxSlot, w / Math.max(...(PILE.rows[Math.min(scores.length, PILE.rows.length) - 1] ?? [1]))) : 0;
@@ -206,12 +218,71 @@ export function SnowmanPile({ scores, viewer }: SnowmanPileProps) {
 
   const rowsCount = pile ? Math.max(...pile.slots.map((s) => s.row)) + 1 : 0;
 
+  // ---- snowballs: tap a friend, a snowball arcs from your snowman's head to theirs and splats.
+  const [flights, setFlights] = useState<FlightPlan[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const busy = useRef(new Set<string>());
+  const flightId = useRef(0);
+  /** A snowman's head, in the pile box's pixels from the top left. */
+  const headOf = useCallback(
+    (key: string): Point | null => {
+      const s = pile?.slots.find((x) => x.key === key);
+      if (!pile || !s) return null;
+      return { x: w / 2 + s.x, y: pile.height - (s.foot + s.h * (1 - s.squash) * 0.74) };
+    },
+    [pile, w],
+  );
+  const note = useCallback((key: string, text: string) => {
+    setNotes((n) => ({ ...n, [key]: text }));
+    setTimeout(
+      () =>
+        setNotes((n) => {
+          const rest = { ...n };
+          delete rest[key];
+          return rest;
+        }),
+      SNOWBALL.waitNote * 1000,
+    );
+  }, []);
+  const throwAt = useCallback(
+    async (s: Slot) => {
+      if (!onThrow || !pile || busy.current.has(s.key)) return;
+      busy.current.add(s.key);
+      try {
+        const outcome = await onThrow(s.entry);
+        if ("waitMinutes" in outcome) return note(s.key, TEXT.snowball.wait(outcome.waitMinutes));
+        if ("failed" in outcome) return note(s.key, TEXT.snowball.failed);
+        const to = headOf(s.key);
+        const from = headOf(viewer) ?? { x: w / 2, y: pile.height + 30 };
+        if (to) setFlights((f) => [...f, { id: ++flightId.current, from, to, target: s.key, size: slotW }]);
+      } finally {
+        busy.current.delete(s.key);
+      }
+    },
+    [onThrow, pile, headOf, viewer, w, slotW, note],
+  );
+  /** The snowball landed: the friend wobbles from the hit. */
+  const onSplat = useCallback((key: string) => {
+    els.current.get(key)?.querySelector<HTMLElement>("[data-land]")?.animate(
+      [
+        { transform: "rotate(0deg) scale(1, 1)" },
+        { transform: "rotate(-7deg) scale(1.08, 0.9)", offset: 0.25 },
+        { transform: "rotate(5deg) scale(0.97, 1.04)", offset: 0.55 },
+        { transform: "rotate(-2deg) scale(1, 1)", offset: 0.8 },
+        { transform: "rotate(0deg) scale(1, 1)" },
+      ],
+      { duration: 520, easing: "ease-out" },
+    );
+  }, []);
+
   return (
-    <div ref={box} role="img" aria-label={TEXT.pile} className="relative w-full" style={{ height: pile?.height ?? 0 }}>
+    <div ref={box} role="group" aria-label={TEXT.pile} className="relative w-full" style={{ height: pile?.height ?? 0 }}>
       {pile?.slots.map((s) => {
         const isMe = viewer !== "" && s.key === viewer;
         const sq = s.squash;
         const standing = s.h * (1 - sq);
+        const canHit = Boolean(onThrow) && viewer !== "" && !isMe;
+        const hitCount = hits?.[s.key] ?? 0;
         return (
           <div
             key={s.key}
@@ -219,8 +290,20 @@ export function SnowmanPile({ scores, viewer }: SnowmanPileProps) {
               if (el) els.current.set(s.key, el);
               else els.current.delete(s.key);
             }}
-            className="absolute"
+            className={`absolute ${canHit ? `cursor-pointer outline-none ${lb.target}` : ""}`}
             style={{ left: w / 2 + s.x - slotW / 2, bottom: s.foot, width: slotW, height: s.h, zIndex: 20 - s.row }}
+            {...(canHit && {
+              role: "button",
+              tabIndex: 0,
+              "aria-label": TEXT.snowball.throwAt(s.entry.name),
+              onClick: () => throwAt(s),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  throwAt(s);
+                }
+              },
+            })}
           >
             <div className={`absolute inset-0 ${lb.pileIn}`} style={{ "--lb-pile-delay": `${(rowsCount - 1 - s.row) * PILE.motion.rowStagger}s` } as CSSProperties}>
               {isMe && <Glow size={slotW * PILE.glow.size * 2} seed={s.rank} />}
@@ -267,7 +350,7 @@ export function SnowmanPile({ scores, viewer }: SnowmanPileProps) {
                   </span>
                 )}
               </div>
-              <NameTag entry={s.entry} width={slotW * PILE.tag.width} tilt={(s.rank % 2 ? -1 : 1) * PILE.tag.tilt} me={isMe} bottom={s.team ? 0 : standing * PILE.tag.lift} seed={s.rank * 7 + 3} />
+              <NameTag entry={s.entry} width={slotW * PILE.tag.width} tilt={(s.rank % 2 ? -1 : 1) * PILE.tag.tilt} me={isMe} bottom={s.team ? 0 : standing * PILE.tag.lift} seed={s.rank * 7 + 3} hits={hitCount} />
               {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, shown when someone lands */}
               <img
                 data-puff
@@ -284,7 +367,102 @@ export function SnowmanPile({ scores, viewer }: SnowmanPileProps) {
           </div>
         );
       })}
+      {pile?.slots.map((s) =>
+        notes[s.key] ? (
+          <span
+            key={`note-${s.key}`}
+            role="status"
+            className={`absolute z-[60] rounded-full bg-paper px-2 py-0.5 font-heading text-[11px] whitespace-nowrap text-ink-deep shadow-sm ${lb.note}`}
+            // Above the head, kept inside the board: a snowman at an edge gets its note on the inner side.
+            style={{
+              bottom: s.foot + s.h * (1 - s.squash) + 2,
+              ...(s.x > 1
+                ? { right: Math.max(0, w / 2 - s.x - slotW / 2) }
+                : s.x < -1
+                  ? { left: Math.max(0, w / 2 + s.x - slotW / 2) }
+                  : { left: w / 2 + s.x, translate: "-50% 0" }),
+            }}
+          >
+            {notes[s.key]}
+          </span>
+        ) : null,
+      )}
+      {flights.map((f) => (
+        <Flight
+          key={f.id}
+          plan={f}
+          onHit={() => onSplat(f.target)}
+          onDone={() => setFlights((all) => all.filter((x) => x.id !== f.id))}
+        />
+      ))}
     </div>
+  );
+}
+
+/** One snowball in the air: arcs from `from` to `to`, spinning, then splats (Rachel's snow puff) and is gone. */
+function Flight({ plan, onHit, onDone }: { plan: FlightPlan; onHit: () => void; onDone: () => void }) {
+  const ball = useRef<HTMLSpanElement>(null);
+  const splat = useRef<HTMLImageElement>(null);
+  const [hit, setHit] = useState(false);
+  const done = useRef({ onHit, onDone });
+  useLayoutEffect(() => {
+    done.current = { onHit, onDone };
+  });
+  useLayoutEffect(() => {
+    const el = ball.current;
+    if (!el) return;
+    const dx = plan.to.x - plan.from.x;
+    const dy = plan.to.y - plan.from.y;
+    const arc = Math.max(SNOWBALL.arcMin, Math.hypot(dx, dy) * SNOWBALL.arc);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const frames = Array.from({ length: 13 }, (_, i) => {
+      const t = i / 12;
+      return { transform: `translate(${dx * t}px, ${dy * t - arc * 4 * t * (1 - t)}px) rotate(${t * 600}deg) scale(${1 - 0.25 * t})` };
+    });
+    const flight = el.animate(frames, { duration: reduce ? 1 : SNOWBALL.flight * 1000, easing: "linear" });
+    flight.onfinish = () => {
+      setHit(true);
+      done.current.onHit();
+    };
+    return () => flight.cancel();
+  }, [plan]);
+  useLayoutEffect(() => {
+    if (!hit || !splat.current) return;
+    const pop = splat.current.animate(
+      [
+        { opacity: 0, transform: "translate(-50%, -50%) scale(0.3) rotate(-12deg)" },
+        { opacity: 1, transform: "translate(-50%, -50%) scale(1.1) rotate(4deg)", offset: 0.25 },
+        { opacity: 1, transform: "translate(-50%, -50%) scale(1) rotate(0deg)", offset: 0.6 },
+        { opacity: 0, transform: "translate(-50%, -40%) scale(1.15) rotate(2deg)" },
+      ],
+      { duration: 900, easing: "ease-out" },
+    );
+    pop.onfinish = () => done.current.onDone();
+    return () => pop.cancel();
+  }, [hit]);
+  const size = plan.size * SNOWBALL.splat;
+  return (
+    <>
+      {!hit && (
+        <span ref={ball} aria-hidden className="pointer-events-none absolute z-50" style={{ left: plan.from.x - SNOWBALL.ball / 2, top: plan.from.y - SNOWBALL.ball / 2 }}>
+          <SnowballDots count={1} size={SNOWBALL.ball} />
+        </span>
+      )}
+      {hit && (
+        // eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff as the splat
+        <img
+          ref={splat}
+          src={PUFF}
+          alt=""
+          aria-hidden
+          draggable={false}
+          width={size}
+          height={(size * 235) / 306}
+          className="pointer-events-none absolute z-50"
+          style={{ left: plan.to.x, top: plan.to.y, transform: "translate(-50%, -50%)" }}
+        />
+      )}
+    </>
   );
 }
 
@@ -308,7 +486,23 @@ function Cutout({ look, width, flip, style }: { look: SnowmanLook; width: number
 /** A paper tag with a pencil edge: nickname on top, score big underneath. Yours is butter yellow. */
 const TAG_H = PILE.tag.height;
 
-function NameTag({ entry, width, tilt, me, bottom, seed }: { entry: BoardEntry; width: number; tilt: number; me: boolean; bottom: number; seed: number }) {
+function NameTag({
+  entry,
+  width,
+  tilt,
+  me,
+  bottom,
+  seed,
+  hits,
+}: {
+  entry: BoardEntry;
+  width: number;
+  tilt: number;
+  me: boolean;
+  bottom: number;
+  seed: number;
+  hits: number;
+}) {
   const edge = useMemo(() => pencilRoundRect(width, TAG_H, 9, seed, { wobble: 0.9 }), [width, seed]);
   return (
     <div
@@ -322,6 +516,15 @@ function NameTag({ entry, width, tilt, me, bottom, seed }: { entry: BoardEntry; 
         <span className="block max-w-full truncate font-heading text-[11px] leading-[1.05]">{entry.name}</span>
         <span className="block font-heading text-[16px] leading-[1.05] font-bold tabular-nums">{entry.best}</span>
       </span>
+      {hits > 0 && (
+        <span
+          title={TEXT.snowball.hitsEn(hits)}
+          className="absolute top-full left-1/2 -mt-1 rounded-full bg-sky-blue px-1.5 font-heading text-[10px] leading-[15px] whitespace-nowrap text-ink-deep"
+          style={{ translate: "-50% 0", rotate: `${-tilt * 1.5}deg`, boxShadow: "0 0 0 1.2px var(--ink)" }}
+        >
+          {TEXT.snowball.hits(hits)}
+        </span>
+      )}
     </div>
   );
 }
