@@ -14,9 +14,16 @@ export type Rounds = 3 | 5;
 export type MatchMode = "turns" | "together" | "team";
 const MODES: readonly unknown[] = ["turns", "together", "team"];
 
-export type Submission = { group: string; name: string; score: number; rounds: Rounds; mode: MatchMode };
+/**
+ * A match's play-style numbers, for the funny titles (`titles.ts`): full clears, the longest run of full clears in
+ * a row, friends knocked (the bunny, the sleepy cat), star cards down, throws, throws at full pull. Optional: an
+ * older game sends none, and then the stored numbers stay as they were.
+ */
+export type MatchStats = { clears: number; streak: number; bumps: number; stars: number; throws: number; fullPower: number };
 
-export type ErrorCode = "bad_json" | "bad_group" | "bad_name" | "rude_name" | "bad_score" | "bad_rounds" | "bad_mode";
+export type Submission = { group: string; name: string; score: number; rounds: Rounds; mode: MatchMode; stats?: MatchStats };
+
+export type ErrorCode = "bad_json" | "bad_group" | "bad_name" | "rude_name" | "bad_score" | "bad_rounds" | "bad_mode" | "bad_stats";
 
 export type Checked<T> = { ok: true; value: T } | { ok: false; error: ErrorCode };
 
@@ -122,5 +129,33 @@ export function checkSubmission(body: unknown): Checked<Submission> {
   if (typeof score !== "number" || !Number.isInteger(score) || score < 0 || score > maxFor(b.rounds, mode)) {
     return { ok: false, error: "bad_score" };
   }
-  return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode } };
+  if (b.stats === undefined) return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode } };
+  const stats = checkStats(b.stats, b.rounds, mode);
+  if (!stats) return { ok: false, error: "bad_stats" };
+  return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode, stats } };
+}
+
+/** Star cards a single round can have at most (from the pins' round sets). */
+const MAX_STARS = Math.max(1, ...ROUND_SETS.map((s) => s.pins.filter((p) => p.kind === "star").length));
+
+/**
+ * The play-style numbers must be whole numbers a match of this length can make: one throw a round per player (two
+ * players' worth for a team), no more full clears, friends or full-power throws than throws, the run of full clears
+ * no longer than the match.
+ */
+export function checkStats(raw: unknown, rounds: Rounds, mode: MatchMode): MatchStats | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const per = mode === "team" ? 2 : 1;
+  const whole = (v: unknown, max: number) => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max ? v : null);
+  const throws = whole(r.throws, rounds * per);
+  if (throws === null) return null;
+  const clears = whole(r.clears, rounds * per);
+  const streak = whole(r.streak, rounds);
+  const bumps = whole(r.bumps, rounds * per);
+  const stars = whole(r.stars, rounds * per * MAX_STARS);
+  const fullPower = whole(r.fullPower, throws);
+  if (clears === null || streak === null || bumps === null || stars === null || fullPower === null) return null;
+  if (streak > clears) return null;
+  return { clears, streak, bumps, stars, throws, fullPower };
 }

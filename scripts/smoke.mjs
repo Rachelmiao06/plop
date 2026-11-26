@@ -12,7 +12,8 @@
  * 6. Opens the invite card with and without a name and group (`/invite`, `/invite?from=test&score=12`, with `g=`): the title must name the
  *    inviter for WeChat's chat card, and the first image in the body must be the invite's own square card.
  * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
- *    taken and then listed, a rude nickname and an impossible score are refused. The test page `/dev/leaderboard`
+ *    taken and then listed, a rude nickname and an impossible score are refused; play-style numbers (for the funny
+ *    titles) are taken with a score and impossible ones refused. The test page `/dev/leaderboard`
  *    is one of the pages in step 3. Then snowballs (`/api/snowballs`): a throw at someone not on the board, at
  *    yourself or from a rude name is refused, a throw lands and counts, the same friend again must wait, the hit
  *    shows in the inbox until marked seen.
@@ -233,6 +234,9 @@ async function main() {
     await expect("POST good score", await post(good), 200, (j) => j.entry?.best === 7 && j.rank === 1);
     await expect("GET lists it", await get(`${base}/api/scores?g=${group}`), 200, (j) => j.scores?.[0]?.name === "Smoke");
     await expect("POST rude name", await post({ ...good, name: "傻逼" }), 400, (j) => j.error === "rude_name");
+    const stats = { clears: 2, streak: 2, bumps: 1, stars: 1, throws: 3, fullPower: 3 };
+    await expect("POST with play-style numbers", await post({ ...good, name: "Styler", stats }), 200, (j) => j.entry?.stats?.bestStreak === 2 && j.players >= 2);
+    await expect("POST impossible numbers", await post({ ...good, name: "Styler", stats: { ...stats, throws: 9 } }), 400, (j) => j.error === "bad_stats");
     await expect("POST impossible score", await post({ ...good, score: 9999 }), 400, (j) => j.error === "bad_score");
 
     console.log("\nSnowballs API (/api/snowballs):");

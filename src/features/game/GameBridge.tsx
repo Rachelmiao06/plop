@@ -12,6 +12,7 @@
  * - the safety net (`createWatchdog`): a step that never comes (a result, the pins standing, the hand-over) is taken
  *   anyway after `GAME.timing.watchdog`, so the next turn and the end card always come
  */
+import type { MatchStatsTracker } from "./matchStats";
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
@@ -86,7 +87,7 @@ export function applyStall(step: StallStep, game: Game, pins: Pins): void {
 const passDelay = (game: Game) =>
   game.lastOfRound() && game.lastRound() ? GAME.timing.endCardAfter : GAME.timing.passTurnAfterReady;
 
-export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link: GameLink }) {
+export function GameBridge({ game, pins, link, stats }: { game: Game; pins: Pins; link: GameLink; stats?: MatchStatsTracker }) {
   const bound = useRef(new Map<Bowling, () => void>());
   /** The safety net's clock (seconds of play in the current step). */
   const watchdog = useRef(createWatchdog());
@@ -107,6 +108,12 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
       pins.subscribe((e) => {
         const d = due.current;
         if (e.type === "knocked") game.knocked(e.down);
+        // The play-style numbers for the board's titles (each round's count per player; a recount replaces it).
+        if (stats && (e.type === "result" || e.type === "recount") && game.getState().phase === "playing") {
+          const { round, active } = game.getState();
+          if (e.result.byThrower) for (const [id, r] of Object.entries(e.result.byThrower)) stats.counted(stats.playerOf(id), round, r);
+          else stats.counted(active, round, e.result);
+        }
         // The bonus show (the roll back from the wall) knocked more: their "+1"s and the extra points.
         if (e.type === "recount" && game.recount(e.result)) d.gain = d.now + GAME.timing.secondGainAfter;
         if (e.type === "result" && countThrow(game, pins, e.result, false)) {
@@ -120,7 +127,7 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
           if (st.stage === "passing") d.pass = d.now + passDelay(game);
         }
       }),
-    [game, pins],
+    [game, pins, stats],
   );
 
   // Let go of the bowling games when this goes away.
@@ -158,7 +165,10 @@ export function GameBridge({ game, pins, link }: { game: Game; pins: Pins; link:
       const offEvents = bowling.subscribe((e) => {
         if (e.type === "pressed") game.setPulling(true);
         if (e.type === "cancelled") game.setPulling(link.all().some((g) => g !== bowling && g.thrower.phase === "pulling"));
-        if (e.type === "launched") game.launched(e.thrower);
+        if (e.type === "launched") {
+          game.launched(e.thrower);
+          stats?.launched(stats.playerOf(e.thrower), e.plan.power);
+        }
       });
       const unlock = lockThrows(bowling, () => {
         const phase = pins.getState().phase;

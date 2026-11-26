@@ -64,6 +64,22 @@ Stored per throw (`supabase/migrations/0003_snowballs.sql`): group, both nicknam
 Throws older than 8 days are deleted on the next throw. Nobody signs in, so a nickname is who you say you are on
 that device, like the board itself.
 
+## Funny titles (`titles.ts`, words in `TEXT.titles`, thresholds in `TITLE_RULES`)
+
+Each player gets at most one title, the first that fits in this order: 雪球大王 (top of a board of 2 or more) ·
+保龄球之神 (two full clears in a row in one match) · 兔子杀手 (knocked a friend over 3 times in all) · 大力出奇迹 (every
+throw at full pull, 5 throws or more) · 星星收集家 (3 star cards down in all) · 温柔的人 (3 matches in a row without a
+full clear) · 雪地小可怜 (last on a board of 3 or more) · 刚刚破纪录 (latest match is their best) · 雪地常客 (8 matches)
+· 新来的小雪人 (first match). Each has a short English line. On the board it is written small in berry above the name
+on the snowman's belly and after the name in the list; on the end card it appears under "you're #2!" once your score
+is on the board (star doodle and handwriting, no badge box).
+
+The numbers come with the score: the game counts, per player per match, full clears, the longest run of them, friends
+knocked, star cards down, throws, and throws at full pull (`src/features/game/matchStats.ts`), and `<SubmitScore
+stats>` sends them. The server checks them (`checkStats`: whole numbers a match of that length can make) and adds
+them to running totals on the player's board line (`supabase/migrations/0004_score_stats.sql`, `submit_score_v2`).
+A submit without numbers (an older game) leaves the totals as they were, so old rows simply have no style title yet.
+
 ## Privacy
 
 Only a **nickname and the match score** (plus the match length, turns / together, how many matches and when) are

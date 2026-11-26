@@ -20,6 +20,13 @@ Nothing to do unless you want to look.
 Please don't change the table's columns or switch off row-level security there: the game expects this shape, and
 row-level security keeps the table closed to everyone except the game's server.
 
+## Play-style totals
+
+[`migrations/0004_score_stats.sql`](migrations/0004_score_stats.sql) (applied 2026-11-25) adds a few running totals to
+each line in **scores** for the board's funny titles: `full_clears`, `best_streak`, `friend_bumps`, `star_hits`,
+`throws`, `full_power_throws`, `dry_matches` (matches in a row without a full clear), `stats_matches`. Only numbers
+about play. The game's server writes them through `submit_score_v2`.
+
 ## Snowballs
 
 Table **snowballs** ([`migrations/0003_snowballs.sql`](migrations/0003_snowballs.sql), created 2026-11-25): one row

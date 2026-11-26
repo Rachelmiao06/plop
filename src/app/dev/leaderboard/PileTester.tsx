@@ -4,7 +4,23 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { BoardSheet, SplatNotice, type BoardEntry } from "@/features/leaderboard";
+import type { PlayStats } from "@/features/leaderboard/api";
 import { nameKey } from "@/features/leaderboard/rules";
+import { TitleLine } from "@/features/leaderboard/TitleLine";
+import { TITLES } from "@/features/leaderboard/titles";
+
+/** Fake play-style totals: three ordinary matches, then whatever makes a title fit. */
+const played = (more: Partial<PlayStats> = {}): PlayStats => ({
+  fullClears: 1,
+  bestStreak: 1,
+  bumps: 0,
+  stars: 1,
+  throws: 9,
+  fullPower: 4,
+  dryMatches: 0,
+  matches: 3,
+  ...more,
+});
 
 const entry = (name: string, best: number, extra: Partial<BoardEntry> = {}): BoardEntry => ({
   name,
@@ -13,32 +29,39 @@ const entry = (name: string, best: number, extra: Partial<BoardEntry> = {}): Boa
   bestMode: "turns",
   latest: best,
   latestRounds: 3,
-  plays: 1,
+  plays: 3,
+  stats: played(),
   ...extra,
 });
 
 /** Fake groups (no server): the pile with 2, 5 and 10 players. */
 const GROUPS: { title: string; me: string; scores: BoardEntry[] }[] = [
-  { title: "2 players", me: "小雪", scores: [entry("Mimi", 21), entry("小雪", 17, { plays: 3, latest: 12 })] },
+  { title: "2 players", me: "小雪", scores: [entry("Mimi", 21), entry("小雪", 17, { latest: 12, stats: played({ bumps: 3 }) })] },
   {
     title: "5 players",
     me: "Bao",
-    scores: [entry("豆豆", 29), entry("Juniper", 24, { bestRounds: 5 }), entry("Bao", 19, { plays: 2, latest: 15 }), entry("Pip", 12), entry("Mimi", 7)],
+    scores: [
+      entry("豆豆", 29),
+      entry("Juniper", 24, { bestRounds: 5, latest: 11, stats: played({ bestStreak: 2, fullClears: 3 }) }),
+      entry("Bao", 19, { latest: 15, stats: played({ fullClears: 0, bestStreak: 0, dryMatches: 3 }) }),
+      entry("Pip", 12, { latest: 9 }),
+      entry("Mimi", 7, { latest: 4 }),
+    ],
   },
   {
     title: "10 players",
     me: "小美 & 阿雪",
     scores: [
       entry("Juniper", 31),
-      entry("小美 & 阿雪", 30, { bestMode: "team" }),
-      entry("Bao", 27, { bestRounds: 5 }),
-      entry("豆豆", 24),
-      entry("Pip", 21, { bestMode: "together" }),
-      entry("Mimi", 18),
-      entry("小雪", 15),
-      entry("Clementine", 11),
-      entry("团团", 8),
-      entry("Oz", 3),
+      entry("小美 & 阿雪", 30, { bestMode: "team", latest: 22, stats: played({ bestStreak: 2, fullClears: 2 }) }),
+      entry("Bao", 27, { bestRounds: 5, latest: 20, stats: played({ bumps: 4 }) }),
+      entry("豆豆", 24, { latest: 19, stats: played({ throws: 9, fullPower: 9 }) }),
+      entry("Pip", 21, { bestMode: "together", latest: 17, stats: played({ stars: 5 }) }),
+      entry("Mimi", 18, { latest: 10, stats: played({ fullClears: 0, bestStreak: 0, dryMatches: 3 }) }),
+      entry("小雪", 15, { latest: 9, plays: 11 }),
+      entry("Clementine", 11, { plays: 4 }),
+      entry("团团", 8, { plays: 1, stats: played({ matches: 1, throws: 3 }) }),
+      entry("Oz", 3, { latest: 2 }),
     ],
   },
 ];
@@ -114,6 +137,11 @@ export function PileTester() {
           <Button size="sm" variant="outline" onClick={() => setSplat({ from: "Juniper", more: 2 })}>
             hit by 3 friends
           </Button>
+        </div>
+        <div className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-3" aria-label="all funny titles, in priority order">
+          {TITLES.map((t) => (
+            <TitleLine key={t.id} id={t.id} />
+          ))}
         </div>
         {splat && (
           <SplatNotice key={`${splat.from}${splat.more}`} group="demoTest" me="Bao" preview={splat} onThrowBack={() => setSplat(null)} />
