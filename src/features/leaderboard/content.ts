@@ -72,8 +72,8 @@ export const CHAMP = {
      * the glasses drawn on. When they do, point these at the new files and set `bareHasGlasses` to false.
      */
     bare: { bucket: "/assets/leaderboard/sassy-bucket.webp", redHat: "/assets/leaderboard/sassy-redhat.webp" },
-    /** The falling sunglasses. STAND-IN: cut from the sassy art (frames and lenses only). Swap for Rachel's file. */
-    glasses: "/assets/leaderboard/sunglasses-standin.webp",
+    /** The falling sunglasses: Rachel's own drawing (art-source/leaderboard/sunglasses.png, trimmed). */
+    glasses: "/assets/leaderboard/sunglasses.webp",
     /** While `bare` still has glasses drawn on, the falling pair fades out as it lands on the drawn ones. */
     bareHasGlasses: true,
   },
