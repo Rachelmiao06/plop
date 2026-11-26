@@ -1,10 +1,34 @@
-# Plop!
+<div align="center">
 
-![Plop! paper bowling on snow](src/app/opengraph-image.png)
+<img src="src/app/opengraph-image.png" alt="Plop! paper bowling on snow" width="760">
 
-A cute, calm stress-relief toy: **paper bowling on snow.** A paper snowman stands at a line in a cosy village made
-of Rachel's hand-drawn cut-outs. Pull back and the snowball at its feet rolls and grows; let go and it rolls through
-a little crowd of paper friends and knocks them over. Plop!
+# ❄️ Plop! ❄️
+
+**A cute, calm stress-relief toy: paper bowling on snow.**
+Pull back, roll a snowball bigger, let go, and watch a little crowd of paper friends tumble.
+
+[**▶ Play it now**](https://plop-two.vercel.app) &nbsp;·&nbsp; [How to play](#how-to-play) &nbsp;·&nbsp; [Friends & boards](#friends-boards-and-wagers) &nbsp;·&nbsp; [Run it yourself](#run-it-yourself)
+
+![Next.js](https://img.shields.io/badge/Next.js-16-3a2a1c?style=flat-square&logo=nextdotjs&logoColor=white)
+![Three.js](https://img.shields.io/badge/Three.js-React_Three_Fiber-8fb3e8?style=flat-square&logo=threedotjs&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind-v4-7fb89a?style=flat-square&logo=tailwindcss&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-group_boards-f2d98a?style=flat-square&logo=supabase&logoColor=3a2a1c)
+![Vercel](https://img.shields.io/badge/Vercel-deployed-3a2a1c?style=flat-square&logo=vercel&logoColor=white)
+
+</div>
+
+A snowman in a cosy village made entirely of Rachel's hand-drawn paper cut-outs. Press on the snowman and drag back,
+and the snowball at its feet rolls and grows. Let go, and it rolls through the crowd and knocks them over. Plop!
+
+## A look inside
+
+<table>
+<tr>
+<td align="center" width="33%"><img src="src/features/game/review/evening-1-round1-afternoon.jpg" alt="Round 1 in the afternoon: the snowman at the line, friends and a signpost ahead"><br><sub><b>Round 1</b> · soft afternoon light</sub></td>
+<td align="center" width="33%"><img src="src/features/game/review/evening-2-round2-sunset.jpg" alt="Round 2 at sunset: the snowball and a fresh groove in the snow"><br><sub><b>Round 2</b> · the groove you rolled stays</sub></td>
+<td align="center" width="33%"><img src="src/features/game/review/evening-3-end-card-evening.jpg" alt="The end card in the lamp-lit evening: Bucket wins, 9 to 6"><br><sub><b>Round 3</b> · lamp-lit evening, a kind end card</sub></td>
+</tr>
+</table>
 
 ## What it is
 
@@ -17,10 +41,6 @@ a little crowd of paper friends and knocks them over. Plop!
   silly wager (loser waddles like a penguin). Everyone who opens the same invite shares a **group board**: a ranked
   list with #1 on a snow mound in sunglasses, funny titles, friend stickers and an opt-in "today's oops".
 - **No sign-up.** You type a nickname once; that is all it knows about you.
-
-**Play it:** https://plop-two.vercel.app
-
-![The game on a desktop browser: the bucket-hat snowman at the line, the village and the pins down the lane](src/features/loading/review/home-game.jpg)
 
 ## How to play
 
@@ -49,6 +69,13 @@ a little crowd of paper friends and knocks them over. Plop!
 | **Wagers** | Pick "no bet" or one of six kind, silly lines. The end card shows the loser with the wager's emoji dropping onto their head. | [`src/features/share`](src/features/share) |
 | **Poster** | "Make a poster": a 1080 × 1440 PNG drawn in the browser with a QR code, for WeChat Moments, which cannot post links. | [`src/features/poster`](src/features/poster) |
 | **Scores database** | Supabase (Postgres), server side only, row-level security on. Without keys the board runs in demo mode. | [`supabase/`](supabase/README.md) |
+
+<table>
+<tr>
+<td align="center" width="50%"><img src="src/features/invite/review/fix-real-1-invite.jpg" alt="The invite card: Bubb invites you to a snowball fight, they scored 17, the wager, and a big Play button" height="420"><br><sub><b>The invite</b> a friend opens from a chat</sub></td>
+<td align="center" width="50%"><img src="src/features/poster/review/poster-versus.jpg" alt="The share poster: Plop! with two snowmen, 23 to 18, and a QR code" height="420"><br><sub><b>The poster</b> for WeChat Moments, QR included</sub></td>
+</tr>
+</table>
 
 ## Sharing in WeChat
 
