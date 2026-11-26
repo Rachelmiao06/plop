@@ -16,7 +16,15 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { createElement, Fragment } from "react";
 
-export type AnalyticsEvent = "match_start" | "match_end" | "invite_made" | "invite_opened" | "share_tapped" | "poster_made";
+export type AnalyticsEvent =
+  | "match_start"
+  | "match_end"
+  | "invite_made"
+  | "invite_opened"
+  | "share_tapped"
+  | "poster_made"
+  /** "复仇 · Get them back" on the "X just passed you" note (only how many others passed too, never names). */
+  | "revenge_tapped";
 type Value = string | number | boolean | null;
 
 /**

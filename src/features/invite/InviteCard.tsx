@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { GroupBoard, SplatNotice } from "@/features/leaderboard";
+import { GroupBoard, GroupNotices } from "@/features/leaderboard";
 import { useLoaded } from "@/features/loading";
 import { SHARE, WeChatHint } from "@/features/share";
 import { track } from "@/lib/analytics";
@@ -183,8 +183,9 @@ export function InviteCard({ group, name, score }: Invite) {
         </div>
       )}
 
-      {/* Friends in this group threw snowballs at you: "砸回去" goes to the game, challenged by whoever got you. */}
-      {group && shown && <SplatNotice group={group} onThrowBack={(from) => router.push(gamePath(from, group))} />}
+      {/* Returning to this group: "you got hit" and "X just passed you", one at a time; either button goes to the game,
+          challenged by that friend. */}
+      {group && shown && <GroupNotices group={group} onPlay={(name) => router.push(gamePath(name, group))} />}
 
       {sendHint && shown && (
         <WeChatHint onClose={() => setSendHint(false)} hint={words.sendHint.zh} small={words.sendHint.en} />

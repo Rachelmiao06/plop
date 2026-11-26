@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { BoardSheet, SplatNotice, type BoardEntry } from "@/features/leaderboard";
+import { BoardSheet, OvertakeNotice, SplatNotice, type BoardEntry } from "@/features/leaderboard";
 import type { PlayStats } from "@/features/leaderboard/api";
 import { nameKey } from "@/features/leaderboard/rules";
 import { TitleLine } from "@/features/leaderboard/TitleLine";
@@ -122,6 +122,7 @@ function FakeBoard({ title, me, scores: start }: (typeof GROUPS)[number]) {
 /** The snowman pile with fake groups, and buttons that make someone overtake someone. */
 export function PileTester() {
   const [splat, setSplat] = useState<null | { from: string; more: number }>(null);
+  const [passed, setPassed] = useState<null | { name: string; by: number }[]>(null);
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-4">
       <header>
@@ -137,12 +138,37 @@ export function PileTester() {
           <Button size="sm" variant="outline" onClick={() => setSplat({ from: "Juniper", more: 2 })}>
             hit by 3 friends
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setPassed([{ name: "小雪", by: 3 }])}>
+            show &quot;just passed you&quot;
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              setPassed([
+                { name: "Juniper", by: 7 },
+                { name: "豆豆", by: 4 },
+                { name: "Pip", by: 1 },
+              ])
+            }
+          >
+            passed by 3
+          </Button>
         </div>
         <div className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-3" aria-label="all funny titles, in priority order">
           {TITLES.map((t) => (
             <TitleLine key={t.id} id={t.id} />
           ))}
         </div>
+        {passed && (
+          <OvertakeNotice
+            key={passed.map((p) => p.name).join()}
+            group="demoTest"
+            preview={{ passers: passed, me: "Bao" }}
+            onRevenge={() => setPassed(null)}
+            onDone={() => setPassed(null)}
+          />
+        )}
         {splat && (
           <SplatNotice key={`${splat.from}${splat.more}`} group="demoTest" me="Bao" preview={splat} onThrowBack={() => setSplat(null)} />
         )}

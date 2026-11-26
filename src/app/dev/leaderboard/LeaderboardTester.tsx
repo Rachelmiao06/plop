@@ -3,8 +3,9 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { GroupBoard, SubmitScore } from "@/features/leaderboard";
-import { postScore } from "@/features/leaderboard/api";
+import { GroupBoard, OvertakeNotice, SubmitScore } from "@/features/leaderboard";
+import { fetchBoard, postScore, readNickname } from "@/features/leaderboard/api";
+import { saveSeen, snapshot } from "@/features/leaderboard/overtake";
 import { BOARD } from "@/features/leaderboard/content";
 import { maxScore, newGroup, type MatchMode, type Rounds } from "@/features/leaderboard/rules";
 
@@ -20,6 +21,27 @@ export function LeaderboardTester() {
   const [mode, setMode] = useState<MatchMode>("turns");
   const [round, setRound] = useState(0);
   const [log, setLog] = useState<Log[]>([]);
+  const [overtaken, setOvertaken] = useState(0);
+
+  /**
+   * "X just passed you", for real: tell this device it last saw everyone else at 0 (below you), then run the real
+   * check against the board. Needs your nickname on this group's board (submit a score first).
+   */
+  const simulateOvertaken = async () => {
+    const me = readNickname();
+    const answer = await fetchBoard(group);
+    const now = answer.ok && me ? snapshot(answer.value.scores, me) : null;
+    if (!now) {
+      setLog((l) => [{ label: "simulate overtaken", status: 400, body: "put a score on this group's board first (same nickname)" }, ...l]);
+      return;
+    }
+    if (!Object.values(now.others).some((best) => best > now.mine)) {
+      setLog((l) => [{ label: "simulate overtaken", status: 400, body: "nobody is above you on this board: add a few friends" }, ...l]);
+      return;
+    }
+    saveSeen(group, { ...now, others: Object.fromEntries(Object.keys(now.others).map((k) => [k, 0])) });
+    setOvertaken((n) => n + 1);
+  };
 
   const send = async (label: string, body: unknown) => {
     const answer = await postScore(body);
@@ -107,6 +129,9 @@ export function LeaderboardTester() {
         <Button variant="outline" onClick={addFriends}>
           add a few friends
         </Button>
+        <Button variant="outline" onClick={simulateOvertaken}>
+          simulate being overtaken
+        </Button>
       </section>
 
       <div className="grid items-start gap-6 md:grid-cols-2">
@@ -117,6 +142,8 @@ export function LeaderboardTester() {
           <GroupBoard key={group} group={group} />
         </div>
       </div>
+
+      {overtaken > 0 && <OvertakeNotice key={`${group}-${overtaken}`} group={group} onRevenge={() => setOvertaken(0)} onDone={() => setOvertaken(0)} />}
 
       <section className="flex flex-col gap-2 font-sans text-sm">
         <h2 className="font-heading text-2xl font-bold">Try bad input (each should be refused)</h2>
