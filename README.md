@@ -30,6 +30,22 @@ and the snowball at its feet rolls and grows. Let go, and it rolls through the c
 </tr>
 </table>
 
+## The throw: pull, roll, plop
+
+**1 · Pull back.** The snowball at the snowman's feet grows the longer you hold, and starts to tremble when it is full.
+
+<img src="src/features/game/review/throw-1-pull.webp" alt="The snowball growing in four steps as the snowman leans back: leans back, ball grows, loads up, full and trembling">
+
+**2 · Let go.** A snap, little wind curls, and the snowball lunges away down the lane, leaving a groove in the snow.
+
+<img src="src/features/game/review/throw-2-release.webp" alt="The release: the snowball leaps forward with wind curls and snow spray">
+
+**3 · Plop!** The ball hits the paper friends, the game freezes for a blink, then everyone topples.
+
+<img src="src/features/game/review/throw-3-impact.webp" alt="Impact in six frames: the snowball reaches the friends and knocks them over">
+
+<p align="center"><img src="src/features/game/review/match-05-all-down-star-friend.jpg" alt="All down! The friends lie in the snow, with a star bonus for the star friend" width="640"><br><sub>All down! A full clear, plus a bonus for hitting the star friend.</sub></p>
+
 ## What it is
 
 - **A short match** of 3 or 5 rounds: two friends take turns (Bucket and Red Hat), roll **together** at the same
