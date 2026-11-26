@@ -19,6 +19,9 @@ export const lb = {
   squash: "plop-lb-squash",
   oof: "plop-lb-oof",
   glow: "plop-lb-glow",
+  target: "plop-lb-target",
+  splat: "plop-lb-splat",
+  splatWobble: "plop-lb-splat-wobble",
 } as const;
 
 /** content.ts motion numbers as CSS variables; put them on the sheet. */
@@ -138,11 +141,31 @@ export const boardCss = `
   50% { scale: 1.06; }
 }
 
+/* A friend you can throw at: a tiny lean towards you on hover, a ring on keyboard focus. */
+.plop-lb-target > div { transition: translate 200ms cubic-bezier(0.34, 1.56, 0.64, 1), rotate 200ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 160ms ease-out; }
+.plop-lb-target:hover > div { translate: 0 -2px; rotate: -2deg; }
+.plop-lb-target:active > div { scale: 0.96 1.03; }
+.plop-lb-target:focus-visible { outline: 2px dashed var(--ink); outline-offset: 2px; border-radius: 12px; }
+
+/* The "you got hit" note: the splat lands on the face a beat after the card pops in, and the snowman shivers. */
+.plop-lb-splat { animation: plop-lb-splat 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both; }
+@keyframes plop-lb-splat {
+  from { opacity: 0; scale: 0.2; rotate: -20deg; }
+  to { opacity: 1; scale: 1; rotate: -4deg; }
+}
+.plop-lb-splat-wobble { transform-origin: 50% 100%; animation: plop-lb-splat-wobble 600ms ease-out 0.5s both; }
+@keyframes plop-lb-splat-wobble {
+  0%, 100% { rotate: 0deg; }
+  20% { rotate: -8deg; scale: 1.06 0.92; }
+  45% { rotate: 6deg; scale: 0.97 1.03; }
+  70% { rotate: -3deg; }
+}
+
 .plop-lb-input::placeholder { color: color-mix(in oklab, var(--ink) 45%, var(--paper)); }
 .plop-lb-input:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .plop-lb-note, .plop-lb-bob, .plop-lb-row, .plop-lb-crown, .plop-lb-podium, .plop-lb-star,
-  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow { animation: none; }
+  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble { animation: none; }
   .plop-lb-squash { transition: none; }
 }
 `;

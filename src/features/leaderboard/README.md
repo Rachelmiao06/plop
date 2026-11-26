@@ -33,6 +33,26 @@ animates with reduced motion. The compact list underneath keeps the exact number
   event), so the end card and the invite page need no wiring between them.
 - Render them only when the page has a group id; without one there is no board.
 
+## Snowballs (`/api/snowballs`, numbers and words in `SNOWBALL` / `TEXT.snowball`)
+
+Tap a friend's snowman on the board to throw a snowball: a little snowball arcs from your snowman's head to theirs
+(from the bottom of the board if you are not on it yet), splats in Rachel's snow puff and they wobble. Each
+snowman shows a small "被砸了3次" under its tag for today (midnight China time). One throw per friend per hour
+(the database checks it; tapping again says "再等42分钟 · in 42 min"), plus 20 throws a minute per IP and group in
+the server's memory. You can only hit someone on the group's board, never yourself. Tapping needs a nickname on
+this device (or the start card's name), so a first-time visitor just sees the board.
+
+`<SplatNotice group me? onThrowBack />` is the "you got hit" note: the next time someone opens the game (start
+card) or the invite page, every unseen hit shows as your snowman with a splat on its face, "你被小雪砸了一脸雪！ ·
+小雪 got you!" and a big "砸回去 · Throw back". Throwing back sends a snowball back to whoever got you and starts a
+match in the same group (the game starts with last time's choices when there are some, else the start card is
+right there; the invite page goes to the game, challenged by that friend). "later · 下次吧" closes it. Both mark
+the hits seen. All words are preset; nothing a player types is shown to anyone except nicknames.
+
+Stored per throw (`supabase/migrations/0003_snowballs.sql`): group, both nicknames, when, and when it was seen.
+Throws older than 8 days are deleted on the next throw. Nobody signs in, so a nickname is who you say you are on
+that device, like the board itself.
+
 ## Privacy
 
 Only a **nickname and the match score** (plus the match length, turns / together, how many matches and when) are
@@ -64,7 +84,7 @@ spam and is never written anywhere.
 
 `content.ts` limits, look numbers and words · `rules.ts` checks and `maxScore` · `rateLimit.ts` ·
 `api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` (and `BoardSheet`) ·
-`SnowmanPile.tsx` · `SubmitScore.tsx` ·
+`SnowmanPile.tsx` (the pile and the snowball throw) · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
 `Doodles.tsx` paper sheet, rank marks (pencil circle in butter / snow / blush, crown on #1), butter crayon highlight ·
 `boardStyles.ts` the small scoped stylesheet: rows and the note spring in; idle motion (the crown rocks and hops,
 the #1 circle wobbles, the title star twinkles, the "you're #2!" note bobs, your highlight scribbles in from the left

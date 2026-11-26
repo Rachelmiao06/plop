@@ -12,9 +12,10 @@
  */
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { GroupBoard } from "@/features/leaderboard";
+import { GroupBoard, SplatNotice } from "@/features/leaderboard";
 import { useLoaded } from "@/features/loading";
 import { SHARE, WeChatHint } from "@/features/share";
 import { track } from "@/lib/analytics";
@@ -83,6 +84,7 @@ function withName(text: string, name: string) {
 export function InviteCard({ group, name, score }: Invite) {
   /** True at the snowball's burst: the card pops out of the puff. */
   const shown = useLoaded();
+  const router = useRouter();
   // The sender, just back from making this invite inside WeChat: show them where "···" is (read once, cleared below).
   const [sendHint, setSendHint] = useState(() => {
     try {
@@ -178,6 +180,9 @@ export function InviteCard({ group, name, score }: Invite) {
           </div>
         </div>
       )}
+
+      {/* Friends in this group threw snowballs at you: "砸回去" goes to the game, challenged by whoever got you. */}
+      {group && shown && <SplatNotice group={group} onThrowBack={(from) => router.push(gamePath(from, group))} />}
 
       {sendHint && shown && (
         <WeChatHint onClose={() => setSendHint(false)} hint={words.sendHint.zh} small={words.sendHint.en} />

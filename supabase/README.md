@@ -20,6 +20,13 @@ Nothing to do unless you want to look.
 Please don't change the table's columns or switch off row-level security there: the game expects this shape, and
 row-level security keeps the table closed to everyone except the game's server.
 
+## Snowballs
+
+Table **snowballs** ([`migrations/0003_snowballs.sql`](migrations/0003_snowballs.sql), created 2026-11-25): one row
+per snowball a friend threw at another on a group board: `group_id`, `from_name`, `to_name` (nicknames), `thrown_at`
+and `seen_at` (when the one who got hit saw the note). Rows older than 8 days are removed automatically. Same rules
+as scores: row-level security on, no public access.
+
 ## What is stored
 
 Only a nickname and match scores per invite group (plus the match length, turns / together, how many matches and
