@@ -58,7 +58,8 @@ export const POSTER = {
     title: "my poster",
     drawing: "drawing…",
     failed: "the poster didn't draw, try again?",
-    wechat: "长按图片保存，发朋友圈",
+    /** Inside WeChat the poster is how you share (no JS-SDK: pasted links show a grey icon). */
+    wechat: "长按保存，发给朋友",
     save: "save",
     share: "share",
     close: "close",

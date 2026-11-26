@@ -2,7 +2,7 @@
 
 /**
  * The sheet that shows the finished poster as a plain `<img>` (a data URL, not a canvas, so WeChat's press-and-hold
- * "save image" works). Inside WeChat it says "长按图片保存，发朋友圈"; elsewhere a save button downloads the PNG, and a
+ * "save image" works). Inside WeChat it says "长按保存，发给朋友" (no save button: WeChat blocks downloads); elsewhere a save button downloads the PNG, and a
  * share button hands the file to the system share sheet where the browser can share files.
  * Rendered into `document.body`, because the end card's frosted glass would trap a fixed overlay inside it.
  */

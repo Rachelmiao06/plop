@@ -6,14 +6,16 @@
  * features' own helpers: this device's group (`ensureGroupId`, so the friend lands on the same board), the name and
  * score the game passes (a two-player match: the winner), and the invite's wager if the match came from one.
  *
- * - Inside WeChat (no JS-SDK): copies the link and shows the "tap ···" note.
+ * - Inside WeChat: opens the poster (same QR, same link) to long-press and save (Rachel): without JS-SDK, a pasted
+ *   link shows a grey icon there, and a picture always looks right. Without poster details: copy + the "···" note.
  * - Elsewhere: the system share sheet; without one, copies the link and says "链接已复制".
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { cleanName, INVITE, invitePath, wagerFor, type WagerCode } from "@/features/invite";
+import { cleanName, INVITE, wagerFor, type WagerCode } from "@/features/invite";
+import { posterLink, usePoster, type PosterOptions } from "@/features/poster";
 import { copy, ensureGroupId, isWeChat, SHARE, systemShare, WeChatHint } from "@/features/share";
 import { track } from "@/lib/analytics";
 
@@ -22,10 +24,27 @@ import { PencilFrame } from "./Doodles";
 
 const t = content.text.end;
 
+/** Stand-in players when the card gives no poster details (then the poster is never opened). */
+const NO_PLAYERS = [
+  { name: "", look: "bucket", total: 0 },
+  { name: "", look: "redHat", total: 0 },
+] as const satisfies PosterOptions["players"];
+
 export type Challenge = { name: string; score: number | null; wager: WagerCode | null };
 
-export function ChallengeButton({ challenge, className }: { challenge: Challenge; className?: string }) {
+export function ChallengeButton({
+  challenge,
+  poster,
+  className,
+}: {
+  challenge: Challenge;
+  /** The match for the poster (inside WeChat the tap opens it). */
+  poster?: Omit<PosterOptions, "link">;
+  className?: string;
+}) {
   const [note, setNote] = useState<string | null>(null);
+  const players = poster?.players ?? NO_PLAYERS;
+  const posterSheet = usePoster({ players, solo: !!poster?.solo, team: !!poster?.team, rounds: poster?.rounds, link: challenge });
   const [wechat, setWechat] = useState(false);
 
   useEffect(() => {
@@ -36,10 +55,15 @@ export function ChallengeButton({ challenge, className }: { challenge: Challenge
 
   const send = async () => {
     const name = cleanName(challenge.name);
-    const path = invitePath({ group: ensureGroupId(), name, score: challenge.score, wager: challenge.wager });
+    // The same link the poster's QR code opens (one function makes both).
+    const path = posterLink({ players, team: !!poster?.team, link: challenge }, ensureGroupId());
     const url = window.location.origin + path;
     // Coarse facts only (never the name).
     track("invite_made", { with_score: challenge.score !== null, wager: challenge.wager ?? "none", from: "end_card" });
+    if (isWeChat() && poster) {
+      posterSheet.open();
+      return;
+    }
     if (isWeChat()) {
       await copy(url);
       setWechat(true);
@@ -67,6 +91,7 @@ export function ChallengeButton({ challenge, className }: { challenge: Challenge
           {note}
         </p>
       )}
+      {posterSheet.sheet}
       {/* On the page itself, not inside the card (the card's pop-in transform would trap a fixed overlay). */}
       {wechat && createPortal(<WeChatHint onClose={() => setWechat(false)} hint={t.wechat} small={t.wechatSmall} />, document.body)}
     </div>
