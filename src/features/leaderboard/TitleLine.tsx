@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * A funny title, drawn without a box: Rachel's star doodle and the title in berry handwriting, with its short
- * English line beneath (or beside, small). It pops in a beat after whatever is above it.
+ * A funny title, drawn without a box: Rachel's star doodle and the title in berry handwriting (Chinese on the
+ * board; the end card's big one keeps a short English line for now). It pops in a beat after whatever is above it.
  */
 import type { CSSProperties } from "react";
 import { StarDoodle } from "@/features/hud/Doodles";
@@ -23,7 +23,8 @@ export function TitleLine({ id, big = false, className = "" }: { id: TitleId; bi
         </span>
         <span className={`font-heading font-bold text-berry-deep ${big ? "text-2xl" : "text-base"}`}>{t.zh}</span>
       </span>
-      <span className={`font-sans opacity-75 ${big ? "text-xs" : "text-[10px]"}`}>{t.en}</span>
+      {/* The end card's big title keeps its English line until the end-card redesign; the board shows Chinese only. */}
+      {big && <span className="font-sans text-xs opacity-75">{t.en}</span>}
     </p>
   );
 }

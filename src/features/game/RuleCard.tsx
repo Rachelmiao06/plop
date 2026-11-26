@@ -127,11 +127,9 @@ export function RuleCard({ game, names }: { game: Game; names: readonly [string,
         <p className="font-heading text-xl leading-none text-ink">{TEXT.round(round + 1, rounds)}</p>
         {rule ? (
           <>
-            <p className="mt-2 font-heading text-4xl leading-none font-bold text-ink-deep sm:text-5xl">{rule.words.big.zh}</p>
-            <p className="mt-1 font-heading text-2xl leading-none text-ink-deep">{rule.words.big.en}</p>
+            <p className="mt-2 font-heading text-4xl leading-none font-bold text-ink-deep sm:text-5xl">{rule.words.big}</p>
             <RuleArtView art={rule.art} />
-            <p className="mt-2 font-heading text-xl leading-tight font-bold text-ink-deep">{rule.words.line.zh(rule.points)}</p>
-            <p className="font-heading text-lg leading-tight text-ink">{rule.words.line.en(rule.points)}</p>
+            <p className="mt-2 font-heading text-xl leading-tight font-bold text-ink-deep">{rule.words.line(rule.points)}</p>
           </>
         ) : null}
         {players === 2 && !together && <p className="mt-2 font-heading text-lg leading-tight opacity-80">{TEXT.ruleTurn(names[0])}</p>}
@@ -141,8 +139,7 @@ export function RuleCard({ game, names }: { game: Game; names: readonly [string,
           onClick={() => setClosedFor(turnId)}
           className="mt-3 h-11 rounded-full bg-sky-blue px-8 font-heading text-xl font-bold text-ink-deep hover:bg-sky-blue/80"
         >
-          {TEXT.ruleGotIt.zh}
-          <span className="text-base font-normal">· {TEXT.ruleGotIt.en}</span>
+          {TEXT.ruleGotIt}
         </Button>
       </div>
     </PaperCard>

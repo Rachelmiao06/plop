@@ -313,7 +313,7 @@ export function Game() {
         onHelp={state.phase === "playing" ? () => setHelp(true) : undefined}
         rule={
           rule
-            ? { icon: ruleIcon(rule), words: `${rule.words.chip.zh} · ${rule.words.chip.en}`, label: `${rule.words.big.en}: ${rule.words.line.en(rule.points)}` }
+            ? { icon: ruleIcon(rule), words: rule.words.chip, label: `${rule.words.big}: ${rule.words.line(rule.points)}` }
             : null
         }
       />
@@ -341,7 +341,7 @@ export function Game() {
           fallbacks={fallbacks}
           nameMax={INVITE.link.nameMax}
           onNames={(next) => saveNames(next)}
-          greeting={invite.name ? { zh: TEXT.waiting.zh(invite.name), en: TEXT.waiting.en(invite.name) } : null}
+          greeting={invite.name ? TEXT.waiting(invite.name) : null}
           onMode={onMode}
           onStart={onStart}
         />

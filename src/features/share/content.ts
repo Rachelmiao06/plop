@@ -22,22 +22,25 @@ export const SHARE = {
     small: "tap anywhere to close",
   },
 
-  /** "Invite a friend": a little sheet that makes a link to the invite card (`/invite?from=<name>&score=<n>`). */
+  /**
+   * "Invite a friend": a little sheet that makes a link to the invite card (`/invite?from=<name>&score=<n>`). One
+   * language per line: simple English, and the WeChat note in Chinese (WeChat's own menu is Chinese).
+   */
   invite: {
     /** `{name}` is replaced: the name from the start card, or the snowman's default. Never sent empty. */
-    title: { zh: "邀请朋友，署名：{name}", en: "invite a friend, signed {name}" },
-    change: { zh: "改名字", en: "change" },
-    name: { zh: "你的名字", en: "your name" },
+    title: "invite a friend, signed {name}",
+    change: "change",
+    name: "your name",
     /** `{score}` is replaced: the best total kept on this device after a match alone. */
-    score: { zh: "附上我的最好成绩：{score} 分", en: "include my best score: {score}" },
-    send: { zh: "发送邀请", en: "send invite" },
-    plain: { zh: "只分享游戏", en: "just share the game" },
+    score: "include my best score: {score}",
+    send: "send invite",
+    plain: "just share the game",
     close: "close",
     /** What a share sheet says along with the link. `{name}` is replaced (never empty). */
     text: "{name} 邀请你来打一局雪仗 ❄️",
-    copied: { zh: "邀请链接已复制！", en: "invite link copied!" },
+    copied: "invite link copied!",
     /** Inside WeChat: the link is copied, and the card page opens so "···" sends it as a proper card. */
-    wechat: { zh: "链接已复制。点右上角 ··· 把卡片发给朋友", en: "link copied · tap ··· to send the card" },
+    wechat: "链接已复制。点右上角 ··· 把卡片发给朋友",
     /** The invite page shows the sender the "···" hint once, when this is set (sessionStorage). */
     sentKey: "plop.invite.sent",
     /** This device's invite group id (localStorage), see `group.ts`. */

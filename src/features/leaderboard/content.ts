@@ -173,7 +173,6 @@ export const TITLE_RULES = {
 
 export const TEXT = {
   title: "雪仗排行榜",
-  titleEn: "our snowy board",
   loading: "warming up the snow…",
   empty: "no scores yet. be the first!",
   failed: "the board is napping. try again in a moment",
@@ -185,40 +184,39 @@ export const TEXT = {
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
   champ: "the snowball champion",
-  /** The opt-in "今日最惨 · Today's oops". Gentle: only for those who asked to be laughed at. */
+  /**
+   * One language per line (Rachel): Chinese where the fun is in Chinese (titles, stickers, 今日最惨, the notes' headlines
+   * and their buttons), simple English for plain UI.
+   */
+  /** The opt-in "今日最惨". Gentle: only for those who asked to be laughed at. */
   oops: {
+    /** On the end card's score prompt (left as it was: the end card is being redesigned on its own). */
     optIn: { zh: "让大家笑一下我最惨的一球", en: "Let the group laugh at my worst throw today" },
-    heading: "今日最惨 · today's oops",
-    zh: (name: string, n: number) => `${name}今天有一球只倒了${n}个 😵`,
-    en: (name: string, n: number) => `${name} knocked down ${n} once today`,
+    heading: "今日最惨",
+    line: (name: string, n: number) => `${name}今天有一球只倒了${n}个 😵`,
   },
   reactions: {
-    names: {
-      star: { zh: "厉害", en: "awesome" },
-      wow: { zh: "哇", en: "wow" },
-      lol: { zh: "笑死", en: "lol" },
-      music: { zh: "好听", en: "lovely" },
-    },
+    names: { star: "厉害", wow: "哇", lol: "笑死", music: "好听" },
     open: (name: string) => `stick a sticker on ${name}`,
-    hint: "按住或点 + 贴个贴纸 · hold or tap + for a sticker",
-    pick: (zh: string, en: string) => `${zh} · ${en}`,
+    hint: "hold a friend or tap + for a sticker",
     remove: "take it back",
-    gotZh: (name: string, more: number) => (more > 0 ? `${name}和另外${more}人给你贴了贴纸` : `${name}给你点了个`),
-    gotEn: (name: string, more: number) => (more > 0 ? `${name} and ${more} more stuck stickers on you` : `${name} gave you a`),
-    nice: { zh: "好耶", en: "Yay" },
-    failed: "没贴上 · didn't stick, try again",
+    got: (name: string, more: number) => (more > 0 ? `${name}和另外${more}人给你贴了贴纸` : `${name}给你点了个`),
+    nice: "好耶",
+    failed: "didn't stick, try again",
   },
-  toPass: (n: number, name: string) => `还差${n}分超过${name} · ${n} to pass ${name}`,
-  onTop: "你是第一！ · you're #1!",
+  toPass: (n: number, name: string) => `${n} to pass ${name}`,
+  onTop: "you're #1!",
   /** "X just passed you" (`OvertakeNotice`). Never mean: a little huff, then a way back. */
   overtake: {
-    zh: (name: string, by: number) => `${name}刚刚超过你${by}分 😤`,
-    en: (name: string, by: number) => `${name} just passed you by ${by}`,
-    others: (n: number) => `还有${n}人也超过了你 · +${n} other${n === 1 ? "" : "s"}`,
-    revenge: { zh: "复仇", en: "Get them back" },
-    later: "later · 下次吧",
+    line: (name: string, by: number) => `${name}刚刚超过你${by}分 😤`,
+    others: (n: number) => `还有${n}人也超过了你`,
+    revenge: "复仇",
+    later: "later",
   },
-  /** The funny titles: Chinese on the board, a short English line beside it. Always kind. */
+  /**
+   * The funny titles: the board shows the Chinese only; the end card (being redesigned on its own) still shows the
+   * short English line under it. Always kind.
+   */
   titles: {
     king: { zh: "雪球大王", en: "king of the snowballs" },
     bowlingGod: { zh: "保龄球之神", en: "two full clears in a row!" },
@@ -232,21 +230,18 @@ export const TEXT = {
     newcomer: { zh: "新来的小雪人", en: "just rolled in" },
   },
   snowball: {
-    hint: "tap a friend to throw ❄",
-    hintZh: "点朋友扔个雪球",
+    hint: "tap a friend to throw a snowball ❄",
     throwAt: (name: string) => `throw a snowball at ${name}`,
     hits: (n: number) => `被砸了${n}次`,
-    hitsEn: (n: number) => (n === 1 ? "hit once today" : `hit ${n} times today`),
-    wait: (minutes: number) => `再等${minutes}分钟 · in ${minutes} min`,
-    failed: "雪球没扔出去 · missed, try again",
-    gotYouZh: (name: string, more: number) => (more > 0 ? `你被${name}和另外${more}人砸了一脸雪！` : `你被${name}砸了一脸雪！`),
-    gotYouEn: (name: string, more: number) => (more > 0 ? `${name} and ${more} more got you!` : `${name} got you!`),
-    back: { zh: "砸回去", en: "Throw back" },
-    later: "later · 下次吧",
+    wait: (minutes: number) => `try again in ${minutes} min`,
+    failed: "missed, try again",
+    gotYou: (name: string, more: number) => (more > 0 ? `你被${name}和另外${more}人砸了一脸雪！` : `你被${name}砸了一脸雪！`),
+    back: "砸回去",
+    later: "later",
   },
   list: "the exact scores",
-  seeAll: (n: number) => `看全部 · see all ${n}`,
-  fewer: "收起 · fewer",
+  seeAll: (n: number) => `see all ${n}`,
+  fewer: "fewer",
   submit: {
     label: "put your score on the board",
     ask: "your nickname for the board",

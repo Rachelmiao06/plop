@@ -188,7 +188,7 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
         >
           <SnowmanFace look={lookFor(s.name, s.bestMode === "team")} size={LIST.avatar - 4} />
           {hit > 0 && (
-            <span className="absolute -top-1.5 -right-2 flex items-center" title={`${TEXT.snowball.hits(hit)} · ${TEXT.snowball.hitsEn(hit)}`}>
+            <span className="absolute -top-1.5 -right-2 flex items-center" title={TEXT.snowball.hits(hit)}>
               {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, as snow stuck on the avatar */}
               <img src="/assets/effects/snow-puff.webp" alt="" aria-hidden width={LIST.hitMark} height={(LIST.hitMark * 235) / 306} draggable={false} />
               <span className="-ml-0.5 font-heading text-[10px] leading-none font-bold text-ink-deep" aria-hidden>
@@ -211,7 +211,6 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
             second && (
               <span
                 className={`block truncate font-heading text-xs ${pinned ? "text-ink" : "text-berry-deep"}`}
-                title={!pinned && title ? TEXT.titles[title].en : undefined}
               >
                 {second}
               </span>
@@ -283,12 +282,12 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
               key={k}
               type="button"
               role="menuitem"
-              aria-label={on ? `${TEXT.reactions.remove} · ${n.zh}` : TEXT.reactions.pick(n.zh, n.en)}
+              aria-label={on ? `${TEXT.reactions.remove} · ${n}` : n}
               className={`flex flex-col items-center rounded-xl px-1 pt-0.5 transition-transform hover:scale-110 active:scale-95 ${on ? "bg-butter/60" : ""}`}
               onClick={() => pick(s, k)}
             >
               <Sticker kind={k} size={REACTIONS.pickSize} />
-              <span className="font-heading text-[10px] leading-tight text-ink-deep">{n.zh}</span>
+              <span className="font-heading text-[10px] leading-tight text-ink-deep">{n}</span>
             </button>
           );
         })}
@@ -325,8 +324,7 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
             </span>
           </span>
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block font-heading text-sm text-ink-deep">{TEXT.oops.zh(o.entry.name, o.low)}</span>
-            <span className="block font-sans text-[10px] opacity-70">{TEXT.oops.en(o.entry.name, o.low)}</span>
+            <span className="block font-heading text-sm text-ink-deep">{TEXT.oops.line(o.entry.name, o.low)}</span>
           </span>
           {stickerCounts(key, true)}
           {canReact && plusButton(o.entry, pickKey)}
@@ -368,6 +366,6 @@ export function Sticker({ kind, size }: { kind: ReactionKind; size: number }) {
 function stickerLabel(counts: Partial<Record<ReactionKind, number>>) {
   return REACTIONS.kinds
     .filter((k) => (counts[k] ?? 0) > 0)
-    .map((k) => `${TEXT.reactions.names[k].zh} ${counts[k]}`)
+    .map((k) => `${TEXT.reactions.names[k]} ${counts[k]}`)
     .join(" · ");
 }

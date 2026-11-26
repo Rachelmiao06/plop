@@ -23,7 +23,7 @@ const t = content.text.start;
 
 export type PlayMode = "turns" | "together";
 export type StartChoice = { players: 1 | 2; mode: PlayMode; rounds: number };
-type Words = { zh: string; en: string };
+type Words = string;
 type Step = "again" | "how" | "setup" | "howto";
 
 const coarseQuery = "(pointer: coarse)";
@@ -48,25 +48,15 @@ function Thrower({ look, height, className = "" }: { look: SnowmanLook; height: 
   return <img src={thrower[look]} alt="" draggable={false} className={`w-auto select-none ${className}`} style={{ height }} />;
 }
 
-/**
- * English leads in the light brown pencil hand (Gaegu, `--ink`), and the Chinese is always there, a size smaller
- * beneath (Rachel, 2026-11-25: lead with English, keep the Chinese). Gaegu has no Chinese letters, so the Chinese
- * falls back to a system font; kept smaller and a little paler so it never reads heavier than the English.
- */
-function Zh({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <span className={`block font-sans text-ink/85 ${className}`}>{children}</span>;
-}
-
 function Title({ words }: { words: Words }) {
   return (
     <h2 className="font-heading text-2xl leading-tight text-ink">
-      {words.en}
-      <Zh className="mt-0.5 text-sm">{words.zh}</Zh>
+      {words}
     </h2>
   );
 }
 
-/** A big friendly choice: a picture, the name in two languages and one line saying what it means. */
+/** A big friendly choice: a picture, the name and one line saying what it means (one language per line). */
 function Choice({
   picked,
   onPick,
@@ -100,18 +90,16 @@ function Choice({
       <PencilFrame seed={seed} radius={22} overshoot={picked ? 7 : 3} />
       <span className="relative flex w-[5.5rem] shrink-0 items-end justify-center">{picture}</span>
       <span className="relative min-w-0 flex-1">
-        {/* The name and its chip each stay on one line (at 375 px "Team up" and "one team 组队" used to break apart). */}
+        {/* The name and its chip each stay on one line (at 375 px they used to break apart). */}
         <span className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 font-heading text-xl leading-none text-ink ${picked ? "font-bold" : ""}`}>
-          <span className="whitespace-nowrap">{name.en}</span>
+          <span className="whitespace-nowrap">{name}</span>
           {tag && (
             <span className="shrink-0 rounded-full bg-butter/70 px-1.5 py-0.5 font-heading text-sm leading-none font-normal whitespace-nowrap text-ink">
-              {tag.en} <span className="font-sans text-[11px] text-ink/85">{tag.zh}</span>
+              {tag}
             </span>
           )}
         </span>
-        <Zh className="text-[13px] leading-tight">{name.zh}</Zh>
-        <span className="mt-1 block font-heading text-base leading-tight text-ink">{line.en}</span>
-        <Zh className="text-xs leading-tight">{line.zh}</Zh>
+        <span className="mt-1 block font-heading text-base leading-tight text-ink">{line}</span>
         {children}
       </span>
     </button>
@@ -208,32 +196,28 @@ export function HowToPicture({ touch }: { touch: boolean }) {
 function HowToLines({ touch }: { touch: boolean }) {
   return (
     <ol className="mt-1 space-y-1.5 text-left">
-      {t.howLines(touch).map(([zh, en], i) => (
-        <li key={en} className="flex items-start gap-2">
+      {t.howLines(touch).map((line, i) => (
+        <li key={line} className="flex items-start gap-2">
           <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-butter/70 font-heading text-base font-bold text-ink-deep">
             {i + 1}
           </span>
-          <span className="font-heading text-lg leading-tight text-ink">
-            {en}
-            <Zh className="text-xs leading-tight">{zh}</Zh>
-          </span>
+          <span className="font-heading text-lg leading-tight text-ink">{line}</span>
         </li>
       ))}
     </ol>
   );
 }
 
-/** A big sky-blue button with both languages. */
+/** A big sky-blue button. */
 function BigButton({ words, onClick, ...rest }: { words: Words; onClick: () => void; autoFocus?: boolean }) {
   return (
     <Button
       size="lg"
       onClick={onClick}
       {...rest}
-      className="mt-4 h-12 w-full flex-col gap-0 rounded-full bg-sky-blue font-heading text-2xl leading-none font-bold text-ink-deep hover:bg-sky-blue/80"
+      className="mt-4 h-12 w-full rounded-full bg-sky-blue font-heading text-2xl leading-none font-bold text-ink-deep hover:bg-sky-blue/80"
     >
-      {words.en}
-      <span className="font-sans text-xs leading-none text-ink-deep/80">{words.zh}</span>
+      {words}
     </Button>
   );
 }
@@ -249,7 +233,7 @@ export function HowToCard({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="absolute inset-0 z-20" onPointerDown={onClose} aria-hidden />
-      <Card label={t.howTo.en} seed={61} wide>
+      <Card label={t.howTo} seed={61} wide>
         <Title words={t.howTo} />
         <HowToPicture touch={touch} />
         <HowToLines touch={touch} />
@@ -275,8 +259,8 @@ export type StartFlowProps = {
   fallbacks: readonly [string, string];
   nameMax: number;
   onNames: (names: readonly [string, string]) => void;
-  /** Arrived from a friend's invite: "小美 在等你!" on top of the first card. */
-  greeting?: Words | null;
+  /** Arrived from a friend's invite: "小美 is waiting" on top of the first card. */
+  greeting?: string | null;
   /** The mode as soon as it is picked, so the scene behind can already show one snowman or two. */
   onMode?: (mode: PlayMode) => void;
   onStart: (choice: StartChoice) => void;
@@ -296,11 +280,8 @@ function Pill({ picked, onPick, words, sub, seed }: { picked: boolean; onPick: (
     >
       <PencilFrame seed={seed} radius={22} overshoot={picked ? 6 : 3} />
       <span className={`relative block font-heading text-lg text-ink ${picked ? "font-bold" : ""}`}>
-        {words.en} <span className="font-normal">· {sub.en}</span>
+        {words} <span className="font-normal">· {sub}</span>
       </span>
-      <Zh className="relative mt-0.5 text-xs">
-        {words.zh} · {sub.zh}
-      </Zh>
     </button>
   );
 }
@@ -386,10 +367,7 @@ export function StartFlow({
             )}
           </div>
           <p className="mt-2 font-heading text-lg leading-tight text-ink">
-            {how.en} · {len.en} · {t.minutes(minutes(c)).en}
-            <Zh className="text-xs">
-              {how.zh} · {len.zh} · {t.minutes(minutes(c)).zh}
-            </Zh>
+            {how.name} · {len} · {t.minutes(minutes(c))}
           </p>
           <BigButton words={t.same} onClick={() => start(c)} />
           <button
@@ -397,7 +375,7 @@ export function StartFlow({
             onClick={() => go("how")}
             className="mt-2 font-heading text-lg text-ink underline decoration-wavy underline-offset-4"
           >
-            {t.change.en} <span className="font-sans text-xs text-ink/85">{t.change.zh}</span>
+            {t.change}
           </button>
         </>
       );
@@ -408,8 +386,7 @@ export function StartFlow({
         <>
           {greeting && (
             <p className={`mb-1 font-heading text-2xl leading-tight font-bold text-berry-deep ${styles.greet}`}>
-              {greeting.en}
-              <Zh className="text-sm">{greeting.zh}</Zh>
+              {greeting}
             </p>
           )}
           {/* Playing alone: a small side option on top, not a step of its own (an invite's challenge has it marked). */}
@@ -426,11 +403,10 @@ export function StartFlow({
             <span className="relative">
               <SnowmanFace look="bucket" size={26} />
             </span>
-            <span className="relative font-heading text-base leading-none text-ink">{t.soloSide.en} →</span>
-            <span className="relative font-sans text-xs text-ink/85">{t.soloSide.zh}</span>
+            <span className="relative font-heading text-base leading-none text-ink">{t.soloSide} →</span>
           </button>
           <Title words={t.how} />
-          <div role="radiogroup" aria-label={t.how.en} className="mt-3 flex flex-col gap-2.5">
+          <div role="radiogroup" aria-label={t.how} className="mt-3 flex flex-col gap-2.5">
             <Choice
               picked={known && two && choice.mode === "turns"}
               onPick={() => pick({ players: 2, mode: "turns" })}
@@ -441,7 +417,7 @@ export function StartFlow({
                   <Thrower look="redHat" height={54} className="opacity-60" />
                 </span>
               }
-              name={t.turns}
+              name={t.turns.name}
               tag={t.turns.tag}
               line={t.turns.line}
               seed={19}
@@ -455,7 +431,7 @@ export function StartFlow({
                   <Thrower look="redHat" height={58} />
                 </span>
               }
-              name={t.together}
+              name={t.together.name}
               tag={t.together.tag}
               line={touch ? t.together.lineTouch : t.together.line}
               seed={23}
@@ -502,10 +478,9 @@ export function StartFlow({
             )}
           </div>
           <p className="mt-1.5 font-heading text-sm leading-tight text-ink">
-            {hint.en}
-            <Zh className="text-[11px]">{hint.zh}</Zh>
+            {hint}
           </p>
-          <div role="radiogroup" aria-label={t.length.en} className="mt-3 flex gap-2">
+          <div role="radiogroup" aria-label={t.length} className="mt-3 flex gap-2">
             {lengths.map((n, i) => (
               <Pill
                 key={n}
@@ -523,7 +498,7 @@ export function StartFlow({
             onClick={() => go("howto")}
             className="mt-2 font-heading text-base text-ink underline decoration-wavy underline-offset-4"
           >
-            {link.en} <span className="font-sans text-xs text-ink/85">{link.zh}</span>
+            {link}
           </button>
         </>
       );
@@ -554,7 +529,7 @@ export function StartFlow({
             onClick={back}
             className="-ml-1 rounded-full px-2 py-0.5 font-heading text-base text-ink hover:bg-butter/30"
           >
-            ← {t.back.en} <span className="font-sans text-xs text-ink/85">{t.back.zh}</span>
+            ← {t.back}
           </button>
         ) : (
           <span />
