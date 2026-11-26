@@ -91,6 +91,19 @@ after the check, and also whenever the board itself is shown (end card, the invi
 shows "you got hit" first and this one after it, never both at once. `/dev/leaderboard` has preview buttons, and the
 server tester's "simulate being overtaken" rewinds this device's memory so the real check runs.
 
+## Stickers (`/api/reactions`, art and numbers in `REACTIONS`, words in `TEXT.reactions`)
+
+Hold a friend's row (or tap its small "+") to open four of Rachel's effect doodles as stickers: star 厉害, surprise
+lines 哇, snow puff 笑死, music notes 好听. One sticker per person per line: picking another replaces it, picking the
+same one again takes it back. Each line shows its stickers as tiny doodles with counts beside the score (yours with
+a butter wash). A quick tap still throws a snowball; only a hold opens the stickers. The one who got them sees
+"小美给你点了个 ⭐ 厉害" (or "小美和另外 2 人给你贴了贴纸") the next time they open the game or the invite page, as the
+third note in the queue after "you got hit" and "X just passed you", with one "好耶 · Yay" that marks them seen.
+
+Stored per (group, from, to): both nicknames, which sticker, when, and when seen (`supabase/migrations/
+0005_reactions.sql`, `set_reaction`; a changed sticker counts as new). Preset stickers only; 30 changes a minute per
+IP and group in the server's memory; only lines on the board can get one, never your own.
+
 ## Privacy
 
 Only a **nickname and the match score** (plus the match length, turns / together, how many matches and when) are
@@ -123,7 +136,8 @@ spam and is never written anywhere.
 `content.ts` limits, look numbers and words · `rules.ts` checks and `maxScore` · `rateLimit.ts` ·
 `api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` (and `BoardSheet`) ·
 `ChampPodium.tsx` (#1 and the sunglasses) · `jingle.ts` · `RankedList.tsx` (rows, your pinned row, taps) ·
-`Flight.tsx` (the snowball in the air) · `looks.ts` (which snowman a name gets) · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
+`Flight.tsx` (the snowball in the air) · `looks.ts` (which snowman a name gets) · `reactionRules.ts` ·
+`ReactionNotice.tsx` · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
 `Doodles.tsx` paper sheet, rank marks (pencil circle in butter / snow / blush, crown on #1), butter crayon highlight ·
 `boardStyles.ts` the small scoped stylesheet: rows and the note spring in; idle motion (the crown rocks and hops,
 the #1 circle wobbles, the title star twinkles, the "you're #2!" note bobs, your highlight scribbles in from the left

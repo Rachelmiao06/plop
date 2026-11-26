@@ -140,3 +140,23 @@ export function onBall(fn: (detail: BallDetail) => void) {
   window.addEventListener(BALL_EVENT, handler);
   return () => window.removeEventListener(BALL_EVENT, handler);
 }
+
+// ------------------------------------------------------------------------------------- sticker reactions
+
+export type ReactionKind = "star" | "wow" | "lol" | "music";
+export type ReactionCounts = Record<string, Partial<Record<ReactionKind, number>>>;
+export type ReactionInbox = { backend: Backend; got: { from: string; kind: ReactionKind; at: string }[]; given: Record<string, ReactionKind> };
+
+/** Every line's sticker counts in a group, by lower-case nickname. */
+export function fetchReactions(group: string) {
+  return call<{ backend: Backend; counts: ReactionCounts }>(`/api/reactions?g=${encodeURIComponent(group)}`);
+}
+
+const reaction = <T>(body: Record<string, unknown>) =>
+  call<T>("/api/reactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+/** Stick (or with `kind` null, take back) your sticker on a friend's line. */
+export const react = (group: string, from: string, to: string, kind: ReactionKind | null) =>
+  reaction<{ backend: Backend; counts: ReactionCounts }>({ action: "react", group, from, to, kind });
+export const fetchReactionInbox = (group: string, me: string) => reaction<ReactionInbox>({ action: "inbox", group, me });
+export const markReactionsSeen = (group: string, me: string) => reaction<{ ok: true }>({ action: "seen", group, me });

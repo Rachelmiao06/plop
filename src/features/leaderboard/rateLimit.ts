@@ -3,7 +3,7 @@
  * Best effort: each server instance counts on its own (Vercel may run a few), which is enough to stop a
  * stuck button or a casual spammer. Not a security wall; the score check is what keeps the board honest.
  */
-import { BOARD, SNOWBALL } from "./content";
+import { BOARD, REACTIONS, SNOWBALL } from "./content";
 
 type Window = { start: number; count: number };
 
@@ -17,6 +17,11 @@ export function allowSubmit(ip: string, group: string, now = Date.now()) {
 /** The same for snowball throws (its own count, `SNOWBALL.rateLimit`). */
 export function allowThrow(ip: string, group: string, now = Date.now()) {
   return allow(`snowball|${ip}|${group}`, SNOWBALL.rateLimit, now);
+}
+
+/** The same for sticker reactions (`REACTIONS.rateLimit`). */
+export function allowReact(ip: string, group: string, now = Date.now()) {
+  return allow(`react|${ip}|${group}`, REACTIONS.rateLimit, now);
 }
 
 function allow(key: string, { max, windowSeconds }: { max: number; windowSeconds: number }, now: number) {

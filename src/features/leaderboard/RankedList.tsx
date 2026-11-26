@@ -8,11 +8,11 @@
  * Tapping a friend's row throws a snowball from your avatar to theirs; today's hits show as a tiny snow mark on the
  * avatar. No frames inside frames, no pills.
  */
-import { useCallback, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { SnowmanFace } from "@/features/hud/Doodles";
-import type { BoardEntry } from "./api";
+import type { BoardEntry, ReactionCounts, ReactionKind } from "./api";
 import { lb } from "./boardStyles";
-import { LIST, SNOWBALL, TEXT } from "./content";
+import { LIST, REACTIONS, SNOWBALL, TEXT } from "./content";
 import { RankMark } from "./Doodles";
 import { Flight, type FlightPlan, type Point } from "./Flight";
 import { lookFor } from "./looks";
@@ -32,9 +32,13 @@ export type RankedListProps = {
   titles?: Record<string, TitleId>;
   /** Tap a friend's row to throw a snowball (only when there is a viewer). */
   onThrow?: (to: BoardEntry) => Promise<ThrowOutcome>;
+  /** Sticker counts per line, the viewer's own stickers, and sticking one (hold a row, or its "+"). */
+  reactions?: ReactionCounts;
+  given?: Record<string, ReactionKind>;
+  onReact?: (to: BoardEntry, kind: ReactionKind | null) => Promise<boolean>;
 };
 
-export function RankedList({ scores, viewer, hits, titles, onThrow }: RankedListProps) {
+export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, given, onReact }: RankedListProps) {
   const box = useRef<HTMLDivElement>(null);
   const avatars = useRef(new Map<string, HTMLElement>());
   const [flights, setFlights] = useState<FlightPlan[]>([]);
@@ -42,6 +46,28 @@ export function RankedList({ scores, viewer, hits, titles, onThrow }: RankedList
   const busy = useRef(new Set<string>());
   const flightId = useRef(0);
   const mine = viewer ? scores.findIndex((s) => nameKey(s.name) === viewer) : -1;
+  /** The row whose sticker picker is open. */
+  const [picking, setPicking] = useState<string | null>(null);
+  const hold = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({ timer: null, fired: false });
+
+  // Close the picker on a tap anywhere else.
+  useEffect(() => {
+    if (!picking) return;
+    const close = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-sticker-picker]")) setPicking(null);
+    };
+    window.addEventListener("pointerdown", close, true);
+    return () => window.removeEventListener("pointerdown", close, true);
+  }, [picking]);
+
+  const pick = async (entry: BoardEntry, kind: ReactionKind) => {
+    const key = nameKey(entry.name);
+    setPicking(null);
+    if (!onReact) return;
+    // The same sticker again takes it back.
+    const ok = await onReact(entry, given?.[key] === kind ? null : kind);
+    if (!ok) note(key, TEXT.reactions.failed);
+  };
 
   /** An avatar's middle, in the list box's pixels. */
   const centre = (key: string): Point | null => {
@@ -97,6 +123,8 @@ export function RankedList({ scores, viewer, hits, titles, onThrow }: RankedList
     const key = nameKey(s.name);
     const isMe = i === mine;
     const canHit = Boolean(onThrow) && viewer !== "" && !isMe && !pinned;
+    const canReact = Boolean(onReact) && viewer !== "" && !isMe && !pinned;
+    const counts = reactions?.[key] ?? {};
     const title = titles?.[key];
     const above = i > 0 ? scores[i - 1] : null;
     const hit = hits?.[key] ?? 0;
@@ -115,11 +143,28 @@ export function RankedList({ scores, viewer, hits, titles, onThrow }: RankedList
         } ${canHit ? `cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ink/40 ${lb.rowTap}` : ""} ${lb.row}`}
         style={{ "--lb-i": i } as React.CSSProperties}
         aria-current={isMe ? "true" : undefined}
+        {...(canReact && {
+          onPointerDown: () => {
+            hold.current.fired = false;
+            if (hold.current.timer) clearTimeout(hold.current.timer);
+            hold.current.timer = setTimeout(() => {
+              hold.current.fired = true;
+              setPicking(key);
+            }, REACTIONS.holdMs);
+          },
+          onPointerUp: endHold,
+          onPointerLeave: endHold,
+          onPointerCancel: endHold,
+          onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+        })}
         {...(canHit && {
           role: "button",
           tabIndex: 0,
           "aria-label": TEXT.snowball.throwAt(s.name),
-          onClick: () => throwAt(s),
+          onClick: () => {
+            if (hold.current.fired) return void (hold.current.fired = false); // a hold opened the stickers
+            throwAt(s);
+          },
           onKeyDown: (e: KeyboardEvent) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -172,10 +217,70 @@ export function RankedList({ scores, viewer, hits, titles, onThrow }: RankedList
             )
           )}
         </span>
+        {/* Stickers on this line: tiny doodles with their counts, by the score. */}
+        <span className="flex shrink-0 items-center gap-1" aria-label={stickerLabel(counts)}>
+          {REACTIONS.kinds
+            .filter((k) => (counts[k] ?? 0) > 0)
+            .map((k) => (
+              <span key={k} className={`flex items-center ${given?.[key] === k && !pinned ? "rounded-full bg-butter/50 px-0.5" : ""}`}>
+                <Sticker kind={k} size={REACTIONS.countSize} />
+                <span className="font-heading text-[11px] leading-none text-ink-deep tabular-nums" aria-hidden>
+                  {counts[k]}
+                </span>
+              </span>
+            ))}
+        </span>
+        {canReact && (
+          <button
+            type="button"
+            className="-mr-1 grid size-6 shrink-0 place-items-center rounded-full font-heading text-lg leading-none text-ink opacity-50 hover:opacity-90"
+            aria-label={TEXT.reactions.open(s.name)}
+            aria-expanded={picking === key}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPicking((p) => (p === key ? null : key));
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            +
+          </button>
+        )}
         <span className="shrink-0 font-heading text-2xl leading-none font-bold text-ink-deep tabular-nums">{s.best}</span>
+        {picking === key && (
+          <span
+            data-sticker-picker
+            role="menu"
+            className={`absolute -top-11 right-2 z-30 flex items-end gap-1.5 rounded-2xl bg-snow-white px-2 py-1 ${lb.note}`}
+            style={{ boxShadow: "0 3px 12px -4px color-mix(in oklab, var(--ink) 35%, transparent)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {REACTIONS.kinds.map((k) => {
+              const n = TEXT.reactions.names[k];
+              const on = given?.[key] === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="menuitem"
+                  aria-label={on ? `${TEXT.reactions.remove} · ${n.zh}` : TEXT.reactions.pick(n.zh, n.en)}
+                  className={`flex flex-col items-center rounded-xl px-1 pt-0.5 transition-transform hover:scale-110 active:scale-95 ${on ? "bg-butter/60" : ""}`}
+                  onClick={() => pick(s, k)}
+                >
+                  <Sticker kind={k} size={REACTIONS.pickSize} />
+                  <span className="font-heading text-[10px] leading-tight text-ink-deep">{n.zh}</span>
+                </button>
+              );
+            })}
+          </span>
+        )}
       </li>
     );
   };
+
+  function endHold() {
+    if (hold.current.timer) clearTimeout(hold.current.timer);
+    hold.current.timer = null;
+  }
 
   return (
     <div ref={box} className="relative">
@@ -188,4 +293,21 @@ export function RankedList({ scores, viewer, hits, titles, onThrow }: RankedList
       ))}
     </div>
   );
+}
+
+/** One of Rachel's effect doodles used as a sticker. */
+export function Sticker({ kind, size }: { kind: ReactionKind; size: number }) {
+  const a = REACTIONS.art[kind];
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- Rachel's effect doodle
+    <img src={a.src} alt="" aria-hidden width={size} height={(size * a.h) / a.w} className="max-w-none select-none" draggable={false} />
+  );
+}
+
+/** "厉害 2 · 笑死 1" for screen readers. */
+function stickerLabel(counts: Partial<Record<ReactionKind, number>>) {
+  return REACTIONS.kinds
+    .filter((k) => (counts[k] ?? 0) > 0)
+    .map((k) => `${TEXT.reactions.names[k].zh} ${counts[k]}`)
+    .join(" · ");
 }

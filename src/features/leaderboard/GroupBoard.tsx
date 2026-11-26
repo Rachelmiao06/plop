@@ -8,7 +8,22 @@
  * page uses it).
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { announceBall, fetchBoard, fetchHits, onBall, onLanded, readNickname, subscribeNickname, throwSnowball, type BoardEntry } from "./api";
+import {
+  announceBall,
+  fetchBoard,
+  fetchHits,
+  fetchReactionInbox,
+  fetchReactions,
+  onBall,
+  onLanded,
+  react,
+  readNickname,
+  subscribeNickname,
+  throwSnowball,
+  type BoardEntry,
+  type ReactionCounts,
+  type ReactionKind,
+} from "./api";
 import { BOARD, SNOWBALL, TEXT } from "./content";
 import { PaperSheet } from "./Doodles";
 import { nameKey } from "./rules";
@@ -39,6 +54,9 @@ export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: Gr
   const myName = me ?? remembered;
   const viewer = nameKey(myName);
   const [hits, setHits] = useState<Record<string, number>>({});
+  /** Sticker counts on every line, and the stickers the viewer has given (by nickname key). */
+  const [reactions, setReactions] = useState<ReactionCounts>({});
+  const [given, setGiven] = useState<Record<string, ReactionKind>>({});
 
   /** The board was seen: remember it on this device, so "X just passed you" only tells of changes not seen yet. */
   const seen = useCallback(
@@ -65,6 +83,9 @@ export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: Gr
     fetchHits(group).then((answer) => {
       if (live && answer.ok) setHits(answer.value.today);
     });
+    fetchReactions(group).then((answer) => {
+      if (live && answer.ok) setReactions(answer.value.counts);
+    });
     const off = onLanded((d) => {
       if (d.group !== group) return;
       setLanded((n) => n + 1);
@@ -79,6 +100,44 @@ export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: Gr
       offBall();
     };
   }, [group, limit, load, seen]);
+
+  // The stickers this viewer has given (reading the inbox does not mark anything seen).
+  useEffect(() => {
+    if (!myName) return;
+    let live = true;
+    fetchReactionInbox(group, myName).then((answer) => {
+      if (live && answer.ok) setGiven(answer.value.given);
+    });
+    return () => {
+      live = false;
+    };
+  }, [group, myName]);
+
+  const onReact = useCallback(
+    async (to: BoardEntry, kind: ReactionKind | null): Promise<boolean> => {
+      const key = nameKey(to.name);
+      const before = given[key];
+      setGiven((g) => {
+        const next = { ...g };
+        if (kind) next[key] = kind;
+        else delete next[key];
+        return next;
+      });
+      const answer = await react(group, myName, to.name, kind);
+      if (!answer.ok) {
+        setGiven((g) => {
+          const back = { ...g };
+          if (before) back[key] = before;
+          else delete back[key];
+          return back;
+        });
+        return false;
+      }
+      setReactions(answer.value.counts);
+      return true;
+    },
+    [group, myName, given],
+  );
 
   const onThrow = useCallback(
     async (to: BoardEntry): Promise<ThrowOutcome> => {
@@ -102,6 +161,9 @@ export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: Gr
       hits={hits}
       onThrow={viewer ? onThrow : undefined}
       hint={hint}
+      reactions={reactions}
+      given={given}
+      onReact={viewer ? onReact : undefined}
     />
   );
 }
@@ -120,12 +182,16 @@ export type BoardSheetProps = {
   onThrow?: (to: BoardEntry) => Promise<ThrowOutcome>;
   /** Show "tap a friend to throw" over the pile (the invite page leaves it out: one action per screen). */
   hint?: boolean;
+  /** Sticker counts per line, the viewer's own stickers, and sticking one (left out: no stickers). */
+  reactions?: ReactionCounts;
+  given?: Record<string, ReactionKind>;
+  onReact?: (to: BoardEntry, kind: ReactionKind | null) => Promise<boolean>;
 };
 
 export type BoardState = State;
 
 /** The board drawn from what it is given: the title, #1 on its podium, the ranked list with your row pinned. */
-export function BoardSheet({ state, viewer, className, hits, onThrow, hint = true }: BoardSheetProps) {
+export function BoardSheet({ state, viewer, className, hits, onThrow, hint = true, reactions, given, onReact }: BoardSheetProps) {
   const scores = state.status === "ready" ? state.scores : [];
   // Each player's funny title (at most one; `titles.ts`), by nickname key.
   const titles = Object.fromEntries(
@@ -154,10 +220,20 @@ export function BoardSheet({ state, viewer, className, hits, onThrow, hint = tru
           {hint && onThrow && viewer && scores.length > 1 && (
             <p className="mt-2 mb-1 text-center font-heading text-sm leading-tight opacity-75">
               {TEXT.snowball.hintZh} · {TEXT.snowball.hint}
+              {onReact && <span className="block text-xs">{TEXT.reactions.hint}</span>}
             </p>
           )}
           <div className="mt-2">
-            <RankedList scores={scores} viewer={viewer} hits={hits} titles={titles} onThrow={onThrow} />
+            <RankedList
+              scores={scores}
+              viewer={viewer}
+              hits={hits}
+              titles={titles}
+              onThrow={onThrow}
+              reactions={reactions}
+              given={given}
+              onReact={onReact}
+            />
           </div>
         </>
       )}

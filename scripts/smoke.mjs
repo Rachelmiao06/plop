@@ -16,7 +16,9 @@
  *    titles) are taken with a score and impossible ones refused. The test page `/dev/leaderboard`
  *    is one of the pages in step 3. Then snowballs (`/api/snowballs`): a throw at someone not on the board, at
  *    yourself or from a rude name is refused, a throw lands and counts, the same friend again must wait, the hit
- *    shows in the inbox until marked seen.
+ *    shows in the inbox until marked seen. Then sticker reactions (`/api/reactions`): unknown stickers, yourself and
+ *    names not on the board are refused; a sticker lands, a new one replaces it, the owner's inbox has it until seen,
+ *    and it can be taken back.
  * 8. The web app manifest ("add to home screen"): the home page links `/manifest.webmanifest`, it answers JSON
  *    named "Plop!" with `display: standalone`, and each of its icons (192, 512 and a maskable one) loads as an image.
  * 9. Fetches a page that does not exist: it must answer 404.
@@ -258,6 +260,27 @@ async function main() {
     await expect("mark seen", await ball({ action: "seen", me: "Smoke" }), 200, (j) => j.ok === true);
     await expect("inbox empty after seen", await ball({ action: "inbox", me: "Smoke" }), 200, (j) => Array.isArray(j.hits) && j.hits.length === 0);
     await expect("bad action", await ball({ action: "melt", me: "Smoke" }), 400, (j) => j.error === "bad_action");
+
+    console.log("\nSticker reactions (/api/reactions):");
+    const sticker = (body) =>
+      fetch(base + "/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group, ...body }),
+        signal: AbortSignal.timeout(TIMEOUT),
+      });
+    await expect("GET bad group", await get(base + "/api/reactions?g=nope"), 400, (j) => j.error === "bad_group");
+    await expect("unknown sticker", await sticker({ action: "react", from: "Pal", to: "Smoke", kind: "poop" }), 400, (j) => j.error === "bad_kind");
+    await expect("sticker on yourself", await sticker({ action: "react", from: "Smoke", to: "SMOKE", kind: "star" }), 400, (j) => j.error === "same_person");
+    await expect("sticker on someone not on the board", await sticker({ action: "react", from: "Pal", to: "Nobody", kind: "star" }), 404, (j) => j.error === "not_on_board");
+    await expect("sticker lands", await sticker({ action: "react", from: "Pal", to: "Smoke", kind: "star" }), 200, (j) => j.counts?.smoke?.star === 1);
+    await expect("changed sticker replaces it", await sticker({ action: "react", from: "Pal", to: "Smoke", kind: "lol" }), 200, (j) => j.counts?.smoke?.lol === 1 && !j.counts?.smoke?.star);
+    await expect("GET counts", await get(`${base}/api/reactions?g=${group}`), 200, (j) => j.counts?.smoke?.lol === 1);
+    await expect("owner's inbox has it", await sticker({ action: "inbox", me: "Smoke" }), 200, (j) => j.got?.[0]?.from === "Pal" && j.got[0].kind === "lol");
+    await expect("giver sees what they gave", await sticker({ action: "inbox", me: "Pal" }), 200, (j) => j.given?.smoke === "lol");
+    await expect("mark seen", await sticker({ action: "seen", me: "Smoke" }), 200, (j) => j.ok === true);
+    await expect("inbox empty after seen", await sticker({ action: "inbox", me: "Smoke" }), 200, (j) => Array.isArray(j.got) && j.got.length === 0);
+    await expect("take it back", await sticker({ action: "react", from: "Pal", to: "Smoke", kind: null }), 200, (j) => !j.counts?.smoke?.lol);
 
     console.log("\nWeb app manifest (add to home screen):");
     try {

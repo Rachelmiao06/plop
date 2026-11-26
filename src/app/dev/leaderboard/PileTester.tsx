@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { BoardSheet, OvertakeNotice, SplatNotice, type BoardEntry } from "@/features/leaderboard";
-import type { PlayStats } from "@/features/leaderboard/api";
+import { BoardSheet, OvertakeNotice, ReactionNotice, SplatNotice, type BoardEntry } from "@/features/leaderboard";
+import type { PlayStats, ReactionCounts, ReactionKind } from "@/features/leaderboard/api";
 import { nameKey } from "@/features/leaderboard/rules";
 import { TitleLine } from "@/features/leaderboard/TitleLine";
 import { TITLES } from "@/features/leaderboard/titles";
@@ -75,6 +75,29 @@ function FakeBoard({ title, me, scores: start }: (typeof GROUPS)[number]) {
   // Fake snowballs: each friend can be hit once a "session" here, then the board says to wait.
   const [hits, setHits] = useState<Record<string, number>>({ [nameKey(start[0].name)]: 2 });
   const [hitOnce, setHitOnce] = useState<Set<string>>(new Set());
+  // Fake stickers: a few already on the top lines; yours change as you pick.
+  const [reactions, setReactions] = useState<ReactionCounts>(() => ({
+    [nameKey(start[0].name)]: { star: 3, lol: 1 },
+    ...(start[1] ? { [nameKey(start[1].name)]: { wow: 2 } } : {}),
+  }));
+  const [given, setGiven] = useState<Record<string, ReactionKind>>({});
+  const onReact = async (to: BoardEntry, kind: ReactionKind | null) => {
+    const key = nameKey(to.name);
+    const old = given[key];
+    setReactions((r) => {
+      const line = { ...(r[key] ?? {}) };
+      if (old) line[old] = Math.max(0, (line[old] ?? 1) - 1);
+      if (kind) line[kind] = (line[kind] ?? 0) + 1;
+      return { ...r, [key]: line };
+    });
+    setGiven((g) => {
+      const next = { ...g };
+      if (kind) next[key] = kind;
+      else delete next[key];
+      return next;
+    });
+    return true;
+  };
   const onThrow = async (to: BoardEntry) => {
     const key = nameKey(to.name);
     if (hitOnce.has(key)) return { waitMinutes: 42 };
@@ -118,7 +141,14 @@ function FakeBoard({ title, me, scores: start }: (typeof GROUPS)[number]) {
           replay sunglasses
         </Button>
       </div>
-      <BoardSheet key={replay} seed={title.length * 13} state={{ status: "ready", scores }} viewer={nameKey(me)} landed={landed} hits={hits} onThrow={onThrow} />
+      <BoardSheet key={replay} seed={title.length * 13} state={{ status: "ready", scores }} viewer={nameKey(me)}
+        landed={landed}
+        hits={hits}
+        onThrow={onThrow}
+        reactions={reactions}
+        given={given}
+        onReact={onReact}
+      />
     </div>
   );
 }
@@ -127,6 +157,7 @@ function FakeBoard({ title, me, scores: start }: (typeof GROUPS)[number]) {
 export function PileTester() {
   const [splat, setSplat] = useState<null | { from: string; more: number }>(null);
   const [passed, setPassed] = useState<null | { name: string; by: number }[]>(null);
+  const [stickers, setStickers] = useState<null | { from: string; kind: ReactionKind }[]>(null);
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-4">
       <header>
@@ -158,12 +189,37 @@ export function PileTester() {
           >
             passed by 3
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setStickers([{ from: "小美", kind: "star" }])}>
+            show &quot;gave you a star&quot;
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              setStickers([
+                { from: "Juniper", kind: "lol" },
+                { from: "豆豆", kind: "star" },
+                { from: "Pip", kind: "music" },
+                { from: "Mimi", kind: "wow" },
+              ])
+            }
+          >
+            stickers from 4
+          </Button>
         </div>
         <div className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-3" aria-label="all funny titles, in priority order">
           {TITLES.map((t) => (
             <TitleLine key={t.id} id={t.id} />
           ))}
         </div>
+        {stickers && (
+          <ReactionNotice
+            key={stickers.map((x) => x.from).join()}
+            group="demoTest"
+            preview={{ got: stickers, me: "Bao" }}
+            onDone={() => setStickers(null)}
+          />
+        )}
         {passed && (
           <OvertakeNotice
             key={passed.map((p) => p.name).join()}
