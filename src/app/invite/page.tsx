@@ -40,7 +40,7 @@ export default function InvitePage(props: Props) {
         <Card {...props} />
       </Suspense>
       {/* No 3D scene here: ready once the page has loaded; the card pops out of the snowball's puff. */}
-      <LoadingScreen note={words.loading.zh} small={words.loading.en} noScene reveal />
+      <LoadingScreen note={words.loading} noScene reveal />
     </main>
   );
 }

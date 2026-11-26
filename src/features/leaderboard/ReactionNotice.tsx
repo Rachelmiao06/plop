@@ -119,17 +119,13 @@ export function ReactionNotice({ group, me, onDone, preview }: ReactionNoticePro
           </div>
           <h2 id="plop-reaction-title" className="text-balance">
             <span className="flex items-center justify-center gap-1 font-heading text-2xl leading-tight font-bold text-ink-deep">
-              {t.gotZh(first.from, more)}
+              {t.got(first.from, more)}
               {more === 0 && (
                 <>
                   <Sticker kind={first.kind} size={30} />
-                  <span className="text-lg">{t.names[first.kind].zh}</span>
+                  <span className="text-lg">{t.names[first.kind]}</span>
                 </>
               )}
-            </span>
-            <span className="mt-0.5 block font-sans text-xs opacity-80">
-              {t.gotEn(first.from, more)}
-              {more === 0 && ` “${t.names[first.kind].en}”`}
             </span>
           </h2>
           <Button
@@ -138,8 +134,7 @@ export function ReactionNotice({ group, me, onDone, preview }: ReactionNoticePro
             className="mt-1 h-auto w-full flex-col gap-0 rounded-full bg-butter py-2 font-heading text-ink-deep hover:bg-butter/85"
             autoFocus
           >
-            <span className="text-3xl leading-tight font-bold">{t.nice.zh}</span>
-            <span className="font-sans text-xs opacity-80">{t.nice.en}</span>
+            <span className="text-3xl leading-tight font-bold">{t.nice}</span>
           </Button>
         </PaperSheet>
       </div>

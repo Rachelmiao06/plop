@@ -188,14 +188,14 @@ export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, o
         className="transition-[opacity,transform] ease-out"
         style={{ opacity: settled ? 1 : 0, transform: settled ? "none" : "translateY(8px)", transitionDuration: `${content.celebrate.reveal}ms` }}
       >
-        <p role="status" className="mt-3 font-heading text-3xl leading-tight font-bold text-ink-deep">
+        <p role="status" className="mt-3 font-heading text-3xl leading-tight font-bold text-balance text-ink-deep">
           {result}
         </p>
         {sub && <p className="mt-1 font-heading text-lg leading-tight">{sub}</p>}
         {wager && (
           <div className="mt-3">
             <p className="font-heading text-sm leading-tight opacity-75">{wager.stake}</p>
-            <p className="mt-1 font-heading text-xl leading-tight text-ink-deep">
+            <p className="mt-1 font-heading text-xl leading-tight text-balance text-ink-deep">
               <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{wager.result}</span>
             </p>
           </div>

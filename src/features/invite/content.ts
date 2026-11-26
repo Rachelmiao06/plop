@@ -17,10 +17,10 @@ export const INVITE = {
    * checked against this list. The end card names the loser with the line. Kind and silly, never mean.
    */
   wagers: {
-    label: { zh: "加个赌注（可以不选）", en: "add a wager (optional)" },
-    none: { zh: "不赌", en: "no wager" },
-    /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕". */
-    stake: { zh: "赌注", en: "the wager" },
+    label: "add a wager (optional)",
+    none: "no wager",
+    /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕" (the lines are Chinese: the fun is there). */
+    stake: "赌注",
     /**
      * The end card's result (Rachel: "QA 输了，快去学企鹅走路吧！"): the small stake line, then `lost` for the loser (the
      * winner's name for the lines that need it), or `tie` + `noOne` ("平局！这次谁都不用学企鹅走路 😆"). Chinese only.
@@ -29,12 +29,12 @@ export const INVITE = {
     lost: (loser: string, what: string) => `${loser} 输了，${what}`,
     tie: (noOne: string) => `平局！${noOne} 😆`,
     lines: [
-      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", en: "Loser buys hot cocoa", lost: () => "快请大家喝热可可吧 ☕", noOne: "这次谁都不用请热可可" },
-      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", en: "Loser sings a song", lost: () => "快给大家唱一首歌吧 🎤", noOne: "这次谁都不用唱歌" },
-      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", en: "Loser waddles like a penguin", lost: () => "快去学企鹅走路吧！", noOne: "这次谁都不用学企鹅走路" },
-      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", en: "Loser posts a silly selfie", lost: () => "快发一张丑照吧 📸", noOne: "这次谁都不用发丑照" },
-      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", en: "Loser buys ice cream", lost: () => "快请大家吃冰淇淋吧 🍦", noOne: "这次谁都不用请冰淇淋" },
-      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", en: "Loser gives the winner 3 compliments", lost: (winner: string) => `夸 ${winner} 三句吧 💐`, noOne: "这次谁都不用夸人" },
+      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", lost: () => "快请大家喝热可可吧 ☕", noOne: "这次谁都不用请热可可" },
+      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", lost: () => "快给大家唱一首歌吧 🎤", noOne: "这次谁都不用唱歌" },
+      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", lost: () => "快去学企鹅走路吧！", noOne: "这次谁都不用学企鹅走路" },
+      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", lost: () => "快发一张丑照吧 📸", noOne: "这次谁都不用发丑照" },
+      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", lost: () => "快请大家吃冰淇淋吧 🍦", noOne: "这次谁都不用请冰淇淋" },
+      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", lost: (winner: string) => `夸 ${winner} 三句吧 💐`, noOne: "这次谁都不用夸人" },
     ],
   },
 
@@ -45,8 +45,8 @@ export const INVITE = {
     /** `{name}` is replaced. Also the WeChat chat card title. */
     title: "{name} 邀请你来打雪仗 · Plop!",
     titleNoName: "有人邀请你来打雪仗 · Plop!",
-    description: "接受挑战，在雪地里滚一个大雪球！Paper bowling on snow. Plop!",
-    descriptionScore: "TA 打了 {score} 分，你能赢吗？Paper bowling on snow. Plop!",
+    description: "接受挑战，在雪地里滚一个大雪球！",
+    descriptionScore: "TA 打了 {score} 分，你能赢吗？",
   },
 
   /**
@@ -61,17 +61,18 @@ export const INVITE = {
   },
 
   words: {
+    /** One language per line (Rachel): the invite's fun is in Chinese; plain buttons are simple English. */
     /** `{name}` is replaced; the name is drawn bold. */
-    invite: { zh: "{name} 邀请你来打一局雪仗 ❄️", en: "{name} invites you to a snowball fight" },
-    inviteNoName: { zh: "有人邀请你来打一局雪仗 ❄️", en: "Someone invites you to a snowball fight" },
-    score: { zh: "TA 打了 {score} 分，你能赢吗？", en: "They scored {score}. Can you beat it?" },
-    play: { zh: "接受挑战", en: "Play" },
+    invite: "{name} 邀请你来打一局雪仗 ❄️",
+    inviteNoName: "有人邀请你来打一局雪仗 ❄️",
+    score: "TA 打了 {score} 分，你能赢吗？",
+    play: "Play",
     /** Under the play button: opens the group's board (kept off the first screen: one action there). */
-    board: { zh: "看看这场雪仗", en: "see the board", hide: "收起" },
+    board: { show: "see the board", hide: "hide" },
     /** Under the loading strip while the snowball rolls. */
-    loading: { zh: "雪球滚过来啦…", en: "a snowball is rolling your way…" },
-    /** Shown to the sender after making an invite inside WeChat. */
-    sendHint: { zh: "点右上角 ··· 发给朋友", en: "tap ··· to send this card to a friend" },
+    loading: "雪球滚过来啦…",
+    /** Shown to the sender after making an invite inside WeChat (Chinese: WeChat's own menu is Chinese). */
+    sendHint: "点右上角 ··· 发给朋友",
   },
 
   timing: {

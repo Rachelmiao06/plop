@@ -17,10 +17,11 @@ export type PlayerSpec = {
 
 export type MatchLength = 3 | 5;
 
+/** A round's rule in one language (Rachel: simple English needs no Chinese twin). */
 export type RuleWords = {
-  big: { zh: string; en: string };
-  line: { zh: (points: number) => string; en: (points: number) => string };
-  chip: { zh: string; en: string };
+  big: string;
+  line: (points: number) => string;
+  chip: string;
 };
 
 export const GAME = {
@@ -250,40 +251,40 @@ export const TEXT = {
   hintTogetherTouch: "each drag your own snowman back",
   together: "roll together!",
   /** Someone arrived from an invite: the start card greets them, and alone the panel shows the score to beat. */
-  waiting: { zh: (name: string) => `${name} 在等你`, en: (name: string) => `${name} is waiting` },
+  waiting: (name: string) => `${name} is waiting`,
   /**
    * Each round's rule (by round set id, the pins' `ROUND_SETS`): `big` a few big words on the rule card, `line` the
    * one plain line under the picture (`points` is the bonus from the pins' `SPECIALS`, or the full-clear bonus),
-   * `chip` two words on the reminder beside the score panel. Chinese first, English under it.
+   * `chip` two words on the reminder beside the score panel. Simple English only (one language per line).
    */
   rules: {
     "round-strike": {
-      big: { zh: "全部打倒！", en: "Strike!" },
-      line: { zh: (p: number) => `一球全倒，额外 +${p}`, en: (p: number) => `Knock them all down: +${p} extra` },
-      chip: { zh: "全倒", en: "strike" },
+      big: "Strike!",
+      line: (p: number) => `Knock them all down: +${p} extra`,
+      chip: "strike",
     },
     "round-star": {
-      big: { zh: "打倒星星朋友", en: "Hit the star" },
-      line: { zh: (p: number) => `头顶有星星的那位：倒下就 +${p}`, en: (p: number) => `The friend with a star: +${p} when it falls` },
-      chip: { zh: "打星星", en: "hit star" },
+      big: "Hit the star",
+      line: (p: number) => `The friend with a star: +${p} when it falls`,
+      chip: "hit the star",
     },
     "round-bunny": {
-      big: { zh: "别打倒小兔子", en: "Leave the bunny" },
-      line: { zh: (p: number) => `别打倒小兔子：它站着就 +${p}`, en: (p: number) => `Leave the bunny standing: +${p}` },
-      chip: { zh: "别碰小兔", en: "spare bunny" },
+      big: "Leave the bunny",
+      line: (p: number) => `Leave the bunny standing: +${p}`,
+      chip: "leave the bunny",
     },
     "round-mound": {
-      big: { zh: "小雪堆", en: "Little mound" },
-      line: { zh: () => "软软的雪堆会让球变慢：绕开它", en: () => "Soft snow slows the ball: roll around it" },
-      chip: { zh: "绕开雪堆", en: "mind mound" },
+      big: "Little mound",
+      line: () => "Soft snow slows the ball: roll around it",
+      chip: "go around",
     },
     "round-cat": {
-      big: { zh: "别吵醒小猫", en: "Sleepy cat" },
-      line: { zh: (p: number) => `别碰长椅上的小猫：它睡着就 +${p}`, en: (p: number) => `Don't wake the cat: +${p} if it sleeps on` },
-      chip: { zh: "别吵小猫", en: "shh, cat" },
+      big: "Sleepy cat",
+      line: (p: number) => `Don't wake the cat: +${p} if it stays asleep`,
+      chip: "shh, cat",
     },
   } as Record<string, RuleWords>,
-  ruleGotIt: { zh: "知道啦", en: "got it" },
+  ruleGotIt: "got it",
   ruleTurn: (name: string) => `${name} first`,
   cancel: "Put it down",
   cancelTitle: "Cancel this pull (Esc)",

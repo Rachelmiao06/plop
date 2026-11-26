@@ -81,15 +81,15 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
 
     if (isWeChat()) {
       await copy(url);
-      onNote(words.wechat.zh);
+      onNote(words.wechat);
       store.set("session", words.sentKey, "1");
       window.location.assign(path);
       return;
     }
     const stake = wagerFor(wager);
-    const text = words.text.replace("{name}", signed) + (stake ? ` ${INVITE.wagers.stake.zh}：${stake.zh} ${stake.emoji}` : "");
+    const text = words.text.replace("{name}", signed) + (stake ? ` ${INVITE.wagers.stake}：${stake.zh} ${stake.emoji}` : "");
     const result = await systemShare({ title: "Plop!", text, url });
-    if (result === "unavailable") onNote((await copy(url)) ? words.copied.zh : SHARE.copyFailed);
+    if (result === "unavailable") onNote((await copy(url)) ? words.copied : SHARE.copyFailed);
     if (result !== "closed") onClose();
   };
 
@@ -112,8 +112,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
           ×
         </button>
         <h2 id={`${id}-title`} className="pr-6 text-xl leading-tight">
-          {words.title.zh.replace("{name}", signed)}
-          <span className="block font-sans text-xs">{words.title.en.replace("{name}", signed)}</span>
+          {words.title.replace("{name}", signed)}
         </h2>
 
         {editing === null ? (
@@ -122,12 +121,12 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
             onClick={() => setEditing(typed)}
             className="mt-1 text-sm underline decoration-wavy underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {words.change.zh} · <span className="text-xs">{words.change.en}</span>
+            {words.change}
           </button>
         ) : (
           <>
             <label htmlFor={`${id}-name`} className="mt-3 block text-sm">
-              {words.name.zh} <span className="text-xs opacity-80">· {words.name.en}</span>
+              {words.name}
             </label>
             <input
               id={`${id}-name`}
@@ -151,8 +150,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
               className="mt-0.5 size-4 accent-pine"
             />
             <span>
-              {words.score.zh.replace("{score}", String(best))}
-              <span className="block text-xs opacity-80">{words.score.en.replace("{score}", String(best))}</span>
+              {words.score.replace("{score}", String(best))}
             </span>
           </label>
         )}
@@ -160,7 +158,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
         {/* An optional preset wager: quiet words, the chosen one underlined in pencil. */}
         <fieldset className="mt-3">
           <legend className="text-sm">
-            {INVITE.wagers.label.zh} <span className="text-xs opacity-80">· {INVITE.wagers.label.en}</span>
+            {INVITE.wagers.label}
           </legend>
           <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
             {[null, ...INVITE.wagers.lines.map((l) => l.code)].map((code) => {
@@ -173,17 +171,15 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
                   role="radio"
                   aria-checked={on}
                   onClick={() => setWager(code)}
-                  title={line?.en ?? INVITE.wagers.none.en}
                   className={`rounded-lg px-1.5 py-0.5 text-left font-heading text-[13px] leading-snug outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     on ? "bg-butter/60 text-ink-deep underline decoration-wavy underline-offset-4" : "opacity-80 hover:opacity-100"
                   }`}
                 >
-                  {line ? `${line.zh.replace("输的人", "")} ${line.emoji}` : INVITE.wagers.none.zh}
+                  {line ? `${line.zh.replace("输的人", "")} ${line.emoji}` : INVITE.wagers.none}
                 </button>
               );
             })}
           </div>
-          {wager && <p className="mt-1 text-xs opacity-80">{wagerFor(wager)?.en}</p>}
         </fieldset>
 
         <button
@@ -194,8 +190,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
             <path d={PILL} className="fill-pine stroke-ink" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
           </svg>
-          <span className="relative block font-heading text-2xl font-bold leading-tight">{words.send.zh}</span>
-          <span className="relative block text-xs">{words.send.en}</span>
+          <span className="relative block font-heading text-2xl font-bold leading-tight">{words.send}</span>
         </button>
 
         <button
@@ -203,7 +198,7 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
           onClick={onPlainShare}
           className="mt-3 block w-full text-center text-sm underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {words.plain.zh} · {words.plain.en}
+          {words.plain}
         </button>
       </div>
     </div>

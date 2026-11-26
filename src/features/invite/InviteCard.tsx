@@ -46,14 +46,9 @@ const css = `
 }
 `;
 
-/** Chinese first, English beneath in small text. */
-function Bi({ zh, en, className = "" }: { zh: ReactNode; en: ReactNode; className?: string }) {
-  return (
-    <span className={`block ${className}`}>
-      <span className="block font-heading leading-tight">{zh}</span>
-      <span className="mt-0.5 block font-sans text-xs opacity-80">{en}</span>
-    </span>
-  );
+/** One line of words (one language per line, Rachel). */
+function Line({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <span className={`block font-heading leading-tight ${className}`}>{children}</span>;
 }
 
 /** Puts the score, big and berry red, where `{score}` is. */
@@ -143,29 +138,20 @@ export function InviteCard({ group, name, score, wager }: Invite) {
               draggable={false}
             />
             <h1 className="relative text-[1.6rem] text-balance sm:text-3xl">
-              <Bi
-                zh={name ? withName(invite.zh, name) : invite.zh}
-                en={name ? withName(invite.en, name) : invite.en}
-                className="[&>span:last-child]:text-sm"
-              />
+              <Line>{name ? withName(invite, name) : invite}</Line>
             </h1>
             {score !== null && (
               <p className="relative mt-4 text-xl">
-                <Bi zh={withScore(words.score.zh, score)} en={words.score.en.replace("{score}", String(score))} />
+                <Line>{withScore(words.score, score)}</Line>
               </p>
             )}
             {/* The inviter's preset wager, quiet: a pencil underline, no box. */}
             {stake && (
               <p className="relative mx-auto mt-3 w-fit text-lg">
-                <Bi
-                  zh={
-                    <>
-                      <span className="text-base opacity-75">{INVITE.wagers.stake.zh}：</span>
-                      <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{stake.zh}</span> {stake.emoji}
-                    </>
-                  }
-                  en={`${INVITE.wagers.stake.en}: ${stake.en}`}
-                />
+                <Line>
+                  <span className="text-base opacity-75">{INVITE.wagers.stake}：</span>
+                  <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{stake.zh}</span> {stake.emoji}
+                </Line>
               </p>
             )}
             <Link
@@ -175,7 +161,7 @@ export function InviteCard({ group, name, score, wager }: Invite) {
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
                 <path d={PILL} className="fill-pine stroke-ink" strokeWidth={2.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
               </svg>
-              <Bi zh={words.play.zh} en={words.play.en} className="relative text-4xl font-bold" />
+              <Line className="relative text-4xl font-bold">{words.play}</Line>
             </Link>
             {/* This group's board (from the leaderboard feature), only when the link has a group, folded away so the
                 first screen has one action: play. */}
@@ -186,7 +172,7 @@ export function InviteCard({ group, name, score, wager }: Invite) {
                 aria-expanded={boardOpen}
                 className="relative mx-auto mt-3 block font-heading text-base text-ink underline decoration-dotted underline-offset-4 opacity-80"
               >
-                {boardOpen ? words.board.hide : `${words.board.zh} · ${words.board.en}`}
+                {boardOpen ? words.board.hide : words.board.show}
               </button>
             )}
             {group && boardOpen && (
@@ -203,7 +189,7 @@ export function InviteCard({ group, name, score, wager }: Invite) {
       {group && shown && <GroupNotices group={group} onPlay={(friend) => router.push(gamePath({ name: friend, group }))} />}
 
       {sendHint && shown && (
-        <WeChatHint onClose={() => setSendHint(false)} hint={words.sendHint.zh} small={words.sendHint.en} />
+        <WeChatHint onClose={() => setSendHint(false)} hint={words.sendHint} />
       )}
     </div>
   );
