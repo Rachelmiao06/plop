@@ -7,16 +7,26 @@ import { WeChatShareImage } from "@/features/share";
 
 type Props = PageProps<"/invite">;
 
+/** The root share card's alt text (same words as `app/opengraph-image.alt.txt`). */
+const SITE_IMAGE_ALT =
+  "Plop! paper bowling on snow: two hand-drawn snowmen, one in a bucket hat and one in a red hat, with a penguin, a snowy pine and snowballs.";
+
 /** "{name} 邀请你来打雪仗 · Plop!": the tab title, and the title of WeChat's chat card for this link. */
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { name, score } = readInvite(await searchParams);
   const title = { absolute: inviteTitle(name) };
   const description = inviteDescription(score);
+  // Setting openGraph here replaces the root layout's whole openGraph, its image included, so the link card had
+  // no picture (a grey link icon in chat apps). The square invite art first (chat apps crop to a square), then the
+  // large card. Relative URLs resolve against the root layout's metadataBase, so the tags are absolute.
+  const { src, size, alt } = INVITE.squareImage;
+  const square = { url: src, width: size, height: size, type: "image/jpeg", alt };
+  const large = { url: "/opengraph-image.png", width: 1200, height: 630, type: "image/png", alt: SITE_IMAGE_ALT };
   return {
     title,
     description,
-    openGraph: { title: inviteTitle(name), description, type: "website", siteName: "Plop!" },
-    twitter: { card: "summary_large_image", title: inviteTitle(name), description },
+    openGraph: { title: inviteTitle(name), description, type: "website", siteName: "Plop!", images: [square, large] },
+    twitter: { card: "summary", title: inviteTitle(name), description, images: [square] },
   };
 }
 

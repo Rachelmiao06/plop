@@ -46,7 +46,12 @@ export const INVITE = {
    * The ≥ 300 × 300 first image in <body> WeChat uses for its chat card: "Plop!" with Rachel's sliding penguin on
    * `--snow-white`, like the opening page, made by `scripts/make_invite_card.py` from her existing art.
    */
-  squareImage: { src: "/assets/invite/invite-square.jpg", size: 600 },
+  squareImage: {
+    src: "/assets/invite/invite-square.jpg",
+    size: 600,
+    /** Also the invite link's og:image and twitter:image (a page that sets its own openGraph loses the root one). */
+    alt: "Plop! in hand-drawn letters with Rachel's sliding penguin on snow-white paper.",
+  },
 
   /** Rachel's cut-outs, used as they are. */
   art: {

@@ -8,6 +8,8 @@
  *    and fetches it: it must answer 200 with HTML that has the "Plop!" title and no Next.js error page.
  * 4. Reads the home page's <head> and fetches the icons and the share card it points to: each must answer 200
  *    with an image.
+ *    Then every page (and the invite card with a name, score, group and wager) must have an absolute og:image and
+ *    twitter:image that answer 200 with an image: a page that sets its own openGraph loses the root one.
  * 5. Checks the first image in the home page body is the WeChat share image (at least 300 px) and loads.
  * 6. Opens the invite card with and without a name and group (`/invite`, `/invite?from=test&score=12`, with `g=`, with a
  *    preset wager `w=` and an unknown one): the title must name the
@@ -128,10 +130,12 @@ async function main() {
 
     const routes = findRoutes();
     let home = "";
+    const bodies = new Map();
     for (const route of routes) {
       try {
         const res = await get(base + route);
         const body = await res.text();
+        bodies.set(route, body);
         if (route === "/") home = body;
         const type = res.headers.get("content-type") ?? "";
         if (res.status !== 200) fail(`${route} answered ${res.status}`);
@@ -170,6 +174,48 @@ async function main() {
         else pass(`${label} ${url.pathname} (${type})`);
       } catch (e) {
         fail(`${label} did not answer (${e.message})`);
+      }
+    }
+
+    // Every page's link card needs a picture: an absolute og:image and twitter:image that load as images.
+    console.log("\nShare images on every page:");
+    for (const route of ["/invite?from=X&score=1", "/invite?g=test1234&from=test&score=12&w=cocoa"]) {
+      try {
+        bodies.set(route, await (await get(base + route)).text());
+      } catch (e) {
+        fail(`${route} did not answer (${e.message})`);
+      }
+    }
+    const imageChecked = new Map();
+    for (const [route, body] of bodies) {
+      for (const [label, pattern] of [
+        ["og:image", /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/],
+        ["twitter:image", /<meta[^>]+name="twitter:image"[^>]+content="([^"]+)"/],
+      ]) {
+        const found = body.match(pattern)?.[1]?.replaceAll("&amp;", "&");
+        if (!found) {
+          fail(`${route}: no ${label}`);
+          continue;
+        }
+        if (!/^https?:\/\//.test(found)) {
+          fail(`${route}: ${label} is not absolute (${found})`);
+          continue;
+        }
+        const url = new URL(found);
+        const path = url.pathname + url.search;
+        if (!imageChecked.has(path)) {
+          try {
+            const res = await get(base + path);
+            const type = res.headers.get("content-type") ?? "";
+            await res.arrayBuffer();
+            imageChecked.set(path, res.status !== 200 ? `answered ${res.status}` : !type.startsWith("image/") ? `is not an image (${type})` : null);
+          } catch (e) {
+            imageChecked.set(path, `did not answer (${e.message})`);
+          }
+        }
+        const problem = imageChecked.get(path);
+        if (problem) fail(`${route}: ${label} ${url.pathname} ${problem}`);
+        else pass(`${route}: ${label} ${url.pathname}`);
       }
     }
 
