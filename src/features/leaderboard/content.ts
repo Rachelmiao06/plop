@@ -25,7 +25,7 @@ export const BOARD = {
     podium: ["var(--butter)", "var(--snow-shadow)", "var(--blush)"] as const,
     meWash: "var(--butter)",
     meWashOpacity: 0.45,
-    face: 30,
+    face: 22,
     /** Each row tilts a hair, alternating, so the list looks written by hand rather than typeset. */
     rowTilt: 0.35,
     /** The "you're #2!" note springs in: seconds and how far it overshoots (share of its size). */
@@ -50,12 +50,63 @@ export const BOARD = {
     starSwell: 0.14,
     /** Your row's crayon highlight is scribbled in from the left when it appears (and when your score lands). */
     scribbleIn: 0.7,
-    /** Your snowman does a tiny happy hop now and then. */
-    meHopLoop: 3.2,
-    meHop: 4,
     /** The "you're #2!" note bobs softly once it has popped in. */
     noteBobLoop: 2.6,
     noteBob: 2.5,
+  },
+} as const;
+
+/**
+ * The snowman pile (the "stand on top" board): every player is a little snowman from Rachel's thrower cut-outs,
+ * and better scores stand higher, on the heads of the ones below. Sizes are shares of a slot's width; seconds,
+ * degrees, pixels otherwise.
+ */
+export const PILE = {
+  /**
+   * How many snowmen stand in each row, top row first, for 1 to 10 players. #1 is always alone on top; a row is
+   * never wider than the one under it, so everyone stands on someone (or on the snow).
+   */
+  rows: [[1], [1, 1], [1, 2], [1, 1, 2], [1, 2, 2], [1, 2, 3], [1, 1, 2, 3], [1, 2, 2, 3], [1, 2, 3, 3], [1, 2, 3, 4]] as const,
+  /** Widest a slot gets (px); on a phone the widest row shares the board's width. */
+  maxSlot: 90,
+  /** The cut-out's width as a share of its slot (the rest is breathing room). */
+  body: 0.92,
+  /** Cut-out height over width (Rachel's thrower art is about 309 × 421 and 323 × 479). */
+  aspect: 1.42,
+  /** A team entry: both snowmen side by side, each this much smaller, overlapping this share of a width. */
+  team: { scale: 0.8, overlap: 0.5 },
+  /** How deep the feet sink into the head below (share of a snowman's height): they stand on the hat. */
+  sink: 0.13,
+  /** Somebody on your head: you get squashed this much, a bit more for every row stacked above that. */
+  squash: { base: 0.12, perRow: 0.04, max: 0.24, widen: 0.5 },
+  /** Each snowman leans a hair, from its name, so the pile looks wobbly rather than stacked by a machine. */
+  lean: 3.5,
+  /** The name tag on the belly: share of the slot width, height (px), tilt, and how high up the body (share). */
+  tag: { width: 0.8, height: 31, tilt: 3, lift: 0.12 },
+  /** The crown on #1: share of a slot's width, and how high above the head. */
+  crown: { size: 0.42, lift: 0.1 },
+  /** The viewer's own snowman gets a soft butter glow behind it. */
+  glow: { opacity: 0.55, size: 0.62 },
+  /** Rachel's surprise lines beside a squashed snowman's head (px). */
+  oof: 18,
+  /**
+   * Overtaking: the one going up hops over in an arc and plops onto the one below with a squish and a puff of
+   * snow; the one going down slides to its new place first and is squashed as the other lands.
+   */
+  motion: {
+    /** Seconds for the hop over. */
+    hop: 0.9,
+    /** How high above its new place the climber goes (share of a snowman's height). */
+    hopHeight: 0.55,
+    /** Seconds for the one going down. */
+    slide: 0.5,
+    /** The landing squish: wide and short, then a little stretch, then still. */
+    landSquish: 0.24,
+    land: 0.42,
+    /** New players drop in from this high (share of a snowman's height). */
+    dropFrom: 1.4,
+    /** On first view the pile pops in from the bottom row up, this many seconds per row. */
+    rowStagger: 0.09,
   },
 } as const;
 
@@ -71,6 +122,8 @@ export const TEXT = {
   latest: (n: number) => `last ${n}`,
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
+  pile: "who's standing on whom",
+  list: "the exact scores",
   submit: {
     label: "put your score on the board",
     ask: "your nickname for the board",
