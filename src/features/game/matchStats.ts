@@ -1,7 +1,8 @@
 /**
  * The few play-style numbers a match sends with its score, for the board's funny titles (leaderboard feature,
  * `titles.ts`): full clears, the longest run of full clears in a row, friends (the bunny, the sleepy cat) knocked,
- * star cards down, throws, and throws at full pull. Plain TypeScript; the bridge feeds it, the end card reads it.
+ * star cards down, throws, throws at full pull, and the worst throw (fewest cards down, for the opt-in "今日最惨").
+ * Plain TypeScript; the bridge feeds it, the end card reads it.
  */
 import { GAME } from "./content";
 
@@ -13,9 +14,11 @@ export type MatchStats = {
   stars: number;
   throws: number;
   fullPower: number;
+  /** Fewest cards down in one throw this match (left out when no throw was counted). */
+  worst?: number;
 };
 
-type RoundCount = { fullClear: boolean; friend: "safe" | "bumped" | null; stars: number };
+type RoundCount = { fullClear: boolean; friend: "safe" | "bumped" | null; stars: number; down: number };
 
 /** A pull at least this strong (0..1) counts as a full-power throw. */
 export const FULL_POWER = 0.95;
@@ -41,7 +44,7 @@ export function createMatchStats() {
     },
     /** A round's count for a player (a recount after the roll back from the wall replaces it). */
     counted(player: 0 | 1, round: number, count: RoundCount) {
-      rounds[player].set(round, { fullClear: count.fullClear, friend: count.friend, stars: count.stars });
+      rounds[player].set(round, { fullClear: count.fullClear, friend: count.friend, stars: count.stars, down: count.down });
     },
     /** One player's numbers. */
     of(player: 0 | 1): MatchStats {
@@ -61,6 +64,7 @@ export function createMatchStats() {
         stars: list.reduce((n, [, c]) => n + c.stars, 0),
         throws: launches[player].throws,
         fullPower: launches[player].full,
+        ...(list.length > 0 && { worst: Math.min(...list.map(([, c]) => c.down)) }),
       };
     },
     /** A team's numbers: both players' added up, the longer run of full clears. */
@@ -73,6 +77,7 @@ export function createMatchStats() {
         stars: a.stars + b.stars,
         throws: a.throws + b.throws,
         fullPower: a.fullPower + b.fullPower,
+        ...((a.worst !== undefined || b.worst !== undefined) && { worst: Math.min(a.worst ?? Infinity, b.worst ?? Infinity) }),
       };
     },
   };

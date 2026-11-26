@@ -104,6 +104,18 @@ Stored per (group, from, to): both nicknames, which sticker, when, and when seen
 0005_reactions.sql`, `set_reaction`; a changed sticker counts as new). Preset stickers only; 30 changes a minute per
 IP and group in the server's memory; only lines on the board can get one, never your own.
 
+## "今日最惨 · Today's oops" (opt-in; words in `TEXT.oops`)
+
+The score prompt on the end card has a small box, unticked every time: "让大家笑一下我最惨的一球 · Let the group laugh
+at my worst throw today". Only a tick puts the player in. The game sends the match's worst throw (fewest cards down
+in one throw, `stats.worst` from `matchStats.ts`) and the box (`oops`); the server keeps the day's lowest for those
+who ticked (`supabase/migrations/0006_todays_oops.sql`, `submit_score_v3`), and an unticked submit clears it. Under
+the list, one quiet line shows the group's lowest throw today among them, with a dizzy avatar (Rachel's wind curl
+spinning, a star going round): "Pip今天有一球只倒了0个 😵 · Pip knocked down 0 once today". Stickers work on it
+(they are the player's stickers, the same as on their row). **The day** is the game's day: midnight China time
+(UTC+8, `SNOWBALL.dayUtcOffsetHours`), by the server's clock (`day.ts`), the same day as the snowball counts; the
+board shows only today's.
+
 ## Privacy
 
 Only a **nickname and the match score** (plus the match length, turns / together, how many matches and when) are
@@ -137,7 +149,7 @@ spam and is never written anywhere.
 `api.ts` browser calls, the remembered nickname, the "score landed" event · `GroupBoard.tsx` (and `BoardSheet`) ·
 `ChampPodium.tsx` (#1 and the sunglasses) · `jingle.ts` · `RankedList.tsx` (rows, your pinned row, taps) ·
 `Flight.tsx` (the snowball in the air) · `looks.ts` (which snowman a name gets) · `reactionRules.ts` ·
-`ReactionNotice.tsx` · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
+`ReactionNotice.tsx` · `day.ts` (the game's day) · `SplatNotice.tsx` · `snowballRules.ts` · `SubmitScore.tsx` ·
 `Doodles.tsx` paper sheet, rank marks (pencil circle in butter / snow / blush, crown on #1), butter crayon highlight ·
 `boardStyles.ts` the small scoped stylesheet: rows and the note spring in; idle motion (the crown rocks and hops,
 the #1 circle wobbles, the title star twinkles, the "you're #2!" note bobs, your highlight scribbles in from the left

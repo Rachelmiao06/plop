@@ -22,9 +22,30 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export type MatchMode = "turns" | "together" | "team";
 
 /** A match's play-style numbers (checked by `checkStats` in the leaderboard rules). */
-export type MatchStatsInput = { clears: number; streak: number; bumps: number; stars: number; throws: number; fullPower: number };
+export type MatchStatsInput = {
+  clears: number;
+  streak: number;
+  bumps: number;
+  stars: number;
+  throws: number;
+  fullPower: number;
+  worst?: number;
+};
 
-export type ScoreInput = { group: string; name: string; score: number; rounds: 3 | 5; mode: MatchMode; stats?: MatchStatsInput };
+/**
+ * `oops`: the end card's "laugh at my worst throw today" box (left out: unchanged). `day`: the game's day the match
+ * belongs to ("2026-11-25"), set by the server, for the day's lowest throw.
+ */
+export type ScoreInput = {
+  group: string;
+  name: string;
+  score: number;
+  rounds: 3 | 5;
+  mode: MatchMode;
+  stats?: MatchStatsInput;
+  oops?: boolean;
+  day?: string;
+};
 
 /** Running totals of play style for one line on a board (for the funny titles; supabase/migrations/0004). */
 export type PlayStats = {
@@ -52,6 +73,8 @@ export type BoardEntry = {
   latestRounds: 3 | 5;
   plays: number;
   stats: PlayStats;
+  /** The day's lowest throw, only for players who opted in to "今日最惨" (the route keeps today's only). */
+  oops?: { day: string; low: number };
 };
 
 /** `players`: how many lines the group's board has now (so the end card knows who is last). */
@@ -91,10 +114,13 @@ type Row = {
   full_power_throws?: number;
   dry_matches?: number;
   stats_matches?: number;
+  oops_opt_in?: boolean;
+  oops_day?: string | null;
+  oops_low?: number | null;
 };
 
 const COLUMNS =
-  "name, best_score, best_rounds, best_mode, latest_score, latest_rounds, plays, full_clears, best_streak, friend_bumps, star_hits, throws, full_power_throws, dry_matches, stats_matches";
+  "name, best_score, best_rounds, best_mode, latest_score, latest_rounds, plays, full_clears, best_streak, friend_bumps, star_hits, throws, full_power_throws, dry_matches, stats_matches, oops_opt_in, oops_day, oops_low";
 
 const toEntry = (r: Row): BoardEntry => ({
   name: r.name,
@@ -114,6 +140,7 @@ const toEntry = (r: Row): BoardEntry => ({
     dryMatches: r.dry_matches ?? 0,
     matches: r.stats_matches ?? 0,
   },
+  ...(r.oops_opt_in && r.oops_day && r.oops_low != null && { oops: { day: String(r.oops_day).slice(0, 10), low: r.oops_low } }),
 });
 
 let client: SupabaseClient | null = null;
@@ -130,7 +157,7 @@ async function supabaseSubmit(input: ScoreInput): Promise<SubmitResult> {
   // One atomic upsert in the database (supabase/migrations/0001_scores.sql): keeps the best, replaces the latest; and
   // adds the match's play-style numbers to the totals when it sent them (0004_score_stats.sql).
   const st = input.stats;
-  const { data, error } = await db.rpc("submit_score_v2", {
+  const { data, error } = await db.rpc("submit_score_v3", {
     p_group: input.group,
     p_name: input.name,
     p_name_key: keyOf(input.name),
@@ -143,8 +170,12 @@ async function supabaseSubmit(input: ScoreInput): Promise<SubmitResult> {
     p_stars: st?.stars ?? null,
     p_throws: st?.throws ?? null,
     p_full_power: st?.fullPower ?? null,
+    // "今日最惨" (0006_todays_oops.sql): the opt-in, and the match's worst throw for the game's day.
+    p_oops: input.oops ?? null,
+    p_worst: st?.worst ?? null,
+    p_day: input.day ?? null,
   });
-  if (error) throw new Error(`submit_score_v2 failed: ${error.message}`);
+  if (error) throw new Error(`submit_score_v3 failed: ${error.message}`);
   const row = (Array.isArray(data) ? data[0] : data) as Row & { improved: boolean; best_at: string };
   const { count, error: rankError } = await db
     .from("scores")
@@ -227,6 +258,7 @@ async function demoSubmit(input: ScoreInput): Promise<SubmitResult> {
     latestRounds: input.rounds,
     plays: (old?.plays ?? 0) + 1,
     stats: addStats(old?.stats ?? NO_STATS, input.stats),
+    oops: nextOops(old?.oops, input),
     updatedAt: now,
   };
   board[key] = entry;
@@ -242,7 +274,16 @@ async function demoTop(group: string, limit: number): Promise<BoardEntry[]> {
 
 function strip(e: DemoEntry): BoardEntry {
   const { name, best, bestRounds, bestMode, latest, latestRounds, plays } = e;
-  return { name, best, bestRounds, bestMode, latest, latestRounds, plays, stats: e.stats ?? NO_STATS };
+  return { name, best, bestRounds, bestMode, latest, latestRounds, plays, stats: e.stats ?? NO_STATS, ...(e.oops && { oops: e.oops }) };
+}
+
+/** The demo store's version of what submit_score_v3 does with "今日最惨". */
+function nextOops(old: BoardEntry["oops"], input: ScoreInput): BoardEntry["oops"] {
+  if (input.oops === undefined) return old;
+  if (!input.oops) return undefined;
+  const worst = input.stats?.worst;
+  if (worst === undefined || !input.day) return old;
+  return old && old.day === input.day ? { day: old.day, low: Math.min(old.low, worst) } : { day: input.day, low: worst };
 }
 
 /** The demo store's version of what submit_score_v2 does with a match's numbers. */

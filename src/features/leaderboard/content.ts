@@ -185,6 +185,13 @@ export const TEXT = {
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
   champ: "the snowball champion",
+  /** The opt-in "今日最惨 · Today's oops". Gentle: only for those who asked to be laughed at. */
+  oops: {
+    optIn: { zh: "让大家笑一下我最惨的一球", en: "Let the group laugh at my worst throw today" },
+    heading: "今日最惨 · today's oops",
+    zh: (name: string, n: number) => `${name}今天有一球只倒了${n}个 😵`,
+    en: (name: string, n: number) => `${name} knocked down ${n} once today`,
+  },
   reactions: {
     names: {
       star: { zh: "厉害", en: "awesome" },

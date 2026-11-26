@@ -9,7 +9,7 @@
  * avatar. No frames inside frames, no pills.
  */
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { SnowmanFace } from "@/features/hud/Doodles";
+import { SnowmanFace, StarDoodle } from "@/features/hud/Doodles";
 import type { BoardEntry, ReactionCounts, ReactionKind } from "./api";
 import { lb } from "./boardStyles";
 import { LIST, REACTIONS, SNOWBALL, TEXT } from "./content";
@@ -36,9 +36,11 @@ export type RankedListProps = {
   reactions?: ReactionCounts;
   given?: Record<string, ReactionKind>;
   onReact?: (to: BoardEntry, kind: ReactionKind | null) => Promise<boolean>;
+  /** "今日最惨": the group's lowest throw today among those who opted in (left out: no line). */
+  oops?: { entry: BoardEntry; low: number };
 };
 
-export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, given, onReact }: RankedListProps) {
+export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, given, onReact, oops }: RankedListProps) {
   const box = useRef<HTMLDivElement>(null);
   const avatars = useRef(new Map<string, HTMLElement>());
   const [flights, setFlights] = useState<FlightPlan[]>([]);
@@ -124,7 +126,6 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
     const isMe = i === mine;
     const canHit = Boolean(onThrow) && viewer !== "" && !isMe && !pinned;
     const canReact = Boolean(onReact) && viewer !== "" && !isMe && !pinned;
-    const counts = reactions?.[key] ?? {};
     const title = titles?.[key];
     const above = i > 0 ? scores[i - 1] : null;
     const hit = hits?.[key] ?? 0;
@@ -217,63 +218,121 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
             )
           )}
         </span>
-        {/* Stickers on this line: tiny doodles with their counts, by the score. */}
-        <span className="flex shrink-0 items-center gap-1" aria-label={stickerLabel(counts)}>
-          {REACTIONS.kinds
-            .filter((k) => (counts[k] ?? 0) > 0)
-            .map((k) => (
-              <span key={k} className={`flex items-center ${given?.[key] === k && !pinned ? "rounded-full bg-butter/50 px-0.5" : ""}`}>
-                <Sticker kind={k} size={REACTIONS.countSize} />
-                <span className="font-heading text-[11px] leading-none text-ink-deep tabular-nums" aria-hidden>
-                  {counts[k]}
-                </span>
-              </span>
-            ))}
-        </span>
-        {canReact && (
-          <button
-            type="button"
-            className="-mr-1 grid size-6 shrink-0 place-items-center rounded-full font-heading text-lg leading-none text-ink opacity-50 hover:opacity-90"
-            aria-label={TEXT.reactions.open(s.name)}
-            aria-expanded={picking === key}
-            onClick={(e) => {
-              e.stopPropagation();
-              setPicking((p) => (p === key ? null : key));
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            +
-          </button>
-        )}
+        {stickerCounts(key, !pinned)}
+        {canReact && plusButton(s, key)}
         <span className="shrink-0 font-heading text-2xl leading-none font-bold text-ink-deep tabular-nums">{s.best}</span>
-        {picking === key && (
-          <span
-            data-sticker-picker
-            role="menu"
-            className={`absolute -top-11 right-2 z-30 flex items-end gap-1.5 rounded-2xl bg-snow-white px-2 py-1 ${lb.note}`}
-            style={{ boxShadow: "0 3px 12px -4px color-mix(in oklab, var(--ink) 35%, transparent)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {REACTIONS.kinds.map((k) => {
-              const n = TEXT.reactions.names[k];
-              const on = given?.[key] === k;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  role="menuitem"
-                  aria-label={on ? `${TEXT.reactions.remove} · ${n.zh}` : TEXT.reactions.pick(n.zh, n.en)}
-                  className={`flex flex-col items-center rounded-xl px-1 pt-0.5 transition-transform hover:scale-110 active:scale-95 ${on ? "bg-butter/60" : ""}`}
-                  onClick={() => pick(s, k)}
-                >
-                  <Sticker kind={k} size={REACTIONS.pickSize} />
-                  <span className="font-heading text-[10px] leading-tight text-ink-deep">{n.zh}</span>
-                </button>
-              );
-            })}
-          </span>
-        )}
+        {picking === key && picker(s, key)}
       </li>
+    );
+  };
+
+
+  /** A line's stickers: tiny doodles with their counts, by the score (yours washed in butter). */
+  const stickerCounts = (key: string, mark: boolean) => {
+    const counts = reactions?.[key] ?? {};
+    return (
+      <span className="flex shrink-0 items-center gap-1" aria-label={stickerLabel(counts)}>
+        {REACTIONS.kinds
+          .filter((k) => (counts[k] ?? 0) > 0)
+          .map((k) => (
+            <span key={k} className={`flex items-center ${given?.[key] === k && mark ? "rounded-full bg-butter/50 px-0.5" : ""}`}>
+              <Sticker kind={k} size={REACTIONS.countSize} />
+              <span className="font-heading text-[11px] leading-none text-ink-deep tabular-nums" aria-hidden>
+                {counts[k]}
+              </span>
+            </span>
+          ))}
+      </span>
+    );
+  };
+
+  /** The small "+" that opens the stickers (`pickKey` tells the picker which line it belongs to). */
+  const plusButton = (s: BoardEntry, pickKey: string) => (
+    <button
+      type="button"
+      className="-mr-1 grid size-6 shrink-0 place-items-center rounded-full font-heading text-lg leading-none text-ink opacity-50 hover:opacity-90"
+      aria-label={TEXT.reactions.open(s.name)}
+      aria-expanded={picking === pickKey}
+      onClick={(e) => {
+        e.stopPropagation();
+        setPicking((p) => (p === pickKey ? null : pickKey));
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      +
+    </button>
+  );
+
+  /** The four stickers to pick from, floating above the line. */
+  const picker = (s: BoardEntry, pickKey: string) => {
+    const key = nameKey(s.name);
+    return (
+      <span
+        key={pickKey}
+        data-sticker-picker
+        role="menu"
+        className={`absolute -top-11 right-2 z-30 flex items-end gap-1.5 rounded-2xl bg-snow-white px-2 py-1 ${lb.note}`}
+        style={{ boxShadow: "0 3px 12px -4px color-mix(in oklab, var(--ink) 35%, transparent)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {REACTIONS.kinds.map((k) => {
+          const n = TEXT.reactions.names[k];
+          const on = given?.[key] === k;
+          return (
+            <button
+              key={k}
+              type="button"
+              role="menuitem"
+              aria-label={on ? `${TEXT.reactions.remove} · ${n.zh}` : TEXT.reactions.pick(n.zh, n.en)}
+              className={`flex flex-col items-center rounded-xl px-1 pt-0.5 transition-transform hover:scale-110 active:scale-95 ${on ? "bg-butter/60" : ""}`}
+              onClick={() => pick(s, k)}
+            >
+              <Sticker kind={k} size={REACTIONS.pickSize} />
+              <span className="font-heading text-[10px] leading-tight text-ink-deep">{n.zh}</span>
+            </button>
+          );
+        })}
+      </span>
+    );
+  };
+
+  /**
+   * "今日最惨": one quiet line under the list for the group's lowest throw today among players who opted in, with a
+   * dizzy avatar. Stickers work on it (they are the player's stickers, the same as on their row).
+   */
+  const oopsLine = (o: { entry: BoardEntry; low: number }) => {
+    const key = nameKey(o.entry.name);
+    const pickKey = `oops:${key}`;
+    const canReact = Boolean(onReact) && viewer !== "" && key !== viewer;
+    return (
+      <div className="mt-3" aria-label={TEXT.oops.heading}>
+        <p className="mb-1 text-center font-heading text-xs opacity-60">{TEXT.oops.heading}</p>
+        <div className="relative flex items-center gap-2.5 px-2 py-1">
+          <span
+            className="relative grid shrink-0 place-items-center overflow-visible rounded-[10px] bg-snow-white"
+            style={{ width: LIST.avatar, height: LIST.avatar, boxShadow: "0 1px 3px color-mix(in oklab, var(--ink) 18%, transparent)" }}
+          >
+            <span className={`block ${lb.dizzyFace}`}>
+              <SnowmanFace look={lookFor(o.entry.name, o.entry.bestMode === "team")} size={LIST.avatar - 4} />
+            </span>
+            {/* Dizzy: Rachel's wind curl spinning over the head and two stars going round. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's wind curl */}
+            <img src="/assets/effects/wind-curl.webp" alt="" aria-hidden width={20} height={15} className={`absolute -top-2.5 left-1/2 -ml-2.5 max-w-none ${lb.dizzy}`} draggable={false} />
+            <span className={`absolute -top-2 left-1/2 ${lb.orbit}`} aria-hidden>
+              <span className="block -translate-x-[14px]">
+                <StarDoodle size={9} />
+              </span>
+            </span>
+          </span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block font-heading text-sm text-ink-deep">{TEXT.oops.zh(o.entry.name, o.low)}</span>
+            <span className="block font-sans text-[10px] opacity-70">{TEXT.oops.en(o.entry.name, o.low)}</span>
+          </span>
+          {stickerCounts(key, true)}
+          {canReact && plusButton(o.entry, pickKey)}
+          {picking === pickKey && picker(o.entry, pickKey)}
+        </div>
+      </div>
     );
   };
 
@@ -288,6 +347,7 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
         {scores.map((s, i) => row(s, i, false))}
       </ol>
       {mine >= 0 && <ul aria-label={TEXT.you}>{row(scores[mine], mine, true)}</ul>}
+      {oops && oopsLine(oops)}
       {flights.map((f) => (
         <Flight key={f.id} plan={f} onHit={() => onSplat(f.target)} onDone={() => setFlights((all) => all.filter((x) => x.id !== f.id))} />
       ))}

@@ -19,9 +19,30 @@ const MODES: readonly unknown[] = ["turns", "together", "team"];
  * a row, friends knocked (the bunny, the sleepy cat), star cards down, throws, throws at full pull. Optional: an
  * older game sends none, and then the stored numbers stay as they were.
  */
-export type MatchStats = { clears: number; streak: number; bumps: number; stars: number; throws: number; fullPower: number };
+export type MatchStats = {
+  clears: number;
+  streak: number;
+  bumps: number;
+  stars: number;
+  throws: number;
+  fullPower: number;
+  /** Fewest cards down in one throw this match (for the opt-in "今日最惨"). */
+  worst?: number;
+};
 
-export type Submission = { group: string; name: string; score: number; rounds: Rounds; mode: MatchMode; stats?: MatchStats };
+/**
+ * `oops`: the end card's "let the group laugh at my worst throw today" box (true ticked, false unticked; left out by
+ * an older game). Only when it is true does the day's lowest throw (`stats.worst`) go on the board.
+ */
+export type Submission = {
+  group: string;
+  name: string;
+  score: number;
+  rounds: Rounds;
+  mode: MatchMode;
+  stats?: MatchStats;
+  oops?: boolean;
+};
 
 export type ErrorCode = "bad_json" | "bad_group" | "bad_name" | "rude_name" | "bad_score" | "bad_rounds" | "bad_mode" | "bad_stats";
 
@@ -129,14 +150,20 @@ export function checkSubmission(body: unknown): Checked<Submission> {
   if (typeof score !== "number" || !Number.isInteger(score) || score < 0 || score > maxFor(b.rounds, mode)) {
     return { ok: false, error: "bad_score" };
   }
-  if (b.stats === undefined) return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode } };
+  if (b.oops !== undefined && typeof b.oops !== "boolean") return { ok: false, error: "bad_stats" };
+  const oops = b.oops as boolean | undefined;
+  const rounds: Rounds = b.rounds;
+  const base: Submission = { group: b.group, name: name.value, score, rounds, mode, ...(oops !== undefined && { oops }) };
+  if (b.stats === undefined) return { ok: true, value: base };
   const stats = checkStats(b.stats, b.rounds, mode);
   if (!stats) return { ok: false, error: "bad_stats" };
-  return { ok: true, value: { group: b.group, name: name.value, score, rounds: b.rounds, mode, stats } };
+  return { ok: true, value: { ...base, stats } };
 }
 
 /** Star cards a single round can have at most (from the pins' round sets). */
 const MAX_STARS = Math.max(1, ...ROUND_SETS.map((s) => s.pins.filter((p) => p.kind === "star").length));
+/** Cards a single throw can knock down at most (the biggest round set). */
+const MAX_CARDS = Math.max(1, ...ROUND_SETS.map((s) => s.pins.length));
 
 /**
  * The play-style numbers must be whole numbers a match of this length can make: one throw a round per player (two
@@ -157,5 +184,8 @@ export function checkStats(raw: unknown, rounds: Rounds, mode: MatchMode): Match
   const fullPower = whole(r.fullPower, throws);
   if (clears === null || streak === null || bumps === null || stars === null || fullPower === null) return null;
   if (streak > clears) return null;
-  return { clears, streak, bumps, stars, throws, fullPower };
+  if (r.worst === undefined) return { clears, streak, bumps, stars, throws, fullPower };
+  const worst = whole(r.worst, MAX_CARDS);
+  if (worst === null || throws === 0) return null;
+  return { clears, streak, bumps, stars, throws, fullPower, worst };
 }

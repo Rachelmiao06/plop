@@ -17,6 +17,8 @@ export type BoardEntry = {
   plays: number;
   /** Running play-style totals for the funny titles (left out by an older server). */
   stats?: PlayStats;
+  /** Today's lowest throw (fewest cards down), only for players who opted in to "今日最惨". */
+  oops?: { day: string; low: number };
 };
 
 export type PlayStats = {

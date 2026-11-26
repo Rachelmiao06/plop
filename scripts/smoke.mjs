@@ -13,7 +13,8 @@
  *    inviter for WeChat's chat card, and the first image in the body must be the invite's own square card.
  * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
  *    taken and then listed, a rude nickname and an impossible score are refused; play-style numbers (for the funny
- *    titles) are taken with a score and impossible ones refused. The test page `/dev/leaderboard`
+ *    titles) are taken with a score and impossible ones refused; "今日最惨" shows only for a ticked box and clears when
+ *    unticked. The test page `/dev/leaderboard`
  *    is one of the pages in step 3. Then snowballs (`/api/snowballs`): a throw at someone not on the board, at
  *    yourself or from a rude name is refused, a throw lands and counts, the same friend again must wait, the hit
  *    shows in the inbox until marked seen. Then sticker reactions (`/api/reactions`): unknown stickers, yourself and
@@ -240,6 +241,13 @@ async function main() {
     await expect("POST with play-style numbers", await post({ ...good, name: "Styler", stats }), 200, (j) => j.entry?.stats?.bestStreak === 2 && j.players >= 2);
     await expect("POST impossible numbers", await post({ ...good, name: "Styler", stats: { ...stats, throws: 9 } }), 400, (j) => j.error === "bad_stats");
     await expect("POST impossible score", await post({ ...good, score: 9999 }), 400, (j) => j.error === "bad_score");
+    // "今日最惨": only a ticked box puts today's lowest throw on the board; unticking takes it off.
+    const oopsStats = { clears: 0, streak: 0, bumps: 0, stars: 0, throws: 3, fullPower: 0, worst: 0 };
+    await expect("POST opting in to today's oops", await post({ ...good, name: "Oopsy", score: 2, stats: oopsStats, oops: true }), 200, (j) => j.entry?.oops?.low === 0);
+    await expect("GET shows today's oops", await get(`${base}/api/scores?g=${group}`), 200, (j) => j.scores?.some((s) => s.name === "Oopsy" && s.oops?.low === 0));
+    await expect("POST unticked clears it", await post({ ...good, name: "Oopsy", score: 2, stats: { ...oopsStats, worst: 1 }, oops: false }), 200, (j) => !j.entry?.oops);
+    await expect("POST oops not a yes/no", await post({ ...good, name: "Oopsy", oops: "yes" }), 400, (j) => j.error === "bad_stats");
+    await expect("POST impossible worst throw", await post({ ...good, name: "Oopsy", stats: { ...oopsStats, worst: 99 } }), 400, (j) => j.error === "bad_stats");
 
     console.log("\nSnowballs API (/api/snowballs):");
     const ball = (body) =>

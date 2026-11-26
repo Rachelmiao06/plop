@@ -136,7 +136,15 @@ export function LeaderboardTester() {
 
       <div className="grid items-start gap-6 md:grid-cols-2">
         <div className="flex flex-col items-center gap-4">
-          <SubmitScore key={`${group}-${round}-${score}-${rounds}-${mode}`} group={group} score={score} rounds={rounds} mode={mode} />
+          <SubmitScore
+            key={`${group}-${round}-${score}-${rounds}-${mode}`}
+            group={group}
+            score={score}
+            rounds={rounds}
+            mode={mode}
+            // Pretend numbers so the "今日最惨" box shows; the worst throw follows the score (0 for a low one).
+            stats={{ clears: 0, streak: 0, bumps: 0, stars: 0, throws: rounds, fullPower: 0, worst: Math.min(8, Math.floor(score / 6)) }}
+          />
         </div>
         <div className="flex flex-col items-center gap-4">
           <GroupBoard key={group} group={group} />
