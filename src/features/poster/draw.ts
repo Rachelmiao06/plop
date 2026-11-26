@@ -1,6 +1,6 @@
 /**
  * Draws the share poster on a canvas in the browser: white paper, snow dots, a pencil frame, "Plop!", Rachel's
- * snowmen and penguin (her files, never redrawn), the score line, the invite line, rounds and date, and a QR code to
+ * snowmen and penguin (her files, never redrawn, standing a little out of the paper), who won and the score, and a QR code to
  * the player's invite link. Fonts and images are loaded before anything is drawn. Browser only.
  */
 import { POSTER } from "./content";
@@ -145,9 +145,38 @@ function art(ctx: Ctx, img: HTMLImageElement, cx: number, cy: number, width: num
   ctx.restore();
 }
 
-/** An image drawn by its height, its bottom centre at (cx, bottom). Returns its width. */
-function standee(ctx: Ctx, img: HTMLImageElement, cx: number, bottom: number, height: number) {
+/**
+ * A snowman cut-out drawn by its height, its bottom centre at (cx, bottom), standing a little out of the paper like a
+ * thick card standee: a soft shadow on the snow under the feet, the card's edge as a darker copy of the same
+ * silhouette just behind (her art itself is untouched). Returns its width.
+ */
+function standee(ctx: Ctx, img: HTMLImageElement, cx: number, bottom: number, height: number, colors: Colors) {
   const w = (img.naturalWidth / img.naturalHeight) * height;
+  const { edge, shadow } = POSTER.depth;
+  // The soft shadow on the snow.
+  ctx.save();
+  ctx.globalAlpha = shadow.alpha;
+  ctx.fillStyle = colors.ink;
+  ctx.filter = `blur(${shadow.blur}px)`;
+  ctx.beginPath();
+  ctx.ellipse(cx + edge.x * 0.6, bottom - height * 0.01, (w * shadow.width) / 2, height * shadow.height, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // The card's edge: the silhouette in ink, a little behind and below.
+  const sil = document.createElement("canvas");
+  sil.width = Math.ceil(w);
+  sil.height = Math.ceil(height);
+  const s = sil.getContext("2d");
+  if (s) {
+    s.drawImage(img, 0, 0, w, height);
+    s.globalCompositeOperation = "source-in";
+    s.fillStyle = colors.ink;
+    s.fillRect(0, 0, sil.width, sil.height);
+    ctx.save();
+    ctx.globalAlpha = edge.alpha;
+    ctx.drawImage(sil, cx - w / 2 + edge.x, bottom - height + edge.y);
+    ctx.restore();
+  }
   ctx.drawImage(img, cx - w / 2, bottom - height, w, height);
   return w;
 }
@@ -189,7 +218,7 @@ function qr(ctx: Ctx, url: string, x: number, y: number, size: number, colors: C
 export async function drawPoster(data: PosterData): Promise<HTMLCanvasElement> {
   const family = headingFamily();
   const t = POSTER.text;
-  const sample = `${t.title}${data.players.map((p) => p.name).join("")}0123456789 scored team wins`;
+  const sample = `${t.title}${data.players.map((p) => p.name).join("")}0123456789 :`;
   await Promise.all([document.fonts.load(`700 120px ${family}`, sample), document.fonts.load(`400 60px ${family}`, sample)]);
   await document.fonts.ready;
   const a = POSTER.art;
@@ -221,47 +250,35 @@ export async function drawPoster(data: PosterData): Promise<HTMLCanvasElement> {
   if (data.kind === "solo") {
     const ground = 730;
     art(ctx, ring, 250, ground - 300, 130, -8);
-    standee(ctx, looks[p1.look], cx - 40, ground, 450);
+    standee(ctx, looks[p1.look], cx - 40, ground, 450, colors);
     art(ctx, penguin, 815, ground - 70, 270, -4);
-    const line = t.solo(p1.name, p1.total);
-    text(ctx, line.zh, cx, 840, 96, { family, color: colors.inkDeep, bold: true });
-    text(ctx, line.en, cx, 905, 54, { family, color: colors.ink });
+    text(ctx, t.solo(p1.name, p1.total), cx, 900, 100, { family, color: colors.inkDeep, bold: true });
   } else {
     const ground = 690;
     const xs = [cx - 235, cx + 235];
-    standee(ctx, looks[p1.look], xs[0], ground, 370);
-    standee(ctx, looks[p2.look], xs[1], ground, 370);
+    standee(ctx, looks[p1.look], xs[0], ground, 370, colors);
+    standee(ctx, looks[p2.look], xs[1], ground, 370, colors);
     art(ctx, penguin, cx, ground - 70, 200, -4);
     if (data.kind === "versus") {
       const winner = p1.total > p2.total ? 0 : p2.total > p1.total ? 1 : null;
       if (winner !== null) art(ctx, star, xs[winner] + 150, ground - 300, 90, 12);
-      [p1, p2].forEach((p, i) => {
-        text(ctx, p.name, xs[i], 750, 58, { family, color: colors.ink, max: 400 });
-        text(ctx, String(p.total), xs[i], 850, 120, { family, color: colors.inkDeep, bold: true });
-      });
-      const head = winner === null ? t.tie : t.wins([p1, p2][winner].name);
-      text(ctx, `${head.zh} · ${head.en}`, cx, 928, 58, { family, color: colors.berryDeep, bold: true });
+      [p1, p2].forEach((p, i) => text(ctx, p.name, xs[i], 752, 56, { family, color: colors.ink, max: 400 }));
+      // Who won, then the score, big.
+      text(ctx, winner === null ? t.tie : t.wins([p1, p2][winner].name), cx, 860, 92, { family, color: colors.berryDeep, bold: true });
+      text(ctx, t.score(p1.total, p2.total), cx, 985, 120, { family, color: colors.inkDeep, bold: true });
     } else {
       art(ctx, star, xs[0] + 150, ground - 300, 80, -10);
       art(ctx, star, xs[1] + 150, ground - 300, 80, 12);
-      const line = t.team(p1.name, p2.name, p1.total + p2.total);
-      text(ctx, line.zh, cx, 815, 88, { family, color: colors.inkDeep, bold: true });
-      text(ctx, line.en, cx, 885, 54, { family, color: colors.ink });
+      text(ctx, t.team(p1.name, p2.name, p1.total + p2.total), cx, 870, 88, { family, color: colors.inkDeep, bold: true });
     }
   }
 
-  // The invite line.
-  text(ctx, t.invite.zh, cx, 1032, 66, { family, color: colors.inkDeep });
-  text(ctx, t.invite.en, cx, 1082, 46, { family, color: colors.ink });
-
-  // Bottom row: the QR code on the left; "scan to play", rounds and date, and a snow puff on the right.
+  // Bottom row: the QR code on the left; "扫码来挑战" and a snow puff on the right.
   const q = 260;
-  qr(ctx, data.url, 120, 1120, q, colors);
+  qr(ctx, data.url, 120, 1110, q, colors);
   const rx = 120 + q + (W - 120 - q - 120) / 2 + 20;
-  text(ctx, t.scan.zh, rx, 1185, 60, { family, color: colors.inkDeep, max: 480 });
-  text(ctx, t.scan.en, rx, 1235, 44, { family, color: colors.ink, max: 480 });
-  text(ctx, t.meta(data.rounds, data.date), rx, 1285, 38, { family, color: colors.ink, max: 480 });
-  art(ctx, puff, rx + 120, 1338, 110, 8);
+  text(ctx, t.scan, rx, 1230, 66, { family, color: colors.inkDeep, max: 480 });
+  art(ctx, puff, rx + 110, 1320, 110, 8);
 
   return canvas;
 }

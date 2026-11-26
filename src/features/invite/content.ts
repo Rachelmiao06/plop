@@ -21,15 +21,20 @@ export const INVITE = {
     none: { zh: "不赌", en: "no wager" },
     /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕". */
     stake: { zh: "赌注", en: "the wager" },
-    /** A tie: nobody pays. */
-    tie: { zh: "平手！赌注留到下一局", en: "a tie: the wager waits for the next match" },
+    /**
+     * The end card's result (Rachel: "QA 输了，快去学企鹅走路吧！"): the small stake line, then `lost` for the loser (the
+     * winner's name for the lines that need it), or `tie` + `noOne` ("平局！这次谁都不用学企鹅走路 😆"). Chinese only.
+     */
+    stakeLine: (zh: string, emoji: string) => `赌注 · ${zh} ${emoji}`,
+    lost: (loser: string, what: string) => `${loser} 输了，${what}`,
+    tie: (noOne: string) => `平局！${noOne} 😆`,
     lines: [
-      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", en: "Loser buys hot cocoa", loserZh: "要请喝热可可啦", loserEn: "buys the hot cocoa" },
-      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", en: "Loser sings a song", loserZh: "要唱一首歌啦", loserEn: "sings a song" },
-      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", en: "Loser waddles like a penguin", loserZh: "要学企鹅走路啦", loserEn: "waddles like a penguin" },
-      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", en: "Loser posts a silly selfie", loserZh: "要发一张丑照啦", loserEn: "posts a silly selfie" },
-      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", en: "Loser buys ice cream", loserZh: "要请吃冰淇淋啦", loserEn: "buys the ice cream" },
-      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", en: "Loser gives the winner 3 compliments", loserZh: "要夸赢家三句啦", loserEn: "gives the winner 3 compliments" },
+      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", en: "Loser buys hot cocoa", lost: () => "快请大家喝热可可吧 ☕", noOne: "这次谁都不用请热可可" },
+      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", en: "Loser sings a song", lost: () => "快给大家唱一首歌吧 🎤", noOne: "这次谁都不用唱歌" },
+      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", en: "Loser waddles like a penguin", lost: () => "快去学企鹅走路吧！", noOne: "这次谁都不用学企鹅走路" },
+      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", en: "Loser posts a silly selfie", lost: () => "快发一张丑照吧 📸", noOne: "这次谁都不用发丑照" },
+      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", en: "Loser buys ice cream", lost: () => "快请大家吃冰淇淋吧 🍦", noOne: "这次谁都不用请冰淇淋" },
+      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", en: "Loser gives the winner 3 compliments", lost: (winner: string) => `夸 ${winner} 三句吧 💐`, noOne: "这次谁都不用夸人" },
     ],
   },
 

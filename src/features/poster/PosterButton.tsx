@@ -78,7 +78,7 @@ export function PosterButton({ players, solo, team, rounds, className }: Props) 
         }}
         className={`plop-poster-open relative h-11 w-full rounded-full border-2 border-ink bg-snow-white font-heading text-xl font-bold text-ink-deep outline-none hover:bg-paper focus-visible:ring-2 focus-visible:ring-ring ${className ?? ""}`}
       >
-        {w.zh} <span className="text-base font-normal text-ink">· {w.en}</span>
+        {w}
       </button>
       {open && <PosterSheet src={src} failed={failed} onRetry={make} onClose={close} />}
     </>

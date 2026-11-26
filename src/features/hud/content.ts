@@ -89,25 +89,27 @@ export const content = {
       change: { zh: "换个玩法", en: "something else" },
       help: "How to throw",
     },
+    /**
+     * The end of a match, in steps (Rachel: one crowded card was too much): 1 the result (the snowball scene, then
+     * one line, then the wager), 2 the board, 3 the poster. One language per line: the result lines in Chinese (the
+     * fun is there), plain buttons in simple English.
+     */
     end: {
       label: "Match over",
-      wins: (name: string) => `${name} wins!`,
-      cheer: "hooray!",
-      kind: (name: string) => `lovely rolling, ${name}`,
-      tie: "A snowy tie!",
-      team: "Team total!",
+      /** Step 1: who won and by how much, once the snowballs have landed. */
+      wins: (name: string, theirs: number, other: number) => `${name} ${theirs} : ${other} 赢啦！`,
+      tie: (score: number) => `平局！${score} : ${score}`,
+      team: (total: number) => `一起打了 ${total} 分！`,
       teamKind: (a: string, b: string) => `lovely teamwork, ${a} & ${b}`,
-      tieKind: "two crowns today",
-      solo: "Your snowy total",
+      /** Alone with nobody to beat: the total and how it went. */
+      solo: (total: number) => `打了 ${total} 分！`,
       newBest: "a new best!",
       best: (n: number) => `best so far: ${n}`,
-      bestThrow: (name: string, points: number, round: number) => `best roll: ${name}, +${points} in round ${round}`,
-      /** Alone after a friend's invite: how it went against their score (kind either way). */
-      beatRival: (name: string, score: number) => `you beat ${name}'s ${score}!`,
-      tiedRival: (name: string) => `just like ${name}!`,
-      underRival: (name: string, score: number) => `${name} has ${score} · so close!`,
+      next: "Next",
       again: "Play again",
-      choose: "change how we play · 换个玩法",
+      choose: "change how we play",
+      /** Step 2's small heading. */
+      board: "put it on the board",
       points: (n: number) => `${n} points`,
     },
   },
@@ -222,7 +224,8 @@ export const content = {
     startDelay: 0.5,
     /** Versus: the winner pelts the loser, faster and faster, for `duration`. */
     versus: {
-      duration: 3.4,
+      /** About 2 s of snowballs before the result line (Rachel: short, then "Red Hat 13 : 6 赢啦！"). */
+      duration: 2.1,
       firstGap: 0.42,
       lastGap: 0.11,
       /** The first throw's flight time and the fastest one's. */
@@ -233,7 +236,7 @@ export const content = {
     },
     /** Tie: both throw at each other at once. */
     tie: {
-      duration: 2.8,
+      duration: 1.9,
       firstGap: 0.5,
       lastGap: 0.17,
       flight: [0.46, 0.32] as const,

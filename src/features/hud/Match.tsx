@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * The match's end card over the snow (both snowmen with their totals, a crown and a cheer for the winner, a gentle card
- * for a tie, your best when alone, "play again"). Props only: the game decides; these show and ask.
+ * The match's end over the snow, in steps: the result (the snowball scene and one line), then the board and the
+ * poster. Props only: the game decides; these show and ask.
  * Frosted paper with a pencil outline, like the score panel. Put them in the same `relative` box as the scene.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -92,101 +92,131 @@ export function NameField({
 export type EndPlayer = { name: string; look: SnowmanLook; total: number };
 
 export type MatchEndProps = {
+  /**
+   * The two snowmen. Alone after a friend's invite, the second one is the inviter (their name and score), so the
+   * scene can be a match between the two; alone with nobody to beat, only the first counts.
+   */
   players: readonly [EndPlayer, EndPlayer];
-  /** Playing alone: only the first player counts; `best` is the best total before this match (null = none). */
+  /** Playing alone: `best` is the best total before this match (null = none). */
   solo?: { best: number | null } | null;
-  /** The best single throw of the match, if worth a line: who, points, round (from 1). */
-  bestThrow?: { name: string; points: number; round: number } | null;
-  /** Alone after a friend's invite: their score, for one kind line. */
-  rival?: { name: string; score: number } | null;
-  /** The invite's preset wager, settled: "小美要请喝热可可啦 ☕" (or the tie line). Made by the game. */
-  wager?: { zh: string; en: string } | null;
+  /** Alone after a friend's invite: the second player is them (the scene and the result line become you vs them). */
+  rival?: boolean;
+  /** The invite's preset wager, settled by the game: the small stake line and "QA 输了，快去学企鹅走路吧！". */
+  wager?: { stake: string; result: string } | null;
   /** Team up: one team total, both snowmen crowned, no winner. */
   team?: boolean;
   /** The match's rounds, for the share poster (it falls back to last time's start choice). */
   rounds?: number;
   onAgain: () => void;
   onChoose: () => void;
-  /** Under the totals, above "play again": the group board and its "pop it on" prompt, when there is a group. */
+  /** Step 2: the group board and its prompt, when there is a group. */
   children?: ReactNode;
 };
 
-/** After the last round: the totals, a crown and a cheer, and "play again". Never "you lose". */
-export function MatchEnd({ players, solo, bestThrow, rival, wager, team, rounds, onAgain, onChoose, children }: MatchEndProps) {
+/**
+ * After the last round, in steps (Rachel: one crowded card was too much). Step 1 is the result and nothing else: the
+ * winner pelts the loser with snowballs (Celebration.tsx), and once they have landed one line says who won and by how
+ * much ("Red Hat 13 : 6 赢啦！"), then the wager if the invite had one; "Next" and "Play again". Step 2 is the board
+ * (the game's prompt and the group board), "Make a poster" (step 3, the poster sheet) and "Play again". Never mean.
+ */
+export function MatchEnd({ players, solo, rival, wager, team, rounds, onAgain, onChoose, children }: MatchEndProps) {
   const [a, b] = players;
-  const tie = !solo && !team && a.total === b.total;
-  const winner = solo ? null : a.total > b.total ? 0 : b.total > a.total ? 1 : null;
-  const newBest = !!solo && (solo.best === null || a.total > solo.best);
-  const title = solo ? t.end.solo : team ? t.end.team : tie ? t.end.tie : t.end.wins(players[winner!].name);
-  // "Play again" takes the focus for the keyboard, without scrolling a tall card (one with the board) to its end.
-  const again = useRef<HTMLButtonElement>(null);
-  // The victory moment plays first (Celebration.tsx); the totals, lines and buttons settle in after it (a tap skips it).
+  // Two sides to the scene: a versus match, or you against the inviter's score.
+  const twoSided = !team && (!solo || !!rival);
+  const tie = twoSided && a.total === b.total;
+  const winner: 0 | 1 | null = twoSided && !tie ? (a.total > b.total ? 0 : 1) : null;
+  const newBest = !!solo && !rival && (solo.best === null || a.total > solo.best);
+  const kind: CelebrationKind = team ? "team" : twoSided ? (tie ? "tie" : "versus") : newBest ? "soloBest" : "soloCheer";
+  const [step, setStep] = useState<1 | 2>(1);
+  // The snowballs fly first (Celebration.tsx); the result line and the buttons settle in after (a tap skips them).
   const [settled, setSettled] = useState(false);
+  const next = useRef<HTMLButtonElement>(null);
+  const again = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (settled) again.current?.focus({ preventScroll: true });
-  }, [settled]);
-  const kind: CelebrationKind = solo ? (newBest ? "soloBest" : "soloCheer") : team ? "team" : tie ? "tie" : "versus";
-  const sub = team
-    ? t.end.teamKind(a.name, b.name)
-    : solo
-    ? newBest
-      ? t.end.newBest
-      : t.end.best(solo.best ?? 0)
-    : tie
-      ? t.end.tieKind
-      : t.end.kind(players[winner === 0 ? 1 : 0].name);
-  return (
-    <Card label={t.end.label} seed={53}>
-      {/* Rachel's effect doodles around the title for the cheer. */}
-      {/* eslint-disable-next-line @next/next/no-img-element -- small decorative doodle */}
-      <img src="/assets/effects/star.webp" alt="" className="absolute -top-5 -left-3 w-10 rotate-[-14deg]" />
-      {/* eslint-disable-next-line @next/next/no-img-element -- small decorative doodle */}
-      <img src="/assets/effects/music-notes.webp" alt="" className="absolute -top-6 -right-2 w-12 rotate-[10deg]" />
-      <p className="font-heading text-4xl leading-none font-bold text-ink-deep">{title}</p>
-      {!solo && !tie && <p className="mt-0.5 font-heading text-xl leading-none">{t.end.cheer}</p>}
-      <Celebration
-        players={players}
-        kind={kind}
-        winner={winner === 0 || winner === 1 ? winner : null}
-        crowns={team || tie ? [true, true] : [winner === 0 || newBest, winner === 1]}
-        onSettled={() => setSettled(true)}
-      />
-      <div
-        inert={!settled}
-        className="transition-[opacity,transform] ease-out"
-        style={{ opacity: settled ? 1 : 0, transform: settled ? "none" : "translateY(8px)", transitionDuration: `${content.celebrate.reveal}ms` }}
-      >
-        <p className="mt-2 font-heading text-xl leading-tight">{sub}</p>
-        {solo && rival && (
-          <p className="mt-1 font-heading text-xl leading-tight font-bold text-berry-deep">
-            {a.total > rival.score
-              ? t.end.beatRival(rival.name, rival.score)
-              : a.total === rival.score
-                ? t.end.tiedRival(rival.name)
-                : t.end.underRival(rival.name, rival.score)}
-          </p>
-        )}
-        {wager && (
-          <p className="mt-2 font-heading text-lg leading-tight text-ink-deep">
-            <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{wager.zh}</span>
-            <span className="mt-0.5 block font-sans text-xs opacity-75">{wager.en}</span>
-          </p>
-        )}
-        {bestThrow && <p className="mt-1 font-heading text-base leading-tight opacity-80">{t.end.bestThrow(bestThrow.name, bestThrow.points, bestThrow.round)}</p>}
+    if (settled && step === 1) next.current?.focus({ preventScroll: true });
+    if (step === 2) again.current?.focus({ preventScroll: true });
+  }, [settled, step]);
+
+  const result = team
+    ? t.end.team(a.total + b.total)
+    : twoSided
+      ? tie
+        ? t.end.tie(a.total)
+        : t.end.wins(players[winner!].name, players[winner!].total, players[winner === 0 ? 1 : 0].total)
+      : t.end.solo(a.total);
+  const sub = team ? t.end.teamKind(a.name, b.name) : twoSided ? null : newBest ? t.end.newBest : t.end.best(solo?.best ?? 0);
+
+  if (step === 2) {
+    return (
+      <Card label={t.end.label} seed={59}>
+        <p className="font-heading text-xl leading-tight text-ink">{result}</p>
         {children && <div className="mt-3 flex flex-col items-center gap-3">{children}</div>}
-        {/* A saved image with a QR code: the way to spread on WeChat Moments, which cannot post links. */}
-        <PosterButton players={players} solo={!!solo} team={!!team} rounds={rounds} className="mt-4" />
+        {/* Step 3: the poster, a saved image with a QR code (the way to spread on WeChat Moments). */}
+        <PosterButton players={players} solo={!!solo && !rival} team={!!team} rounds={rounds} className="mt-4" />
         <Button
           ref={again}
           size="lg"
           onClick={onAgain}
-          className="mt-4 h-12 w-full rounded-full bg-sky-blue font-heading text-2xl font-bold text-ink-deep hover:bg-sky-blue/80"
+          className="mt-3 h-12 w-full rounded-full bg-sky-blue font-heading text-2xl font-bold text-ink-deep hover:bg-sky-blue/80"
         >
           {t.end.again}
         </Button>
         <button type="button" onClick={onChoose} className="mt-2 font-heading text-lg text-ink underline decoration-wavy underline-offset-4">
           {t.end.choose}
         </button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card label={t.end.label} seed={53}>
+      {/* Rachel's effect doodles at the corners for the cheer. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- small decorative doodle */}
+      <img src="/assets/effects/star.webp" alt="" className="absolute -top-5 -left-3 w-10 rotate-[-14deg]" />
+      {/* eslint-disable-next-line @next/next/no-img-element -- small decorative doodle */}
+      <img src="/assets/effects/music-notes.webp" alt="" className="absolute -top-6 -right-2 w-12 rotate-[10deg]" />
+      <Celebration
+        players={players}
+        kind={kind}
+        winner={winner}
+        crowns={team || tie ? [true, true] : [winner === 0 || newBest, winner === 1]}
+        onSettled={() => setSettled(true)}
+        totals={!twoSided && !team}
+      />
+      <div
+        inert={!settled}
+        className="transition-[opacity,transform] ease-out"
+        style={{ opacity: settled ? 1 : 0, transform: settled ? "none" : "translateY(8px)", transitionDuration: `${content.celebrate.reveal}ms` }}
+      >
+        <p role="status" className="mt-3 font-heading text-3xl leading-tight font-bold text-ink-deep">
+          {result}
+        </p>
+        {sub && <p className="mt-1 font-heading text-lg leading-tight">{sub}</p>}
+        {wager && (
+          <div className="mt-3">
+            <p className="font-heading text-sm leading-tight opacity-75">{wager.stake}</p>
+            <p className="mt-1 font-heading text-xl leading-tight text-ink-deep">
+              <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{wager.result}</span>
+            </p>
+          </div>
+        )}
+        <div className="mt-5 flex gap-2.5">
+          <Button
+            ref={next}
+            size="lg"
+            onClick={() => setStep(2)}
+            className="h-12 flex-1 rounded-full bg-butter font-heading text-2xl font-bold text-ink-deep hover:bg-butter/80"
+          >
+            {t.end.next}
+          </Button>
+          <Button
+            size="lg"
+            onClick={onAgain}
+            className="h-12 flex-1 rounded-full bg-sky-blue font-heading text-2xl font-bold text-ink-deep hover:bg-sky-blue/80"
+          >
+            {t.end.again}
+          </Button>
+        </div>
       </div>
     </Card>
   );
