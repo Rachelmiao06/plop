@@ -9,7 +9,8 @@
  * 4. Reads the home page's <head> and fetches the icons and the share card it points to: each must answer 200
  *    with an image.
  * 5. Checks the first image in the home page body is the WeChat share image (at least 300 px) and loads.
- * 6. Opens the invite card with and without a name and group (`/invite`, `/invite?from=test&score=12`, with `g=`): the title must name the
+ * 6. Opens the invite card with and without a name and group (`/invite`, `/invite?from=test&score=12`, with `g=`, with a
+ *    preset wager `w=` and an unknown one): the title must name the
  *    inviter for WeChat's chat card, and the first image in the body must be the invite's own square card.
  * 7. The leaderboard API (`/api/scores`, demo mode without Supabase keys): a bad group is refused, a good score is
  *    taken and then listed, a rude nickname and an impossible score are refused; play-style numbers (for the funny
@@ -193,6 +194,9 @@ async function main() {
       ["/invite", "有人邀请你来打雪仗 · Plop!"],
       ["/invite?from=test&score=12", "test 邀请你来打雪仗 · Plop!"],
       ["/invite?g=test1234&from=test&score=12", "test 邀请你来打雪仗 · Plop!"],
+      // A preset wager rides along (`w=`); an unknown one is simply dropped.
+      ["/invite?g=test1234&from=test&score=12&w=cocoa", "test 邀请你来打雪仗 · Plop!"],
+      ["/invite?g=test1234&from=test&w=bogus", "test 邀请你来打雪仗 · Plop!"],
     ];
     for (const [path, title] of invites) {
       try {

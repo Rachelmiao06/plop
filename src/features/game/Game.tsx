@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
-import { cleanName, cleanScore, INVITE } from "@/features/invite";
+import { cleanName, cleanScore, cleanWager, INVITE, wagerResult } from "@/features/invite";
 import { GroupBoard, GroupNotices, SubmitScore, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
@@ -95,7 +95,7 @@ export function Game() {
   const search = useSyncExternalStore(noSubscribe, readSearch, () => "");
   const invite = useMemo(() => {
     const q = new URLSearchParams(search);
-    return { name: cleanName(q.get("from")), score: cleanScore(q.get("score")) };
+    return { name: cleanName(q.get("from")), score: cleanScore(q.get("score")), wager: cleanWager(q.get("w")) };
   }, [search]);
   // The guided start: last time's choices (a returning player taps straight through) and whether "how to throw"
   // was shown on this device. "Change how we play" on the end card walks the cards from the start instead.
@@ -237,6 +237,13 @@ export function Game() {
     return pick && pick.points > 0 ? { name: players[pick.p].name, points: pick.points, round: pick.round + 1 } : null;
   })();
   const rival = solo && invite.name && invite.score !== null ? { name: invite.name, score: invite.score } : null;
+  // The invite's preset wager, settled on the end card: the loser and what they owe (a team or a tie: nobody pays).
+  const wager = (() => {
+    if (state.phase !== "over" || !invite.wager || together) return null;
+    const [mine, theirs] = state.scores;
+    if (solo) return rival ? wagerResult(invite.wager, mine > rival.score ? rival.name : mine < rival.score ? names[0] : null) : null;
+    return wagerResult(invite.wager, mine > theirs ? names[1] : theirs > mine ? names[0] : null);
+  })();
   const rule = state.phase === "playing" ? ruleFor(game.setFor(state.round)) : null;
 
   return (
@@ -353,6 +360,7 @@ export function Game() {
           team={together}
           bestThrow={bestThrow}
           rival={rival}
+          wager={wager}
           onAgain={() => begin(state.rounds, state.players, true)}
           onChoose={() => {
             setRechoose(true);

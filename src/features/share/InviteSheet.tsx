@@ -19,7 +19,7 @@
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 
 import { GAME, readNames, savePlayerOne, serverNames, shownName, subscribeNames } from "@/features/game";
-import { cleanName, INVITE, invitePath } from "@/features/invite";
+import { cleanName, INVITE, invitePath, wagerFor, type WagerCode } from "@/features/invite";
 
 import { track } from "@/lib/analytics";
 
@@ -61,6 +61,8 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
   const signed = shownName(0, name);
   const [best] = useState(readBest);
   const [withScore, setWithScore] = useState(true);
+  /** One of the preset wagers, or none (the default). */
+  const [wager, setWager] = useState<WagerCode | null>(null);
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -72,10 +74,10 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
     const clean = cleanName(name);
     if (clean && clean !== typed) savePlayerOne(clean);
     // Never unsigned: no name typed means the snowman's cute default.
-    const path = invitePath({ group: ensureGroupId(), name: signed, score: best !== null && withScore ? best : null });
+    const path = invitePath({ group: ensureGroupId(), name: signed, score: best !== null && withScore ? best : null, wager });
     const url = window.location.origin + path;
     // Coarse facts only (never the name): whether a score went along, and whether it went from inside WeChat.
-    track("invite_made", { with_score: best !== null && withScore });
+    track("invite_made", { with_score: best !== null && withScore, wager: wager ?? "none" });
 
     if (isWeChat()) {
       await copy(url);
@@ -84,7 +86,8 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
       window.location.assign(path);
       return;
     }
-    const text = words.text.replace("{name}", signed);
+    const stake = wagerFor(wager);
+    const text = words.text.replace("{name}", signed) + (stake ? ` ${INVITE.wagers.stake.zh}：${stake.zh} ${stake.emoji}` : "");
     const result = await systemShare({ title: "Plop!", text, url });
     if (result === "unavailable") onNote((await copy(url)) ? words.copied.zh : SHARE.copyFailed);
     if (result !== "closed") onClose();
@@ -153,6 +156,35 @@ export function InviteSheet({ onClose, onPlainShare, onNote }: Props) {
             </span>
           </label>
         )}
+
+        {/* An optional preset wager: quiet words, the chosen one underlined in pencil. */}
+        <fieldset className="mt-3">
+          <legend className="text-sm">
+            {INVITE.wagers.label.zh} <span className="text-xs opacity-80">· {INVITE.wagers.label.en}</span>
+          </legend>
+          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
+            {[null, ...INVITE.wagers.lines.map((l) => l.code)].map((code) => {
+              const line = wagerFor(code);
+              const on = wager === code;
+              return (
+                <button
+                  key={code ?? "none"}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setWager(code)}
+                  title={line?.en ?? INVITE.wagers.none.en}
+                  className={`rounded-lg px-1.5 py-0.5 text-left font-heading text-[13px] leading-snug outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    on ? "bg-butter/60 text-ink-deep underline decoration-wavy underline-offset-4" : "opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  {line ? `${line.zh.replace("输的人", "")} ${line.emoji}` : INVITE.wagers.none.zh}
+                </button>
+              );
+            })}
+          </div>
+          {wager && <p className="mt-1 text-xs opacity-80">{wagerFor(wager)?.en}</p>}
+        </fieldset>
 
         <button
           type="button"
