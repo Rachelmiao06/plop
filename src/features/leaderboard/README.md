@@ -15,15 +15,26 @@ import { GroupBoard, SubmitScore } from "@/features/leaderboard";
 - `BoardSheet` is the same board drawn from scores you hand it (`state`, `viewer`); `/dev/leaderboard` uses it for
   fake groups of 2, 5 and 10 with buttons that make someone overtake someone.
 
+## The look: no boxes (Rachel, 2026-11-25)
+
+Rachel finds boxes inside boxes heavy and cheap, so nothing on the board has a frame: `PaperSheet` is now just a
+wrapper (no paper, no pencil edge, no shadow), the snowmen stand straight on Rachel's far hills (pines, little
+houses, its own ground line, faded at the sides), names and scores are handwritten on each snowman's belly with a
+soft paper-white halo instead of a tag, today's hits are a clump of snow stuck to the head with "×3", and notes
+("you're #2!", "再等42分钟") are handwriting without a pill. Depth is light, not 3D: a soft shadow under each
+snowman's feet and on the cut-out. The list underneath shows the top 3 and your own line; "看全部 · see all" opens
+the rest. The "you got hit" note fills the screen as a snowy scene with one button. On the invite page the board is
+folded behind "看看这场雪仗 · see the board" under the play button, so the first screen has one action.
+
 ## The snowman pile (`SnowmanPile.tsx`, numbers in `PILE`)
 
 Each player is a little snowman from Rachel's thrower cut-outs (bucket or red hat, chosen from the nickname, so the
-same name is always the same snowman, sometimes facing the other way, leaning a hair) with a paper name tag on its
-belly (nickname and best score). Better scores stand higher, literally on the heads of the ones below, in a human
+same name is always the same snowman, sometimes facing the other way, leaning a hair) with its nickname and best
+score written on its belly. Better scores stand higher, literally on the heads of the ones below, in a human
 pyramid: #1 alone on top in the crown, then 2, 3 and 4 per row (`PILE.rows` says how many per row for 1 to 10
 players; a row is never wider than the one under it). Whoever has someone on their head is squashed (a little more
 for every row stacked above) and gets Rachel's surprise lines beside the head. A team entry is both snowmen side by
-side. The viewer's snowman has a soft butter glow and a butter tag. When a rank changes, the climber crouches,
+side. The viewer's snowman has a soft butter glow and a bolder name. When a rank changes, the climber crouches,
 hops over in an arc in front of everyone and plops onto the head below with a squish and Rachel's snow puff; the one
 going down slides over first; someone new drops in from above. Nothing moves when nothing changed, and nothing
 animates with reduced motion. The compact list underneath keeps the exact numbers and full names.

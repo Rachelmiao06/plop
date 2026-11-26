@@ -7,7 +7,7 @@
  * when the link has a group (`<GroupBoard>`), and one big "接受挑战 / Play" button to the game
  * (`/?g=<group>&from=<name>`). Chinese first, English beneath in small text.
  *
- * Hand-drawn bits (card edge, stitching, button edge) are fixed uneven paths in token colours, like the share
+ * Hand-drawn bits (card edge, button edge; no inner stitching: Rachel wants fewer boxes) are fixed uneven paths in token colours, like the share
  * button's; the fairy lights are Rachel's cut-out used as it is.
  */
 import Image from "next/image";
@@ -25,7 +25,6 @@ import { gamePath, inviteDescription, inviteTitle, type Invite } from "./link";
 
 // Card and button edges in a 100 x 100 box, stretched to fit (strokes do not stretch).
 const EDGE = "M3 4 C 30 2, 70 5, 97 3 C 98.5 35, 96.5 70, 98 97 C 70 99, 30 96.5, 2 98 C 3.5 70, 1.5 35, 3 4 Z";
-const STITCH = "M7 8.5 C 35 7, 65 9.5, 93 8 C 94 38, 92.5 68, 93.5 92 C 66 93.5, 34 91.5, 6.5 92.5 C 8 66, 5.5 36, 7 8.5 Z";
 const PILL = "M6 10 C 30 4, 70 6, 94 9 C 99 30, 99 70, 95 90 C 70 96, 30 95, 5 91 C 1 70, 1 30, 6 10 Z";
 
 const css = `
@@ -85,6 +84,7 @@ export function InviteCard({ group, name, score }: Invite) {
   /** True at the snowball's burst: the card pops out of the puff. */
   const shown = useLoaded();
   const router = useRouter();
+  const [boardOpen, setBoardOpen] = useState(false);
   // The sender, just back from making this invite inside WeChat: show them where "···" is (read once, cleared below).
   const [sendHint, setSendHint] = useState(() => {
     try {
@@ -129,15 +129,6 @@ export function InviteCard({ group, name, score }: Invite) {
           >
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
               <path d={EDGE} className="fill-snow-white stroke-ink" strokeWidth={2.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-              <path
-                d={STITCH}
-                fill="none"
-                className="stroke-pine"
-                strokeWidth={1.6}
-                strokeDasharray="5 6"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-              />
             </svg>
             {/* Rachel's fairy lights strung across the top of the card. */}
             <Image
@@ -162,12 +153,6 @@ export function InviteCard({ group, name, score }: Invite) {
                 <Bi zh={withScore(words.score.zh, score)} en={words.score.en.replace("{score}", String(score))} />
               </p>
             )}
-            {/* This group's top scores (from the leaderboard feature), only when the link has a group. */}
-            {group && (
-              <div data-leaderboard-slot={group} className="relative mt-4 flex justify-center text-left">
-                <GroupBoard group={group} limit={INVITE.board.limit} className="w-full" />
-              </div>
-            )}
             <Link
               href={gamePath(name, group)}
               className="plop-invite-btn relative mx-auto mt-6 block w-[min(70vw,250px)] px-6 py-3 text-ink-deep outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -177,6 +162,23 @@ export function InviteCard({ group, name, score }: Invite) {
               </svg>
               <Bi zh={words.play.zh} en={words.play.en} className="relative text-4xl font-bold" />
             </Link>
+            {/* This group's board (from the leaderboard feature), only when the link has a group, folded away so the
+                first screen has one action: play. */}
+            {group && (
+              <button
+                type="button"
+                onClick={() => setBoardOpen((o) => !o)}
+                aria-expanded={boardOpen}
+                className="relative mx-auto mt-3 block font-heading text-base text-ink underline decoration-dotted underline-offset-4 opacity-80"
+              >
+                {boardOpen ? words.board.hide : `${words.board.zh} · ${words.board.en}`}
+              </button>
+            )}
+            {group && boardOpen && (
+              <div data-leaderboard-slot={group} className="relative mt-2 flex justify-center text-left">
+                <GroupBoard group={group} limit={INVITE.board.limit} className="w-full" hint={false} />
+              </div>
+            )}
           </div>
         </div>
       )}

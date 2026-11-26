@@ -11,7 +11,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProper
 import { CrownDoodle, SnowballDots } from "@/features/hud/Doodles";
 import type { SnowmanLook } from "@/features/hud/content";
 import { useSize } from "@/features/hud/hooks";
-import { pencilCircle, pencilRoundRect } from "@/features/hud/pencil";
+import { pencilCircle } from "@/features/hud/pencil";
 import type { BoardEntry } from "./api";
 import { lb } from "./boardStyles";
 import { PILE, SNOWBALL, TEXT } from "./content";
@@ -23,8 +23,8 @@ const ART: Record<SnowmanLook, string> = {
 };
 const PUFF = "/assets/effects/snow-puff.webp";
 const OOF = "/assets/effects/surprise-lines.webp";
+const HILLS = "/assets/scenery/far-hills.webp";
 
-const stroke = { stroke: "var(--ink)", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
 /** A small steady number from a nickname: the same name always gets the same snowman, lean and side. */
 export function nameHash(name: string) {
@@ -277,6 +277,24 @@ export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps)
 
   return (
     <div ref={box} role="group" aria-label={TEXT.pile} className="relative w-full" style={{ height: pile?.height ?? 0 }}>
+      {/* Rachel's far hills (pines, little houses, the ground line) behind the pile: the snowmen stand on its ground. */}
+      {pile && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bg-repeat-x"
+          style={{
+            bottom: -PILE.hills.height * PILE.hills.ground,
+            height: PILE.hills.height,
+            backgroundImage: `url(${HILLS})`,
+            backgroundSize: `auto ${PILE.hills.height}px`,
+            backgroundPosition: "center bottom",
+            opacity: PILE.hills.opacity,
+            // Fades out at both sides instead of ending in a hard edge.
+            maskImage: "linear-gradient(to right, transparent, black 14%, black 86%, transparent)",
+            WebkitMaskImage: "linear-gradient(to right, transparent, black 14%, black 86%, transparent)",
+          }}
+        />
+      )}
       {pile?.slots.map((s) => {
         const isMe = viewer !== "" && s.key === viewer;
         const sq = s.squash;
@@ -307,6 +325,18 @@ export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps)
           >
             <div className={`absolute inset-0 ${lb.pileIn}`} style={{ "--lb-pile-delay": `${(rowsCount - 1 - s.row) * PILE.motion.rowStagger}s` } as CSSProperties}>
               {isMe && <Glow size={slotW * PILE.glow.size * 2} seed={s.rank} />}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 rounded-[50%]"
+                style={{
+                  bottom: -slotW * 0.03,
+                  width: slotW * PILE.shadow.width,
+                  height: slotW * PILE.shadow.height,
+                  translate: "-50% 0",
+                  background: "color-mix(in oklab, var(--ink) 22%, transparent)",
+                  filter: `blur(${PILE.shadow.blur}px)`,
+                }}
+              />
               <div data-land className="absolute inset-0 origin-bottom">
                 <div
                   data-squash
@@ -350,7 +380,8 @@ export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps)
                   </span>
                 )}
               </div>
-              <NameTag entry={s.entry} width={slotW * PILE.tag.width} tilt={(s.rank % 2 ? -1 : 1) * PILE.tag.tilt} me={isMe} bottom={s.team ? 0 : standing * PILE.tag.lift} seed={s.rank * 7 + 3} hits={hitCount} />
+              <BellyName entry={s.entry} me={isMe} bottom={standing * PILE.name.lift} width={slotW * PILE.name.width} />
+              {hitCount > 0 && <StuckSnow hits={hitCount} size={slotW * PILE.stuck.size} bottom={standing * PILE.stuck.lift} left={s.x < -1} />}
               {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, shown when someone lands */}
               <img
                 data-puff
@@ -372,9 +403,10 @@ export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps)
           <span
             key={`note-${s.key}`}
             role="status"
-            className={`absolute z-[60] rounded-full bg-paper px-2 py-0.5 font-heading text-[11px] whitespace-nowrap text-ink-deep shadow-sm ${lb.note}`}
+            className={`absolute z-[60] font-heading text-[12px] font-bold whitespace-nowrap text-ink-deep ${lb.note}`}
             // Above the head, kept inside the board: a snowman at an edge gets its note on the inner side.
             style={{
+              textShadow: HALO,
               bottom: s.foot + s.h * (1 - s.squash) + 2,
               ...(s.x > 1
                 ? { right: Math.max(0, w / 2 - s.x - slotW / 2) }
@@ -478,54 +510,45 @@ function Cutout({ look, width, flip, style }: { look: SnowmanLook; width: number
       width={width}
       height={width * PILE.aspect}
       className="self-end object-contain object-bottom select-none"
-      style={{ width, height: width * PILE.aspect, transform: flip ? "scaleX(-1)" : undefined, ...style }}
+      style={{ width, height: width * PILE.aspect, transform: flip ? "scaleX(-1)" : undefined, filter: CUTOUT_SHADOW, ...style }}
     />
   );
 }
 
-/** A paper tag with a pencil edge: nickname on top, score big underneath. Yours is butter yellow. */
-const TAG_H = PILE.tag.height;
+/** A soft shadow on the cut-out itself, so it stands off the snow a little (light depth, no 3D). */
+const CUTOUT_SHADOW = `drop-shadow(1px ${PILE.shadow.drop}px ${PILE.shadow.drop * 0.8}px color-mix(in oklab, var(--ink) 20%, transparent))`;
 
-function NameTag({
-  entry,
-  width,
-  tilt,
-  me,
-  bottom,
-  seed,
-  hits,
-}: {
-  entry: BoardEntry;
-  width: number;
-  tilt: number;
-  me: boolean;
-  bottom: number;
-  seed: number;
-  hits: number;
-}) {
-  const edge = useMemo(() => pencilRoundRect(width, TAG_H, 9, seed, { wobble: 0.9 }), [width, seed]);
+/** The nickname and score, written by hand on the snowman's belly (no tag, no box). Yours is a touch bolder. */
+function BellyName({ entry, me, bottom, width }: { entry: BoardEntry; me: boolean; bottom: number; width: number }) {
   return (
-    <div
-      className="absolute left-1/2 grid place-items-center text-ink-deep"
-      style={{ width, height: TAG_H, bottom, translate: "-50% 0", rotate: `${tilt}deg`, zIndex: 2 }}
+    <span
+      className="pointer-events-none absolute left-1/2 z-[2] flex flex-col items-center leading-none text-ink-deep"
+      style={{ bottom, width, translate: "-50% 0", textShadow: HALO }}
     >
-      <svg width={width} height={TAG_H} className="absolute inset-0 overflow-visible" aria-hidden>
-        <path d={edge} fill={me ? "var(--butter)" : "var(--paper)"} {...stroke} />
-      </svg>
-      <span className="relative flex w-full flex-col items-center px-1 leading-none">
-        <span className="block max-w-full truncate font-heading text-[11px] leading-[1.05]">{entry.name}</span>
-        <span className="block font-heading text-[16px] leading-[1.05] font-bold tabular-nums">{entry.best}</span>
+      <span className={`block max-w-full truncate font-heading text-[11px] leading-[1.1] ${me ? "font-bold" : ""}`}>{entry.name}</span>
+      <span className="block font-heading text-[17px] leading-[1.05] font-bold tabular-nums">{entry.best}</span>
+    </span>
+  );
+}
+
+/** A soft paper-white halo around handwriting laid over art, so it stays readable without a box. */
+const HALO = "0 0 2px var(--paper), 0 0 3px var(--paper), 0 0 5px var(--paper)";
+
+/** Today's snowball hits: a clump of snow stuck to the head (Rachel's snow puff) and a small "×3" beside it. */
+function StuckSnow({ hits, size, bottom, left }: { hits: number; size: number; bottom: number; left: boolean }) {
+  return (
+    <span
+      className="absolute z-[3] flex items-center"
+      style={{ bottom, ...(left ? { left: -size * 0.2, flexDirection: "row-reverse" } : { right: -size * 0.2 }) }}
+      title={`${TEXT.snowball.hits(hits)} · ${TEXT.snowball.hitsEn(hits)}`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, as snow stuck on the head */}
+      <img src={PUFF} alt="" aria-hidden draggable={false} width={size} height={(size * 235) / 306} style={{ rotate: left ? "14deg" : "-14deg" }} />
+      <span className="font-heading text-[12px] leading-none font-bold text-ink-deep" style={{ textShadow: HALO }} aria-hidden>
+        ×{hits}
       </span>
-      {hits > 0 && (
-        <span
-          title={TEXT.snowball.hitsEn(hits)}
-          className="absolute top-full left-1/2 -mt-1 rounded-full bg-sky-blue px-1.5 font-heading text-[10px] leading-[15px] whitespace-nowrap text-ink-deep"
-          style={{ translate: "-50% 0", rotate: `${-tilt * 1.5}deg`, boxShadow: "0 0 0 1.2px var(--ink)" }}
-        >
-          {TEXT.snowball.hits(hits)}
-        </span>
-      )}
-    </div>
+      <span className="sr-only">{TEXT.snowball.hits(hits)}</span>
+    </span>
   );
 }
 

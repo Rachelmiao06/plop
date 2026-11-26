@@ -26,6 +26,8 @@ export const BOARD = {
     meWash: "var(--butter)",
     meWashOpacity: 0.45,
     face: 22,
+    /** The list under the pile shows this many from the top, plus your own line; the rest behind "see all". */
+    listTop: 3,
     /** Each row tilts a hair, alternating, so the list looks written by hand rather than typeset. */
     rowTilt: 0.35,
     /** The "you're #2!" note springs in: seconds and how far it overshoots (share of its size). */
@@ -68,7 +70,7 @@ export const PILE = {
    */
   rows: [[1], [1, 1], [1, 2], [1, 1, 2], [1, 2, 2], [1, 2, 3], [1, 1, 2, 3], [1, 2, 2, 3], [1, 2, 3, 3], [1, 2, 3, 4]] as const,
   /** Widest a slot gets (px); on a phone the widest row shares the board's width. */
-  maxSlot: 90,
+  maxSlot: 72,
   /** The cut-out's width as a share of its slot (the rest is breathing room). */
   body: 0.92,
   /** Cut-out height over width (Rachel's thrower art is about 309 × 421 and 323 × 479). */
@@ -81,8 +83,16 @@ export const PILE = {
   squash: { base: 0.12, perRow: 0.04, max: 0.24, widen: 0.5 },
   /** Each snowman leans a hair, from its name, so the pile looks wobbly rather than stacked by a machine. */
   lean: 3.5,
-  /** The name tag on the belly: share of the slot width, height (px), tilt, and how high up the body (share). */
-  tag: { width: 0.8, height: 31, tilt: 3, lift: 0.12 },
+  /** The nickname and score, handwritten on the belly: share of the slot width, and how high up the body (share). */
+  name: { width: 0.96, lift: 0.17 },
+  /** Light depth (Rachel: no boxes, a little 3D feel, not real 3D): a soft shadow under the feet (shares of a slot's
+   * width, blur px) and on the cut-out itself (px). */
+  shadow: { width: 0.72, height: 0.11, blur: 2.5, drop: 2.5 },
+  /** Rachel's far hills behind the pile: height (px), how much of it sits below the bottom row's feet (share, so
+   * they stand on its ground line), and how faint. */
+  hills: { height: 70, ground: 0.1, opacity: 0.7 },
+  /** Today's hits: a clump of snow stuck to the head (share of a slot's width, how high up the body). */
+  stuck: { size: 0.34, lift: 0.7 },
   /** The crown on #1: share of a slot's width, and how high above the head. */
   crown: { size: 0.42, lift: 0.1 },
   /** The viewer's own snowman gets a soft butter glow behind it. */
@@ -162,6 +172,8 @@ export const TEXT = {
     later: "later · 下次吧",
   },
   list: "the exact scores",
+  seeAll: (n: number) => `看全部 · see all ${n}`,
+  fewer: "收起 · fewer",
   submit: {
     label: "put your score on the board",
     ask: "your nickname for the board",

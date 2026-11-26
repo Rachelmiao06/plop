@@ -26,11 +26,13 @@ export type GroupBoardProps = {
   /** Rows to show, at most `BOARD.top`. */
   limit?: number;
   className?: string;
+  /** Show "tap a friend to throw" over the pile (default yes). */
+  hint?: boolean;
 };
 
 type State = { status: "loading" } | { status: "failed" } | { status: "ready"; scores: BoardEntry[] };
 
-export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoardProps) {
+export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: GroupBoardProps) {
   const [state, setState] = useState<State>({ status: "loading" });
   /** Counts scores landing for this group, so the viewer's highlight scribbles in again. */
   const [landed, setLanded] = useState(0);
@@ -88,6 +90,7 @@ export function GroupBoard({ group, me, limit = BOARD.top, className }: GroupBoa
       className={className}
       hits={hits}
       onThrow={viewer ? onThrow : undefined}
+      hint={hint}
     />
   );
 }
@@ -104,14 +107,22 @@ export type BoardSheetProps = {
   hits?: Record<string, number>;
   /** Throwing at a friend (left out: snowmen cannot be tapped). */
   onThrow?: (to: BoardEntry) => Promise<ThrowOutcome>;
+  /** Show "tap a friend to throw" over the pile (the invite page leaves it out: one action per screen). */
+  hint?: boolean;
 };
 
 export type BoardState = State;
 
 /** The board drawn from what it is given: title, the snowman pile, the compact list, "you're #2!". */
-export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, onThrow }: BoardSheetProps) {
+export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, onThrow, hint = true }: BoardSheetProps) {
   const mine = state.status === "ready" && viewer ? state.scores.findIndex((s) => nameKey(s.name) === viewer) : -1;
-  const { face, rowTilt, noteIn, noteOvershoot } = BOARD.look;
+  const { face, rowTilt, noteIn, noteOvershoot, listTop } = BOARD.look;
+  const [all, setAll] = useState(false);
+  const scores = state.status === "ready" ? state.scores : [];
+  // The list: the top few and your own line; the rest behind "see all".
+  const rows = scores
+    .map((s, i) => ({ s, i }))
+    .filter(({ i }) => all || i < listTop || i === mine);
 
   return (
     <PaperSheet seed={seed} label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
@@ -130,16 +141,16 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
 
       {state.status === "ready" && state.scores.length > 0 && (
         <>
-          {onThrow && viewer && state.scores.length > 1 && (
+          {hint && onThrow && viewer && state.scores.length > 1 && (
             <p className="-mt-0.5 mb-1 text-center font-heading text-sm leading-tight opacity-75">
               {TEXT.snowball.hintZh} · {TEXT.snowball.hint}
             </p>
           )}
           <SnowmanPile scores={state.scores} viewer={viewer} hits={hits} onThrow={onThrow} />
-          <div aria-hidden className="mx-auto -mt-0.5 mb-2 h-[3px] w-[85%] rounded-full bg-snow-shadow/70" />
-          <ol className="flex flex-col" aria-label={TEXT.list}>
-            {state.scores.map((s, i) => {
+          <ol className="mt-3 flex flex-col" aria-label={TEXT.list}>
+            {rows.map(({ s, i }, n) => {
               const isMe = i === mine;
+              const gap = n > 0 && rows[n - 1].i !== i - 1;
               return (
                 <li
                   key={nameKey(s.name)}
@@ -147,6 +158,11 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
                   style={{ "--lb-i": i, "--lb-tilt": `${(i % 2 ? 1 : -1) * rowTilt}deg` } as CSSProperties}
                   aria-current={isMe ? "true" : undefined}
                 >
+                  {gap && (
+                    <span aria-hidden className="absolute -top-2 left-3 font-heading text-xs leading-none opacity-50">
+                      ⋮
+                    </span>
+                  )}
                   {isMe && <CrayonHighlight key={landed} />}
                   <span className="origin-center scale-75">
                     <RankMark rank={i + 1} />
@@ -167,13 +183,22 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
               );
             })}
           </ol>
+          {scores.length > listTop + (mine >= listTop ? 1 : 0) && (
+            <button
+              type="button"
+              onClick={() => setAll((a) => !a)}
+              className="mx-auto mt-1 block font-heading text-sm text-ink underline decoration-dotted underline-offset-4 opacity-75 hover:opacity-100"
+            >
+              {all ? TEXT.fewer : TEXT.seeAll(scores.length)}
+            </button>
+          )}
         </>
       )}
 
       {mine >= 0 && (
         <p
           key={`${viewer}-${mine}`}
-          className={`mx-auto mt-2 w-fit rounded-full bg-butter/60 px-3 py-0.5 font-heading text-xl leading-tight font-bold text-ink-deep ${lb.note}`}
+          className={`mx-auto mt-2 w-fit font-heading text-xl leading-tight font-bold text-ink-deep ${lb.note}`}
           style={{ "--lb-note-in": `${noteIn}s`, "--lb-note-over": noteOvershoot } as CSSProperties}
           role="status"
         >
