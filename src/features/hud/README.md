@@ -31,6 +31,16 @@ import { ScoreHud } from "@/features/hud";
   `panel={false}` hides the panel (not the corner switches) until the match starts.
 - `team` on `ScoreHud` and `MatchEnd` (team up): one team total with both faces, and a "Team total!" end card with both
   crowned. Taking turns stays a match between the two.
+- **The victory moment** (`Celebration.tsx`, the faces area of `MatchEnd`; numbers in `content.celebrate`): versus, the
+  winner pelts the loser with snowballs, faster and faster (each one arcs and splats in Rachel's snow puff and ring; the
+  loser wobbles, goes surprised then dizzy, snow piles on head and face, then shakes it off and sulks while the winner
+  hops laughing); a tie both throw at each other; team up both throw up and the snow falls back like confetti; alone,
+  a new best gets snow confetti and the crown popping on, otherwise a happy hop. Each hit is a soft plop
+  (`playThump`) and a light `flop` buzz. The totals, lines and buttons settle in after it; a tap or key anywhere skips.
+  Reduced motion: just the crown and one puff. Moves on the compositor (Web Animations plus one tiny spring).
+- `ExpressiveFace` (`Expressions.tsx`): the cut-out face with one of Rachel's six expression faces (calm, happy,
+  surprised, straining, dizzy, laugh; `public/assets/hud/faces/`, from her expression sheet) laid over it, eyes and mouth
+  lined up separately, on a patch of the cut-out's own crayon snow. "Sulky" is calm eyes with the straining mouth.
 - `MatchEnd` (totals, crown, cheer, tie card, a line against an inviter's score `rival`, anything passed as `children`
   such as the group board, "play again") in `Match.tsx`, with `NameField`. `PaperCard` is the same paper note for
   other cards (the game's rule card).

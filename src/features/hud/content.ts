@@ -212,6 +212,91 @@ export const content = {
   /** The end card's big snowman faces and crown (px). */
   end: { face: 76, crown: 44 },
 
+  /**
+   * The victory moment on the end card (Celebration.tsx). Seconds unless noted; sizes in px at the end card's face
+   * size. Art: Rachel's snowball (one ball cropped from `snowball-pile`), snow puff, snow ring and snow mound, and her
+   * six expression faces (`public/assets/hud/faces/`).
+   */
+  celebrate: {
+    /** Wait for the card's own pop-in before the first throw. */
+    startDelay: 0.5,
+    /** Versus: the winner pelts the loser, faster and faster, for `duration`. */
+    versus: {
+      duration: 3.4,
+      firstGap: 0.42,
+      lastGap: 0.11,
+      /** The first throw's flight time and the fastest one's. */
+      flight: [0.46, 0.28] as const,
+      /** Hits before the loser's face turns surprised, then dizzy. */
+      surprisedAt: 1,
+      dizzyAt: 5,
+    },
+    /** Tie: both throw at each other at once. */
+    tie: {
+      duration: 2.8,
+      firstGap: 0.5,
+      lastGap: 0.17,
+      flight: [0.46, 0.32] as const,
+      dizzyAt: 6,
+    },
+    /** Team up: both throw snowballs up, then the snow falls back on them like confetti. */
+    team: {
+      throws: 5,
+      throwGap: 0.24,
+      /** How high a thrown-up ball goes, as a share of the face size. */
+      up: 1.4,
+      upFlight: 0.55,
+      /** Snow bits falling back, when they start (after the first throw), how long they fall. */
+      confetti: 30,
+      fallFrom: 0.7,
+      fall: [1.1, 1.9] as const,
+      /** Share of the bits that land on a head (and pile up there). */
+      onHeads: 0.35,
+      duration: 3.2,
+    },
+    /** Just me: snow confetti and the crown popping on for a new best; otherwise a little cheer. */
+    solo: {
+      confetti: 18,
+      bestDuration: 2.4,
+      cheerDuration: 1.1,
+      crownAt: 0.25,
+    },
+    /** Arc height as a share of the distance (at least `arcMin` px), and how far a hit lands from the face centre. */
+    arc: 0.38,
+    arcMin: 22,
+    aim: 0.16,
+    /** Snowball in flight, splat puff and ring, a confetti bit (smallest and biggest). */
+    ball: 15,
+    puff: 36,
+    ring: 44,
+    bit: [6, 12] as const,
+    /** The snow pile on the head: full width, size per hit (it starts at `first`), and puffs stuck on the face. */
+    mound: {
+      width: 70,
+      first: 0.3,
+      perHit: 0.08,
+      faceBits: [3, 6, 9] as const,
+      faceBit: 18,
+    },
+    /** The hit wobble: a little spring (degrees per hit, stiffness, damping). */
+    wobble: { kick: 10, stiffness: 240, damping: 11, max: 16 },
+    /** The throw: the thrower leans toward the target (degrees) for this long (ms). */
+    lean: { angle: 8, ms: 170 },
+    /** The end: the loser shakes the snow off (ms, degrees), the winner hops (px, ms, how many). */
+    shake: { ms: 720, swing: 10 },
+    hop: { height: 14, ms: 460, count: 2 },
+    /** How long after the last hit the ending starts, and after the ending the rest of the card settles in. */
+    endAfter: 0.35,
+    settleAfter: 0.6,
+    /** The loser looks sulky this long, then calm again. */
+    sulkFor: 2.4,
+    /** How the totals, lines and buttons fade in (ms). */
+    reveal: 420,
+    /** Each hit: a soft plop (the recorded snowball, smallest size) and a light buzz. */
+    plop: 0.05,
+    buzz: 0.5,
+  },
+
   /** Burst of star and surprise lines when the set is cleared. */
   burst: {
     duration: 1400,
