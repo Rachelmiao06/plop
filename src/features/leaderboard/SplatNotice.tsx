@@ -24,29 +24,38 @@ export type SplatNoticeProps = {
   me?: string;
   /** "Throw back" was pressed (the snowball back is already sent): start a match in this group. */
   onThrowBack: (from: string) => void;
+  /** Nothing to show, or "later" was pressed (the page may show its next note). */
+  onDone?: () => void;
   /** For the test page: show this instead of asking the server, and send nothing. */
   preview?: { from: string; more: number };
 };
 
 type Shown = { from: string; more: number; me: string };
 
-export function SplatNotice({ group, me, onThrowBack, preview }: SplatNoticeProps) {
+export function SplatNotice({ group, me, onThrowBack, onDone, preview }: SplatNoticeProps) {
   const remembered = useSyncExternalStore(subscribeNickname, readNickname, () => "");
   const who = (me || remembered).trim();
   const [shown, setShown] = useState<Shown | null>(null);
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
-    if (preview || !who) return;
+    if (preview) return;
+    if (!who) {
+      onDone?.();
+      return;
+    }
     let live = true;
     fetchInbox(group, who).then((answer) => {
-      if (!live || !answer.ok || answer.value.hits.length === 0) return;
+      if (!live) return;
+      if (!answer.ok || answer.value.hits.length === 0) return onDone?.();
       const names = [...new Set(answer.value.hits.map((h) => h.from))];
       setShown({ from: names[0], more: names.length - 1, me: who });
     });
     return () => {
       live = false;
     };
+    // onDone is a callback from the page; asking once per group and name is the point.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, who, preview]);
 
   const note = preview ? { ...preview, me: who || "you" } : shown;
@@ -59,6 +68,7 @@ export function SplatNotice({ group, me, onThrowBack, preview }: SplatNoticeProp
       if (back) throwSnowball(group, note.me, note.from);
     }
     if (back) onThrowBack(note.from);
+    else onDone?.();
   };
 
   const look = lookFor(note.me);

@@ -178,6 +178,14 @@ export const TEXT = {
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
   pile: "who's standing on whom",
+  /** "X just passed you" (`OvertakeNotice`). Never mean: a little huff, then a way back. */
+  overtake: {
+    zh: (name: string, by: number) => `${name}刚刚超过你${by}分 😤`,
+    en: (name: string, by: number) => `${name} just passed you by ${by}`,
+    others: (n: number) => `还有${n}人也超过了你 · +${n} other${n === 1 ? "" : "s"}`,
+    revenge: { zh: "复仇", en: "Get them back" },
+    later: "later · 下次吧",
+  },
   /** The funny titles: Chinese on the board, a short English line beside it. Always kind. */
   titles: {
     king: { zh: "雪球大王", en: "king of the snowballs" },

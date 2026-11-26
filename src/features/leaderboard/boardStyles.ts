@@ -22,6 +22,8 @@ export const lb = {
   target: "plop-lb-target",
   splat: "plop-lb-splat",
   splatWobble: "plop-lb-splat-wobble",
+  hopOn: "plop-lb-hop-on",
+  squashed: "plop-lb-squashed",
 } as const;
 
 /** content.ts motion numbers as CSS variables; put them on the sheet. */
@@ -161,11 +163,27 @@ export const boardCss = `
   70% { rotate: -3deg; }
 }
 
+/* "X just passed you": they hop up from the side onto your head (0.4s in), and you get squashed as they land. */
+.plop-lb-hop-on { animation: plop-lb-hop-on 900ms cubic-bezier(0.3, 0.7, 0.4, 1) 0.4s both; }
+@keyframes plop-lb-hop-on {
+  0% { translate: 70px 130px; rotate: 10deg; }
+  45% { translate: 30px -50px; rotate: -6deg; }
+  75% { translate: 0 0; scale: 1.08 0.9; rotate: 0deg; }
+  88% { scale: 0.97 1.04; }
+  100% { translate: 0 0; scale: 1 1; rotate: -3deg; }
+}
+.plop-lb-squashed { transform-origin: 50% 100%; animation: plop-lb-squashed 520ms cubic-bezier(0.34, 1.6, 0.64, 1) 1.05s both; }
+@keyframes plop-lb-squashed {
+  from { scale: 1 1; }
+  40% { scale: 1.16 0.8; }
+  to { scale: 1.08 0.88; }
+}
+
 .plop-lb-input::placeholder { color: color-mix(in oklab, var(--ink) 45%, var(--paper)); }
 .plop-lb-input:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .plop-lb-note, .plop-lb-bob, .plop-lb-row, .plop-lb-crown, .plop-lb-podium, .plop-lb-star,
-  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble { animation: none; }
+  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble, .plop-lb-hop-on, .plop-lb-squashed { animation: none; }
   .plop-lb-squash { transition: none; }
 }
 `;

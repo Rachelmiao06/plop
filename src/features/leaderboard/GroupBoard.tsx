@@ -18,6 +18,7 @@ import { lb } from "./boardStyles";
 import { nameKey } from "./rules";
 import { lookFor, SnowmanPile, type ThrowOutcome } from "./SnowmanPile";
 import { titleFor, type TitleId } from "./titles";
+import { saveSeen, snapshot } from "./overtake";
 
 export type GroupBoardProps = {
   /** The invite group id (`?g=` on the link). */
@@ -42,15 +43,27 @@ export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: Gr
   const viewer = nameKey(myName);
   const [hits, setHits] = useState<Record<string, number>>({});
 
+  /** The board was seen: remember it on this device, so "X just passed you" only tells of changes not seen yet. */
+  const seen = useCallback(
+    (scores: BoardEntry[]) => {
+      const now = myName ? snapshot(scores, myName) : null;
+      if (now) saveSeen(group, now);
+    },
+    [group, myName],
+  );
+
   const load = useCallback(async () => {
     const answer = await fetchBoard(group);
     setState(answer.ok ? { status: "ready", scores: answer.value.scores.slice(0, limit) } : { status: "failed" });
-  }, [group, limit]);
+    if (answer.ok) seen(answer.value.scores);
+  }, [group, limit, seen]);
 
   useEffect(() => {
     let live = true;
     fetchBoard(group).then((answer) => {
-      if (live) setState(answer.ok ? { status: "ready", scores: answer.value.scores.slice(0, limit) } : { status: "failed" });
+      if (!live) return;
+      setState(answer.ok ? { status: "ready", scores: answer.value.scores.slice(0, limit) } : { status: "failed" });
+      if (answer.ok) seen(answer.value.scores);
     });
     fetchHits(group).then((answer) => {
       if (live && answer.ok) setHits(answer.value.today);
@@ -68,7 +81,7 @@ export function GroupBoard({ group, me, limit = BOARD.top, className, hint }: Gr
       off();
       offBall();
     };
-  }, [group, limit, load]);
+  }, [group, limit, load, seen]);
 
   const onThrow = useCallback(
     async (to: BoardEntry): Promise<ThrowOutcome> => {

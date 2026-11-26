@@ -80,6 +80,18 @@ stats>` sends them. The server checks them (`checkStats`: whole numbers a match 
 them to running totals on the player's board line (`supabase/migrations/0004_score_stats.sql`, `submit_score_v2`).
 A submit without numbers (an older game) leaves the totals as they were, so old rows simply have no style title yet.
 
+## "X just passed you" (`OvertakeNotice`, `overtake.ts`, `GroupNotices`)
+
+This device remembers the board as it last saw it, per group (`localStorage` `plop.seen.<group>`: your nickname
+key, your best, everyone's best; nothing is sent). The next time you open the game (start card) or the invite page,
+anyone now above you who was not above you then (new, or at or below your best then) gets a full-screen snowy note:
+their snowman hops onto your head and squashes you, "小雪刚刚超过你3分 😤 · 小雪 just passed you by 3", "+2 others"
+when more did, and a big "复仇 · Get them back" that starts a match in the same group (tracked as `revenge_tapped`
+with only how many others, never names). It is shown once per change: the board as seen now is remembered right
+after the check, and also whenever the board itself is shown (end card, the invite's folded board). `GroupNotices`
+shows "you got hit" first and this one after it, never both at once. `/dev/leaderboard` has preview buttons, and the
+server tester's "simulate being overtaken" rewinds this device's memory so the real check runs.
+
 ## Privacy
 
 Only a **nickname and the match score** (plus the match length, turns / together, how many matches and when) are

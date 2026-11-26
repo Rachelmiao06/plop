@@ -3,6 +3,8 @@
 export { BoardSheet, GroupBoard, type BoardSheetProps, type BoardState, type GroupBoardProps } from "./GroupBoard";
 export { SnowmanPile } from "./SnowmanPile";
 export { SplatNotice, type SplatNoticeProps } from "./SplatNotice";
+export { OvertakeNotice, type OvertakeNoticeProps } from "./OvertakeNotice";
+export { GroupNotices, type GroupNoticesProps } from "./GroupNotices";
 export { SubmitScore, type SubmitScoreProps } from "./SubmitScore";
 export { readNickname } from "./api";
 export type { BoardEntry, Submitted } from "./api";

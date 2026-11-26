@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, INVITE } from "@/features/invite";
-import { GroupBoard, SplatNotice, SubmitScore, teamName } from "@/features/leaderboard";
+import { GroupBoard, GroupNotices, SubmitScore, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
 import { getGroupId } from "@/features/share/group";
@@ -339,9 +339,9 @@ export function Game() {
           onStart={onStart}
         />
       )}
-      {/* Friends threw snowballs at you on the group's board: "砸回去" throws one back and starts a match. */}
+      {/* Returning to the group: "you got hit" ("砸回去") and "X just passed you" ("复仇"), one at a time; either starts a match. */}
       {state.phase === "choosing" && group && (
-        <SplatNotice group={group} me={typed[0] || undefined} onThrowBack={() => last && onStart(last)} />
+        <GroupNotices group={group} me={typed[0] || undefined} onPlay={() => last && onStart(last)} />
       )}
       {state.phase === "over" && (
         <MatchEnd
