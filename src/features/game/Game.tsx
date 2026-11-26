@@ -33,14 +33,14 @@ import { track } from "@/lib/analytics";
 
 import { GAME, TEXT, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
-import { createLink, GameBridge } from "./GameBridge";
+import { applyStall, createLink, GameBridge } from "./GameBridge";
 import { CancelPull, GameHint, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
 import { readNames, saveNames, savePlayerOne, serverNames, shownName, subscribeNames } from "./names";
 import { RuleCard, ruleFor, ruleIcon } from "./RuleCard";
 import { RuleMarker } from "./RuleMarker";
 import { choiceSnapshot, markHowTo, minutesFor, parseChoice, sawHowTo, saveChoice } from "./startChoice";
-import { createGame } from "./rules";
+import { createGame, createWatchdog } from "./rules";
 import { ThrowingView } from "./ThrowingView";
 
 const fallbacks = [GAME.players[0].name, GAME.players[1].name] as const;
@@ -151,6 +151,32 @@ export function Game() {
     if (game.getState().players === 2 && game.getState().mode === "turns" && a === b) playTie();
     else playWin();
   }, [state.phase, game]);
+
+  // The safety net's backup, outside the canvas: if the frame loop stops altogether (a lost WebGL context, a browser
+  // that stopped drawing), the turn and the end card still come. Counts only seconds the page is visible and the canvas
+  // has drawn nothing for `stoppedAfter` (a slow phone still draws, so the net inside the canvas, `GameBridge`, keeps
+  // the time there), and waits `backupTimes` as long.
+  useEffect(() => {
+    const w = GAME.timing.watchdog;
+    const dog = createWatchdog({
+      rolling: w.rolling * w.backupTimes,
+      counted: w.counted * w.backupTimes,
+      passing: w.passing * w.backupTimes,
+      lastCounted: w.lastCounted * w.backupTimes,
+      lastPassing: w.lastPassing * w.backupTimes,
+    });
+    let last = performance.now();
+    const id = window.setInterval(() => {
+      const now = performance.now();
+      // A throttled or sleeping timer counts at most one tick; a hidden page counts nothing.
+      const stopped = now - link.frameAt() > w.stoppedAfter * 1000;
+      const seconds = document.visibilityState === "visible" && stopped ? Math.min((now - last) / 1000, 1) : 0;
+      last = now;
+      const step = dog.tick(game.getState(), seconds);
+      if (step) applyStall(step, game, pins);
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [game, pins, link]);
 
   // Space throws, so it must never also press a button that still has focus (a toggle just tapped).
   useEffect(() => {

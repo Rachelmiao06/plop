@@ -17,6 +17,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      # The match always reaches the end card, every mode and length (scripts/check-match.mjs).
+      - run: npm run check:match
       - run: npm run build
 
   # Builds, starts the production server and fetches every page, the icons and the share card

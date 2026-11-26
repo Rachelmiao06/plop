@@ -210,6 +210,27 @@ export const GAME = {
     hintFade: 0.9,
     /** After the last throw is counted, the end card comes this long after the pins stand again. */
     endCardAfter: 0.4,
+    /**
+     * The safety net (`createWatchdog` in rules.ts): when the game sits in one step longer than this, it moves on by
+     * itself, so nobody is ever left without the next turn or the end card. Seconds of play: time only runs while
+     * frames are drawn (at most `frameCap` per frame), so a tab in the background never trips it and a very slow
+     * phone gets as long as its physics needs. `rolling`: after the last ball of the throw left the hand, the throw is
+     * counted as it lies (the pins' own cap is 12 s). `counted`: the pins never stood again, the turn passes anyway.
+     * `passing`: the hand-over never came. The last throw of the match uses the shorter `lastCounted` and
+     * `lastPassing`: the end card may come while the cards are still popping back. The backup outside the canvas
+     * (`Game.tsx`, for a frame loop that stopped altogether) counts only visible seconds with no frame drawn for
+     * `stoppedAfter` seconds, and waits `backupTimes` as long.
+     */
+    watchdog: {
+      rolling: 14,
+      counted: 10,
+      passing: 2,
+      lastCounted: 4,
+      lastPassing: 1.5,
+      frameCap: 0.1,
+      backupTimes: 2,
+      stoppedAfter: 2,
+    },
   },
 } as const;
 
