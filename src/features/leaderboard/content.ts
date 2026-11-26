@@ -59,65 +59,47 @@ export const BOARD = {
 } as const;
 
 /**
- * The snowman pile (the "stand on top" board): every player is a little snowman from Rachel's thrower cut-outs,
- * and better scores stand higher, on the heads of the ones below. Sizes are shares of a slot's width; seconds,
- * degrees, pixels otherwise.
+ * #1 on top of the ranked list (Rachel's approved design): her "sassy" snowman (hands in pockets, sunglasses,
+ * leaning) on a little snow mound, with the crown and sparkles above, and the "deal with it" moment when the board
+ * opens or someone takes #1: sunglasses drop onto its face, bounce, glint, and it does a smug little lift.
  */
-export const PILE = {
-  /**
-   * How many snowmen stand in each row, top row first, for 1 to 10 players. #1 is always alone on top; a row is
-   * never wider than the one under it, so everyone stands on someone (or on the snow).
-   */
-  rows: [[1], [1, 1], [1, 2], [1, 1, 2], [1, 2, 2], [1, 2, 3], [1, 1, 2, 3], [1, 2, 2, 3], [1, 2, 3, 3], [1, 2, 3, 4]] as const,
-  /** Widest a slot gets (px); on a phone the widest row shares the board's width. */
-  maxSlot: 72,
-  /** The cut-out's width as a share of its slot (the rest is breathing room). */
-  body: 0.92,
-  /** Cut-out height over width (Rachel's thrower art is about 309 × 421 and 323 × 479). */
-  aspect: 1.42,
-  /** A team entry: both snowmen side by side, each this much smaller, overlapping this share of a width. */
-  team: { scale: 0.8, overlap: 0.5 },
-  /** How deep the feet sink into the head below (share of a snowman's height): they stand on the hat. */
-  sink: 0.13,
-  /** Somebody on your head: you get squashed this much, a bit more for every row stacked above that. */
-  squash: { base: 0.12, perRow: 0.04, max: 0.24, widen: 0.5 },
-  /** Each snowman leans a hair, from its name, so the pile looks wobbly rather than stacked by a machine. */
-  lean: 3.5,
-  /** The nickname and score, handwritten on the belly: share of the slot width, and how high up the body (share). */
-  name: { width: 0.96, lift: 0.17 },
-  /** Light depth (Rachel: no boxes, a little 3D feel, not real 3D): a soft shadow under the feet (shares of a slot's
-   * width, blur px) and on the cut-out itself (px). */
-  shadow: { width: 0.72, height: 0.11, blur: 2.5, drop: 2.5 },
-  /** Rachel's far hills behind the pile: height (px), how much of it sits below the bottom row's feet (share, so
-   * they stand on its ground line), and how faint. */
-  hills: { height: 70, ground: 0.1, opacity: 0.7 },
-  /** Today's hits: a clump of snow stuck to the head (share of a slot's width, how high up the body). */
-  stuck: { size: 0.34, lift: 0.7 },
-  /** The crown on #1: share of a slot's width, and how high above the head. */
-  crown: { size: 0.42, lift: 0.1 },
-  /** The viewer's own snowman gets a soft butter glow behind it. */
-  glow: { opacity: 0.55, size: 0.62 },
-  /** Rachel's surprise lines beside a squashed snowman's head (px). */
-  oof: 18,
-  /**
-   * Overtaking: the one going up hops over in an arc and plops onto the one below with a squish and a puff of
-   * snow; the one going down slides to its new place first and is squashed as the other lands.
-   */
-  motion: {
-    /** Seconds for the hop over. */
-    hop: 0.9,
-    /** How high above its new place the climber goes (share of a snowman's height). */
-    hopHeight: 0.55,
-    /** Seconds for the one going down. */
-    slide: 0.5,
-    /** The landing squish: wide and short, then a little stretch, then still. */
-    landSquish: 0.24,
-    land: 0.42,
-    /** New players drop in from this high (share of a snowman's height). */
-    dropFrom: 1.4,
-    /** On first view the pile pops in from the bottom row up, this many seconds per row. */
-    rowStagger: 0.09,
+export const CHAMP = {
+  art: {
+    /** #1's snowman with sunglasses on, matching the player's snowman. Cleaned copies of Rachel's sprites. */
+    sassy: { bucket: "/assets/leaderboard/sassy-bucket.webp", redHat: "/assets/leaderboard/sassy-redhat.webp" },
+    /**
+     * The same pose without sunglasses, shown while they fall. STAND-IN until Rachel's versions arrive: the art with
+     * the glasses drawn on. When they do, point these at the new files and set `bareHasGlasses` to false.
+     */
+    bare: { bucket: "/assets/leaderboard/sassy-bucket.webp", redHat: "/assets/leaderboard/sassy-redhat.webp" },
+    /** The falling sunglasses. STAND-IN: cut from the sassy art (frames and lenses only). Swap for Rachel's file. */
+    glasses: "/assets/leaderboard/sunglasses-standin.webp",
+    /** While `bare` still has glasses drawn on, the falling pair fades out as it lands on the drawn ones. */
+    bareHasGlasses: true,
   },
+  /** Where the sunglasses sit on the sprite (shares of its width and height), and the sprite's height over width. */
+  glassesAt: { left: 0.2, top: 0.3746, width: 0.5692 },
+  aspect: 705 / 440,
+  /** The sprite's width (px), and the snow mound's (share of it). */
+  width: 112,
+  mound: 1.45,
+  /** The idle sway: seconds per loop, degrees. */
+  sway: { loop: 3.4, tilt: 2.5 },
+  /**
+   * The "deal with it" moment, in seconds from the start: the glasses wait, fall (from `from` px above, spinning
+   * `spin` degrees), bounce, then the glint and the smug lift. The jingle follows the same clock.
+   */
+  drop: { delay: 0.3, fall: 0.62, bounce: 0.3, from: 150, spin: 28, glintAt: 1.32, smugAt: 1.45 },
+  /** The cheeky jingle (synthesized, original): how loud (0..1). */
+  jingle: { volume: 0.32 },
+} as const;
+
+/** The ranked list's rows. */
+export const LIST = {
+  /** The avatar's size (px) and its corner radius. */
+  avatar: 34,
+  /** The tiny snow mark for today's hits on the avatar (px). */
+  hitMark: 15,
 } as const;
 
 /**
@@ -166,7 +148,8 @@ export const TITLE_RULES = {
 } as const;
 
 export const TEXT = {
-  title: "our snowy board",
+  title: "雪仗排行榜",
+  titleEn: "our snowy board",
   loading: "warming up the snow…",
   empty: "no scores yet. be the first!",
   failed: "the board is napping. try again in a moment",
@@ -177,7 +160,9 @@ export const TEXT = {
   latest: (n: number) => `last ${n}`,
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
-  pile: "who's standing on whom",
+  champ: "the snowball champion",
+  toPass: (n: number, name: string) => `还差${n}分超过${name} · ${n} to pass ${name}`,
+  onTop: "你是第一！ · you're #1!",
   /** "X just passed you" (`OvertakeNotice`). Never mean: a little huff, then a way back. */
   overtake: {
     zh: (name: string, by: number) => `${name}刚刚超过你${by}分 😤`,

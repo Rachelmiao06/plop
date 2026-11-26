@@ -1,7 +1,8 @@
 // What other features and pages may import from the group leaderboard (client components).
 // The server route uses `rules.ts` and `rateLimit.ts` directly; storage is `src/lib/db.ts`.
 export { BoardSheet, GroupBoard, type BoardSheetProps, type BoardState, type GroupBoardProps } from "./GroupBoard";
-export { SnowmanPile } from "./SnowmanPile";
+export { RankedList } from "./RankedList";
+export { ChampPodium } from "./ChampPodium";
 export { SplatNotice, type SplatNoticeProps } from "./SplatNotice";
 export { OvertakeNotice, type OvertakeNoticeProps } from "./OvertakeNotice";
 export { GroupNotices, type GroupNoticesProps } from "./GroupNotices";

@@ -24,6 +24,13 @@ export const lb = {
   splatWobble: "plop-lb-splat-wobble",
   hopOn: "plop-lb-hop-on",
   squashed: "plop-lb-squashed",
+  sway: "plop-lb-sway",
+  smug: "plop-lb-smug",
+  dropFade: "plop-lb-drop-fade",
+  dropKeep: "plop-lb-drop-keep",
+  glint: "plop-lb-glint",
+  twinkle: "plop-lb-twinkle",
+  rowTap: "plop-lb-row-tap",
 } as const;
 
 /** content.ts motion numbers as CSS variables; put them on the sheet. */
@@ -179,11 +186,67 @@ export const boardCss = `
   to { scale: 1.08 0.88; }
 }
 
+/* #1's sassy snowman: a gentle idle sway on its mound. */
+.plop-lb-sway { animation: plop-lb-sway var(--lb-sway-loop, 3.4s) ease-in-out infinite; }
+@keyframes plop-lb-sway {
+  0%, 100% { rotate: calc(var(--lb-sway-tilt, 2.5deg) * -1); }
+  50% { rotate: var(--lb-sway-tilt, 2.5deg); }
+}
+/* "Deal with it": the sunglasses fall from above, spinning a little, and land with a bounce. Their resting state
+   (no animation, reduced motion) is landed: on the face, or faded onto the drawn ones with the stand-in art. */
+.plop-lb-drop-keep, .plop-lb-drop-fade {
+  transform-origin: 50% 50%;
+  animation: var(--lb-drop-name) var(--lb-drop-fall, 0.92s) linear var(--lb-drop-delay, 0.3s) both;
+}
+.plop-lb-drop-keep { --lb-drop-name: plop-lb-drop-keep; }
+.plop-lb-drop-fade { --lb-drop-name: plop-lb-drop-fade; opacity: 0; }
+@keyframes plop-lb-drop-keep {
+  0% { translate: 0 var(--lb-drop-from, -150px); rotate: var(--lb-drop-spin, 28deg); opacity: 1; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  66% { translate: 0 0; rotate: -4deg; scale: 1.12 0.86; animation-timing-function: ease-out; }
+  80% { translate: 0 -7px; rotate: 2deg; scale: 0.97 1.04; animation-timing-function: ease-in; }
+  92% { translate: 0 0; rotate: 0deg; scale: 1.03 0.97; }
+  100% { translate: 0 0; rotate: 0deg; scale: 1 1; opacity: 1; }
+}
+@keyframes plop-lb-drop-fade {
+  0% { translate: 0 var(--lb-drop-from, -150px); rotate: var(--lb-drop-spin, 28deg); opacity: 1; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  66% { translate: 0 0; rotate: -4deg; scale: 1.12 0.86; opacity: 1; animation-timing-function: ease-out; }
+  80% { translate: 0 -7px; rotate: 2deg; scale: 0.97 1.04; opacity: 1; animation-timing-function: ease-in; }
+  92% { translate: 0 0; rotate: 0deg; scale: 1.03 0.97; opacity: 1; }
+  100% { translate: 0 0; rotate: 0deg; scale: 1 1; opacity: 0; }
+}
+/* The glint on the lens: pops and turns, then is gone. */
+.plop-lb-glint { opacity: 0; animation: plop-lb-glint 520ms ease-out var(--lb-glint-at, 1.3s) both; }
+@keyframes plop-lb-glint {
+  0% { opacity: 0; scale: 0.2; rotate: 0deg; }
+  35% { opacity: 1; scale: 1.25; rotate: 45deg; }
+  100% { opacity: 0; scale: 0.6; rotate: 90deg; }
+}
+/* The smug little lift once the glasses are on (like an eyebrow raise, with the whole head). */
+.plop-lb-smug { animation: plop-lb-smug 700ms ease-in-out var(--lb-smug-at, 1.45s) both; }
+@keyframes plop-lb-smug {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  25% { translate: 0 -6px; rotate: -4deg; }
+  50% { translate: 0 -2px; rotate: 3deg; }
+  75% { translate: 0 -4px; rotate: -1.5deg; }
+}
+/* Sparkles around the crown. */
+.plop-lb-twinkle { animation: plop-lb-twinkle 1.8s ease-in-out infinite both; }
+@keyframes plop-lb-twinkle {
+  0%, 100% { opacity: 0.2; scale: 0.6; rotate: 0deg; }
+  50% { opacity: 1; scale: 1.1; rotate: 30deg; }
+}
+
+/* A friend's row you can tap to throw at: a soft wash on hover, a little press. */
+.plop-lb-row-tap { transition: background-color 160ms ease-out, scale 140ms ease-out; }
+.plop-lb-row-tap:hover { background-color: color-mix(in oklab, var(--snow-shadow) 45%, transparent); }
+.plop-lb-row-tap:active { scale: 0.985; }
+
 .plop-lb-input::placeholder { color: color-mix(in oklab, var(--ink) 45%, var(--paper)); }
 .plop-lb-input:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .plop-lb-note, .plop-lb-bob, .plop-lb-row, .plop-lb-crown, .plop-lb-podium, .plop-lb-star,
-  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble, .plop-lb-hop-on, .plop-lb-squashed { animation: none; }
+  .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble, .plop-lb-hop-on, .plop-lb-squashed,
+  .plop-lb-sway, .plop-lb-smug, .plop-lb-drop-keep, .plop-lb-drop-fade, .plop-lb-glint, .plop-lb-twinkle { animation: none; }
   .plop-lb-squash { transition: none; }
 }
 `;

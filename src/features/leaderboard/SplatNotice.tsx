@@ -13,7 +13,7 @@ import { fetchInbox, markSeen, readNickname, subscribeNickname, throwSnowball } 
 import { lb } from "./boardStyles";
 import { TEXT } from "./content";
 import { PaperSheet } from "./Doodles";
-import { lookFor } from "./SnowmanPile";
+import { lookFor } from "./looks";
 
 const ART = { bucket: "/assets/scenery/thrower-bucket.webp", redHat: "/assets/scenery/thrower-redhat.webp" } as const;
 

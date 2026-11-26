@@ -15,7 +15,7 @@ import { lb } from "./boardStyles";
 import { TEXT } from "./content";
 import { PaperSheet } from "./Doodles";
 import { passedBy, readSeen, saveSeen, snapshot, type Passer } from "./overtake";
-import { lookFor } from "./SnowmanPile";
+import { lookFor } from "./looks";
 
 const ART = { bucket: "/assets/scenery/thrower-bucket.webp", redHat: "/assets/scenery/thrower-redhat.webp" } as const;
 const SHADOW = "drop-shadow(1px 3px 2px color-mix(in oklab, var(--ink) 20%, transparent))";
