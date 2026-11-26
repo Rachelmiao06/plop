@@ -99,8 +99,35 @@ export const content = {
       choose: "change how we play",
       /** Step 2's small heading. */
       board: "put it on the board",
+      /**
+       * One tap to challenge a friend (Rachel: "最好最好是一步就直接可以分享"): the invite link, no sheet. The button is
+       * simple English like Next and Play again (Rachel); the notes in Chinese, because WeChat's menus are.
+       */
+      challenge: "Send to a friend",
+      copied: "链接已复制",
+      copyFailed: "复制地址栏的链接发给朋友吧",
+      wechat: "链接已复制，粘贴发给朋友吧",
+      wechatSmall: "也可以点右上角 ··· 分享",
+      /** How long the "copied" note stays (ms). */
+      copiedFor: 2200,
       points: (n: number) => `${n} points`,
     },
+  },
+
+  /**
+   * The first time the home screen shows after a player's first finished match: a sketchy arrow and a short note
+   * pointing at the round share button (bottom-left). Once only; any tap hides it. No tutorial card (Rachel).
+   */
+  shareHint: {
+    note: "这里可以邀请朋友来挑战",
+    /** localStorage: a match was finished on this device / the hint was shown. */
+    playedKey: "plop.played",
+    seenKey: "plop.shareHint.seen",
+    /** The arrow's box (px) and pencil weight; the note's pop-in and the arrow's nudge (ms); wait before showing (ms). */
+    arrow: { width: 112, height: 86, stroke: 1.9 },
+    popMs: 520,
+    nudgeMs: 1600,
+    delay: 450,
   },
 
   /** Token colour per snowman look: the bar fills with the active player's colour. */

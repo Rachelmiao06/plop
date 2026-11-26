@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
-import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
+import { HowToCard, MatchEnd, rememberPlayed, ScoreHud, ShareHint, StartFlow, type Challenge, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, cleanWager, INVITE, wagerFor } from "@/features/invite";
 import { GroupBoard, GroupNotices, SubmitScore, SubmitScores, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
@@ -145,6 +145,8 @@ export function Game() {
   // The end card: a little jingle for a winner (or a new best alone), a gentle ding-dong for a tie.
   useEffect(() => {
     if (state.phase !== "over") return;
+    // The home screen's one-time share hint waits for a finished match.
+    rememberPlayed();
     const [a, b] = game.getState().scores;
     // No names: the length, the mode and how many played.
     track("match_end", { rounds: game.getState().rounds, mode: game.getState().mode, players: game.getState().players });
@@ -236,6 +238,14 @@ export function Game() {
   // (alone, against the inviter's score; two on one phone, the lower total). A team has no loser, so no effect.
   const stake = state.phase === "over" && !together && (!solo || rival) ? wagerFor(invite.wager) : null;
   const wager = stake ? { emoji: stake.emoji } : null;
+  // "Send to a friend" on the end card, signed by whoever won: alone, you (your score); two on one phone, the winner (a tie:
+  // player one); a team, player one with no score (a team's total is not one person's). The invite's wager carries on.
+  const challenge: Challenge | null = (() => {
+    if (state.phase !== "over") return null;
+    if (together) return { name: names[0], score: null, wager: invite.wager };
+    const w = !solo && state.scores[1] > state.scores[0] ? 1 : 0;
+    return { name: names[w], score: state.scores[w], wager: invite.wager };
+  })();
   const rule = state.phase === "playing" ? ruleFor(game.setFor(state.round)) : null;
 
   return (
@@ -339,6 +349,8 @@ export function Game() {
         />
       )}
       {/* Returning to the group: "you got hit" ("砸回去") and "X just passed you" ("复仇"), one at a time; either starts a match. */}
+      {/* After the first finished match, once: a sketchy arrow at the share button (no tutorial card). */}
+      {state.phase === "choosing" && <ShareHint />}
       {state.phase === "choosing" && group && (
         <GroupNotices group={group} me={typed[0] || undefined} onPlay={() => last && onStart(last)} />
       )}
@@ -353,6 +365,7 @@ export function Game() {
           team={together}
           rival={!!rival}
           wager={wager}
+          challenge={challenge}
           onAgain={() => begin(state.rounds, state.players, true)}
           onChoose={() => {
             setRechoose(true);
