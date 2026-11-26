@@ -119,7 +119,8 @@ export const content = {
    * pointing at the round share button (bottom-left). Once only; any tap hides it. No tutorial card (Rachel).
    */
   shareHint: {
-    note: "这里可以邀请朋友来挑战",
+    /** English, floating next to the arrow with no box (Rachel: "invite your friend", 不要方框, floating). */
+    note: "invite your friend",
     /** localStorage: a match was finished on this device / the hint was shown. */
     playedKey: "plop.played",
     seenKey: "plop.shareHint.seen",

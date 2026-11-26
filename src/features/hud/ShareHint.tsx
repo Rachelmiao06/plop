@@ -2,14 +2,14 @@
 
 /**
  * The first time the home screen shows after a player's first finished match: a sketchy hand-drawn arrow and a
- * short paper note pointing at the round share button in the bottom-left corner ("这里可以邀请朋友来挑战"). No
- * tutorial card (Rachel). It shows once (remembered on this device) and any tap hides it; the tap still reaches what
+ * few handwritten words floating beside it, "invite your friend", pointing at the round share button in the
+ * bottom-left corner. No box behind the words, no tutorial card (Rachel): only a soft paper-white halo, so they read
+ * on the snow. It shows once (remembered on this device) and any tap hides it; the tap still reaches what
  * was tapped, the share button included. Reduced motion: drawn still. Words and numbers: `content.shareHint`.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { content } from "./content";
-import { PaperFill, PencilFrame } from "./Doodles";
 import { hudCss, styles } from "./hudStyles";
 import { pencilCurveStrokes } from "./pencil";
 
@@ -86,14 +86,18 @@ export function ShareHint() {
           <path key={i} d={s.d} fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={s.width} opacity={s.opacity} />
         ))}
       </svg>
+      {/* Just the words, doodled onto the scene: no card, border or background, a paper-white halo to read on snow. */}
       <p
         role="status"
-        className={`absolute bottom-full isolate whitespace-nowrap rounded-2xl bg-paper px-4 py-2 font-heading text-xl leading-tight text-ink-deep ${styles.hint}`}
-        style={{ left: W - 18, marginBottom: -H * 0.12 }}
+        className={`absolute bottom-full whitespace-nowrap font-heading text-2xl leading-tight font-bold text-ink-deep ${styles.hint}`}
+        style={{
+          left: W - 14,
+          marginBottom: -H * 0.18,
+          textShadow:
+            "0 0 2px var(--paper), 0 0 4px var(--paper), 0 0 8px var(--paper), 0 0 14px color-mix(in oklab, var(--paper) 70%, transparent)",
+        }}
       >
-        <PaperFill seed={71} />
-        <PencilFrame seed={73} radius={16} overshoot={6} />
-        <span className="relative">{h.note}</span>
+        {h.note}
       </p>
     </div>
   );
