@@ -107,7 +107,7 @@ export type MatchEndProps = {
    * loser's head after the snowballs (a tie: between the two). Only when there are two sides.
    */
   wager?: { emoji: string } | null;
-  /** Step 1's big "发给朋友来挑战": who signs the challenge, their score, the wager (the game decides). */
+  /** Step 1's big "Send to a friend": who signs the challenge, their score, the wager (the game decides). */
   challenge?: Challenge | null;
   /** Team up: one team total, both snowmen crowned, no winner. */
   team?: boolean;

@@ -100,10 +100,10 @@ export const content = {
       /** Step 2's small heading. */
       board: "put it on the board",
       /**
-       * One tap to challenge a friend (Rachel: "最好最好是一步就直接可以分享"): the invite link, no sheet. Chinese, the
-       * invite's fun is in Chinese; the WeChat lines in Chinese because its menus are.
+       * One tap to challenge a friend (Rachel: "最好最好是一步就直接可以分享"): the invite link, no sheet. The button is
+       * simple English like Next and Play again (Rachel); the notes in Chinese, because WeChat's menus are.
        */
-      challenge: "发给朋友来挑战",
+      challenge: "Send to a friend",
       copied: "链接已复制",
       copyFailed: "复制地址栏的链接发给朋友吧",
       wechat: "链接已复制，粘贴发给朋友吧",

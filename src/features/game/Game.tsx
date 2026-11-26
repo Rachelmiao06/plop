@@ -238,7 +238,7 @@ export function Game() {
   // (alone, against the inviter's score; two on one phone, the lower total). A team has no loser, so no effect.
   const stake = state.phase === "over" && !together && (!solo || rival) ? wagerFor(invite.wager) : null;
   const wager = stake ? { emoji: stake.emoji } : null;
-  // "发给朋友来挑战" on the end card, signed by whoever won: alone, you (your score); two on one phone, the winner (a tie:
+  // "Send to a friend" on the end card, signed by whoever won: alone, you (your score); two on one phone, the winner (a tie:
   // player one); a team, player one with no score (a team's total is not one person's). The invite's wager carries on.
   const challenge: Challenge | null = (() => {
     if (state.phase !== "over") return null;

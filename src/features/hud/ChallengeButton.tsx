@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * "发给朋友来挑战" on the end card: one tap shares a challenge, no sheet and no form (Rachel: "最好最好是一步就直接可以分享").
+ * "Send to a friend" on the end card: one tap shares a challenge, no sheet and no form (Rachel: "最好最好是一步就直接可以分享").
  * The link is the invite card's (`/invite?g=<group>&from=<name>&score=<n>&w=<wager>`), made with the share and invite
  * features' own helpers: this device's group (`ensureGroupId`, so the friend lands on the same board), the name and
  * score the game passes (a two-player match: the winner), and the invite's wager if the match came from one.
