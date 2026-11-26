@@ -162,7 +162,7 @@ export function HaloDoodle({ seed = 1 }: { seed?: number }) {
  * Head and hat of Rachel's thrower cut-out (`public/assets/scenery/thrower-*.webp`), cropped square. Crop boxes
  * are in the source image's pixels: x, y, side, then the full image size.
  */
-const FACE_ART: Record<SnowmanLook, { src: string; x: number; y: number; side: number; w: number; h: number }> = {
+export const FACE_ART: Record<SnowmanLook, { src: string; x: number; y: number; side: number; w: number; h: number }> = {
   bucket: { src: "/assets/scenery/thrower-bucket.webp", x: 22, y: 0, side: 270, w: 309, h: 421 },
   redHat: { src: "/assets/scenery/thrower-redhat.webp", x: 32, y: 8, side: 260, w: 323, h: 479 },
 };
