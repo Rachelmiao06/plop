@@ -211,7 +211,6 @@ export function BoardSheet({ state, viewer, className, hits, onThrow, hint = tru
     <PaperSheet label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
       <h2 className="mb-1 text-center leading-tight">
         <span className="block font-heading text-2xl font-bold text-ink-deep">{TEXT.title}</span>
-        <span className="block font-heading text-sm opacity-70">{TEXT.titleEn}</span>
       </h2>
 
       {state.status === "loading" && <p className="py-4 text-center font-heading text-lg opacity-75">{TEXT.loading}</p>}
@@ -224,7 +223,7 @@ export function BoardSheet({ state, viewer, className, hits, onThrow, hint = tru
           <ChampPodium key={nameKey(top.name)} entry={top} title={titles[nameKey(top.name)]} me={nameKey(top.name) === viewer} />
           {hint && onThrow && viewer && scores.length > 1 && (
             <p className="mt-2 mb-1 text-center font-heading text-sm leading-tight opacity-75">
-              {TEXT.snowball.hintZh} · {TEXT.snowball.hint}
+              {TEXT.snowball.hint}
               {onReact && <span className="block text-xs">{TEXT.reactions.hint}</span>}
             </p>
           )}

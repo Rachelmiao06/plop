@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, cleanWager, INVITE, wagerResult } from "@/features/invite";
-import { GroupBoard, GroupNotices, SubmitScore, teamName } from "@/features/leaderboard";
+import { GroupBoard, GroupNotices, SubmitScore, SubmitScores, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
 import { getGroupId } from "@/features/share/group";
@@ -313,7 +313,7 @@ export function Game() {
         onHelp={state.phase === "playing" ? () => setHelp(true) : undefined}
         rule={
           rule
-            ? { icon: ruleIcon(rule), words: `${rule.words.chip.zh} · ${rule.words.chip.en}`, label: `${rule.words.big.en}: ${rule.words.line.en(rule.points)}` }
+            ? { icon: ruleIcon(rule), words: rule.words.chip, label: `${rule.words.big}: ${rule.words.line(rule.points)}` }
             : null
         }
       />
@@ -341,7 +341,7 @@ export function Game() {
           fallbacks={fallbacks}
           nameMax={INVITE.link.nameMax}
           onNames={(next) => saveNames(next)}
-          greeting={invite.name ? { zh: TEXT.waiting.zh(invite.name), en: TEXT.waiting.en(invite.name) } : null}
+          greeting={invite.name ? TEXT.waiting(invite.name) : null}
           onMode={onMode}
           onStart={onStart}
         />
@@ -382,8 +382,8 @@ export function Game() {
                   remember={false}
                 />
               ) : (
-                <>
-                  {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
+                solo ? (
+                  // Alone: one prompt, under the name from the start card (one tap).
                   <SubmitScore
                     group={group}
                     score={state.scores[0]}
@@ -393,18 +393,19 @@ export function Game() {
                     defaultName={typed[0] || undefined}
                     onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
                   />
-                  {!solo && (
-                    <SubmitScore
-                      group={group}
-                      score={state.scores[1]}
-                      rounds={state.rounds}
-                      mode={state.mode}
-                      stats={stats.of(1)}
-                      defaultName={typed[1] || undefined}
-                      remember={false}
-                    />
-                  )}
-                </>
+                ) : (
+                  // Taking turns: ONE prompt with a row per player (their face, their start-card name, their score).
+                  <SubmitScores
+                    group={group}
+                    rounds={state.rounds}
+                    mode={state.mode}
+                    players={[
+                      { ...players[0], score: state.scores[0], stats: stats.of(0) },
+                      { ...players[1], score: state.scores[1], stats: stats.of(1) },
+                    ]}
+                    onSubmitted={([r]) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
+                  />
+                )
               )}
               <GroupBoard group={group} me={together ? teamName(names[0], names[1]) : typed[0] || undefined} limit={GAME.board.limit} />
             </>

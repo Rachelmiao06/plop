@@ -99,8 +99,8 @@ export type MatchEndProps = {
   bestThrow?: { name: string; points: number; round: number } | null;
   /** Alone after a friend's invite: their score, for one kind line. */
   rival?: { name: string; score: number } | null;
-  /** The invite's preset wager, settled: "小美要请喝热可可啦 ☕" (or the tie line). Made by the game. */
-  wager?: { zh: string; en: string } | null;
+  /** The invite's preset wager, settled: "小美要请喝热可可啦 ☕" (or the tie line), in Chinese. Made by the game. */
+  wager?: string | null;
   /** Team up: one team total, both snowmen crowned, no winner. */
   team?: boolean;
   /** The match's rounds, for the share poster (it falls back to last time's start choice). */
@@ -168,8 +168,7 @@ export function MatchEnd({ players, solo, bestThrow, rival, wager, team, rounds,
         )}
         {wager && (
           <p className="mt-2 font-heading text-lg leading-tight text-ink-deep">
-            <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{wager.zh}</span>
-            <span className="mt-0.5 block font-sans text-xs opacity-75">{wager.en}</span>
+            <span className="underline decoration-berry decoration-wavy decoration-1 underline-offset-[6px]">{wager}</span>
           </p>
         )}
         {bestThrow && <p className="mt-1 font-heading text-base leading-tight opacity-80">{t.end.bestThrow(bestThrow.name, bestThrow.points, bestThrow.round)}</p>}

@@ -8,6 +8,7 @@ export { OvertakeNotice, type OvertakeNoticeProps } from "./OvertakeNotice";
 export { GroupNotices, type GroupNoticesProps } from "./GroupNotices";
 export { ReactionNotice, type ReactionNoticeProps } from "./ReactionNotice";
 export { SubmitScore, type SubmitScoreProps } from "./SubmitScore";
+export { SubmitScores, type SubmitPlayer, type SubmitScoresProps } from "./SubmitScores";
 export { readNickname } from "./api";
 export type { BoardEntry, Submitted } from "./api";
 export type { MatchMode, Rounds } from "./rules";

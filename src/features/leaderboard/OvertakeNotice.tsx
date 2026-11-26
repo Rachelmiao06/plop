@@ -115,8 +115,7 @@ export function OvertakeNotice({ group, me, onRevenge, onDone, preview }: Overta
             </div>
           </div>
           <h2 id="plop-overtake-title" className="text-balance">
-            <span className="block font-heading text-2xl leading-tight font-bold text-ink-deep">{t.zh(top.name, top.by)}</span>
-            <span className="mt-0.5 block font-sans text-xs opacity-80">{t.en(top.name, top.by)}</span>
+            <span className="block font-heading text-2xl leading-tight font-bold text-ink-deep">{t.line(top.name, top.by)}</span>
             {others > 0 && <span className="mt-1 block font-heading text-base text-ink">{t.others(others)}</span>}
           </h2>
           <Button
@@ -125,8 +124,7 @@ export function OvertakeNotice({ group, me, onRevenge, onDone, preview }: Overta
             className="mt-1 h-auto w-full flex-col gap-0 rounded-full bg-berry py-2 font-heading text-ink-deep hover:bg-berry/85"
             autoFocus
           >
-            <span className="text-3xl leading-tight font-bold">{t.revenge.zh}</span>
-            <span className="font-sans text-xs opacity-80">{t.revenge.en}</span>
+            <span className="text-3xl leading-tight font-bold">{t.revenge}</span>
           </Button>
           <button type="button" onClick={() => close(false)} className="font-sans text-xs text-ink underline decoration-dotted underline-offset-4 opacity-70">
             {t.later}

@@ -48,11 +48,11 @@ export function wagerFor(code: unknown): Wager | null {
  * The end card's wager line once the match is over: who lost and what they owe ("小美要请喝热可可啦 ☕"), or the tie
  * line. `loser` null: a tie. Never mean; it only names the loser with the preset line.
  */
-export function wagerResult(code: unknown, loser: string | null): { zh: string; en: string } | null {
+export function wagerResult(code: unknown, loser: string | null): string | null {
   const w = wagerFor(code);
   if (!w) return null;
-  if (!loser) return { zh: `${INVITE.wagers.tie.zh} · ${w.zh}`, en: INVITE.wagers.tie.en };
-  return { zh: `${loser} ${w.loserZh} ${w.emoji}`, en: `${loser} ${w.loserEn}` };
+  if (!loser) return INVITE.wagers.tie;
+  return `${loser} ${w.loserZh} ${w.emoji}`;
 }
 
 /** Reads the page's search params (Next.js hands them over as string | string[] | undefined). */

@@ -224,8 +224,7 @@ export async function drawPoster(data: PosterData): Promise<HTMLCanvasElement> {
     standee(ctx, looks[p1.look], cx - 40, ground, 450);
     art(ctx, penguin, 815, ground - 70, 270, -4);
     const line = t.solo(p1.name, p1.total);
-    text(ctx, line.zh, cx, 840, 96, { family, color: colors.inkDeep, bold: true });
-    text(ctx, line.en, cx, 905, 54, { family, color: colors.ink });
+    text(ctx, line, cx, 860, 96, { family, color: colors.inkDeep, bold: true });
   } else {
     const ground = 690;
     const xs = [cx - 235, cx + 235];
@@ -240,27 +239,24 @@ export async function drawPoster(data: PosterData): Promise<HTMLCanvasElement> {
         text(ctx, String(p.total), xs[i], 850, 120, { family, color: colors.inkDeep, bold: true });
       });
       const head = winner === null ? t.tie : t.wins([p1, p2][winner].name);
-      text(ctx, `${head.zh} · ${head.en}`, cx, 928, 58, { family, color: colors.berryDeep, bold: true });
+      text(ctx, head, cx, 928, 64, { family, color: colors.berryDeep, bold: true });
     } else {
       art(ctx, star, xs[0] + 150, ground - 300, 80, -10);
       art(ctx, star, xs[1] + 150, ground - 300, 80, 12);
       const line = t.team(p1.name, p2.name, p1.total + p2.total);
-      text(ctx, line.zh, cx, 815, 88, { family, color: colors.inkDeep, bold: true });
-      text(ctx, line.en, cx, 885, 54, { family, color: colors.ink });
+      text(ctx, line, cx, 840, 88, { family, color: colors.inkDeep, bold: true });
     }
   }
 
   // The invite line.
-  text(ctx, t.invite.zh, cx, 1032, 66, { family, color: colors.inkDeep });
-  text(ctx, t.invite.en, cx, 1082, 46, { family, color: colors.ink });
+  text(ctx, t.invite, cx, 1050, 66, { family, color: colors.inkDeep });
 
   // Bottom row: the QR code on the left; "scan to play", rounds and date, and a snow puff on the right.
   const q = 260;
   qr(ctx, data.url, 120, 1120, q, colors);
   const rx = 120 + q + (W - 120 - q - 120) / 2 + 20;
-  text(ctx, t.scan.zh, rx, 1185, 60, { family, color: colors.inkDeep, max: 480 });
-  text(ctx, t.scan.en, rx, 1235, 44, { family, color: colors.ink, max: 480 });
-  text(ctx, t.meta(data.rounds, data.date), rx, 1285, 38, { family, color: colors.ink, max: 480 });
+  text(ctx, t.scan, rx, 1200, 60, { family, color: colors.inkDeep, max: 480 });
+  text(ctx, t.meta(data.rounds, data.date), rx, 1265, 38, { family, color: colors.ink, max: 480 });
   art(ctx, puff, rx + 120, 1338, 110, 8);
 
   return canvas;

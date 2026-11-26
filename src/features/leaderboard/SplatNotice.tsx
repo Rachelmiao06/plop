@@ -118,8 +118,7 @@ export function SplatNotice({ group, me, onThrowBack, onDone, preview }: SplatNo
             </div>
           </div>
           <h2 id="plop-splat-title" className="text-balance">
-            <span className="block font-heading text-2xl leading-tight font-bold text-ink-deep">{TEXT.snowball.gotYouZh(note.from, note.more)}</span>
-            <span className="mt-0.5 block font-sans text-xs opacity-80">{TEXT.snowball.gotYouEn(note.from, note.more)}</span>
+            <span className="block font-heading text-2xl leading-tight font-bold text-ink-deep">{TEXT.snowball.gotYou(note.from, note.more)}</span>
           </h2>
           <Button
             size="lg"
@@ -127,8 +126,7 @@ export function SplatNotice({ group, me, onThrowBack, onDone, preview }: SplatNo
             className="mt-1 h-auto w-full flex-col gap-0 rounded-full bg-berry py-2 font-heading text-ink-deep hover:bg-berry/85"
             autoFocus
           >
-            <span className="text-3xl leading-tight font-bold">{TEXT.snowball.back.zh}</span>
-            <span className="font-sans text-xs opacity-80">{TEXT.snowball.back.en}</span>
+            <span className="text-3xl leading-tight font-bold">{TEXT.snowball.back}</span>
           </Button>
           <button type="button" onClick={() => close(false)} className="font-sans text-xs text-ink underline decoration-dotted underline-offset-4 opacity-70">
             {TEXT.snowball.later}
