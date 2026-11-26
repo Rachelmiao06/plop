@@ -5,26 +5,23 @@
  * wobbly-line maths, the paper and the faces come from the score display (`@/features/hud`), so both look alike.
  */
 import { useMemo, type CSSProperties, type ReactNode } from "react";
-import { CrownDoodle, PaperFill, PencilFrame } from "@/features/hud/Doodles";
+import { CrownDoodle } from "@/features/hud/Doodles";
 import { pencilCircle } from "@/features/hud/pencil";
 import { boardCss, lb, motionVars } from "./boardStyles";
 import { BOARD } from "./content";
 
 const stroke = { stroke: "var(--ink)", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-/** A sheet of paper with a pencil edge: the board and the nickname prompt sit on one. */
-export function PaperSheet({ seed, children, className = "", label }: { seed: number; children: ReactNode; className?: string; label?: string }) {
+/**
+ * Where the board and the nickname prompt sit: no box (Rachel: boxes inside boxes look heavy and cheap), just the
+ * page or card behind them, with the board's styles and motion settings. `seed` is kept for callers.
+ */
+export function PaperSheet({ children, className = "", label }: { seed?: number; children: ReactNode; className?: string; label?: string }) {
   return (
-    <section
-      aria-label={label}
-      className={`relative isolate rounded-[calc(var(--radius)*1.4)] bg-paper/90 px-4 pt-3 pb-4 text-ink ${className}`}
-      style={{ boxShadow: "0 6px 18px -10px color-mix(in oklab, var(--snow-shadow) 90%, var(--ink))", ...motionVars() }}
-    >
+    <section aria-label={label} className={`relative isolate px-1 pt-1 pb-2 text-ink ${className}`} style={motionVars()}>
       <style href="plop-leaderboard" precedence="default">
         {boardCss}
       </style>
-      <PaperFill seed={seed} />
-      <PencilFrame seed={seed} radius={24} />
       {children}
     </section>
   );

@@ -40,6 +40,8 @@ export const INVITE = {
     inviteNoName: { zh: "有人邀请你来打一局雪仗 ❄️", en: "Someone invites you to a snowball fight" },
     score: { zh: "TA 打了 {score} 分，你能赢吗？", en: "They scored {score}. Can you beat it?" },
     play: { zh: "接受挑战", en: "Play" },
+    /** Under the play button: opens the group's board (kept off the first screen: one action there). */
+    board: { zh: "看看这场雪仗", en: "see the board", hide: "收起" },
     /** Under the loading strip while the snowball rolls. */
     loading: { zh: "雪球滚过来啦…", en: "a snowball is rolling your way…" },
     /** Shown to the sender after making an invite inside WeChat. */
