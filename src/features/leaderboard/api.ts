@@ -15,11 +15,25 @@ export type BoardEntry = {
   latest: number;
   latestRounds: Rounds;
   plays: number;
+  /** Running play-style totals for the funny titles (left out by an older server). */
+  stats?: PlayStats;
+};
+
+export type PlayStats = {
+  fullClears: number;
+  bestStreak: number;
+  bumps: number;
+  stars: number;
+  throws: number;
+  fullPower: number;
+  dryMatches: number;
+  matches: number;
 };
 
 export type Backend = "supabase" | "demo";
 
-export type Submitted = { backend: Backend; entry: BoardEntry; rank: number; improved: boolean };
+/** `players`: how many lines the group's board has now. */
+export type Submitted = { backend: Backend; entry: BoardEntry; rank: number; improved: boolean; players?: number };
 
 /** Either the answer, or one of the error codes in `TEXT.errors`. */
 export type Answer<T> = { ok: true; value: T } | { ok: false; error: string; status: number };

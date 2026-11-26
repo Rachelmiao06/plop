@@ -145,6 +145,26 @@ export const SNOWBALL = {
   waitNote: 2.2,
 } as const;
 
+/** When a funny title fits (see `titles.ts` for the order). Matches and throws count only games that sent numbers. */
+export const TITLE_RULES = {
+  /** 雪球大王 needs at least this many on the board (alone you are not a king of anything). */
+  kingMinPlayers: 2,
+  /** 保龄球之神: this many full clears in a row in one match. */
+  godStreak: 2,
+  /** 兔子杀手: friends (the bunny, the sleepy cat) knocked over, in all. */
+  bunnyBumps: 3,
+  /** 大力出奇迹: every throw at full pull, over at least this many throws. */
+  powerMinThrows: 5,
+  /** 星星收集家: star cards down, in all. */
+  stars: 3,
+  /** 温柔的人: this many matches in a row without a full clear. */
+  gentleMatches: 3,
+  /** 雪地小可怜: last on a board of at least this many. */
+  lastMinPlayers: 3,
+  /** 雪地常客: matches played. */
+  regularPlays: 8,
+} as const;
+
 export const TEXT = {
   title: "our snowy board",
   loading: "warming up the snow…",
@@ -158,6 +178,19 @@ export const TEXT = {
   you: "you",
   youAre: (rank: number) => (rank === 1 ? "you're #1! ✿" : `you're #${rank}!`),
   pile: "who's standing on whom",
+  /** The funny titles: Chinese on the board, a short English line beside it. Always kind. */
+  titles: {
+    king: { zh: "雪球大王", en: "king of the snowballs" },
+    bowlingGod: { zh: "保龄球之神", en: "two full clears in a row!" },
+    bunnyBane: { zh: "兔子杀手", en: "sorry, bunny (×3)" },
+    bigPower: { zh: "大力出奇迹", en: "every throw at full power" },
+    starCatcher: { zh: "星星收集家", en: "loves the star friends" },
+    gentle: { zh: "温柔的人", en: "too kind to clear them all" },
+    littleOne: { zh: "雪地小可怜", en: "cheer up, little snowman" },
+    newBest: { zh: "刚刚破纪录", en: "just beat their best" },
+    regular: { zh: "雪地常客", en: "always out in the snow" },
+    newcomer: { zh: "新来的小雪人", en: "just rolled in" },
+  },
   snowball: {
     hint: "tap a friend to throw ❄",
     hintZh: "点朋友扔个雪球",
@@ -193,6 +226,7 @@ export const TEXT = {
     bad_score: "that score can't happen in this match",
     bad_rounds: "a match is 3 or 5 rounds",
     bad_mode: "a match is turns, together or a team",
+    bad_stats: "those match numbers look off. try again?",
     rate_limited: "slow down a little, snow takes time ✿",
     server: "the board is napping. try again in a moment",
   } as Record<string, string>,

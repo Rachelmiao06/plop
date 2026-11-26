@@ -21,7 +21,26 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type MatchMode = "turns" | "together" | "team";
 
-export type ScoreInput = { group: string; name: string; score: number; rounds: 3 | 5; mode: MatchMode };
+/** A match's play-style numbers (checked by `checkStats` in the leaderboard rules). */
+export type MatchStatsInput = { clears: number; streak: number; bumps: number; stars: number; throws: number; fullPower: number };
+
+export type ScoreInput = { group: string; name: string; score: number; rounds: 3 | 5; mode: MatchMode; stats?: MatchStatsInput };
+
+/** Running totals of play style for one line on a board (for the funny titles; supabase/migrations/0004). */
+export type PlayStats = {
+  fullClears: number;
+  bestStreak: number;
+  bumps: number;
+  stars: number;
+  throws: number;
+  fullPower: number;
+  /** Matches in a row without a full clear (only matches that sent numbers count). */
+  dryMatches: number;
+  /** Matches that sent play-style numbers. */
+  matches: number;
+};
+
+const NO_STATS: PlayStats = { fullClears: 0, bestStreak: 0, bumps: 0, stars: 0, throws: 0, fullPower: 0, dryMatches: 0, matches: 0 };
 
 /** One person's line on a group's board: their best match on top, and their latest one. */
 export type BoardEntry = {
@@ -32,9 +51,11 @@ export type BoardEntry = {
   latest: number;
   latestRounds: 3 | 5;
   plays: number;
+  stats: PlayStats;
 };
 
-export type SubmitResult = { entry: BoardEntry; rank: number; improved: boolean };
+/** `players`: how many lines the group's board has now (so the end card knows who is last). */
+export type SubmitResult = { entry: BoardEntry; rank: number; improved: boolean; players: number };
 
 export type Backend = "supabase" | "demo";
 
@@ -62,9 +83,18 @@ type Row = {
   latest_score: number;
   latest_rounds: 3 | 5;
   plays: number;
+  full_clears?: number;
+  best_streak?: number;
+  friend_bumps?: number;
+  star_hits?: number;
+  throws?: number;
+  full_power_throws?: number;
+  dry_matches?: number;
+  stats_matches?: number;
 };
 
-const COLUMNS = "name, best_score, best_rounds, best_mode, latest_score, latest_rounds, plays";
+const COLUMNS =
+  "name, best_score, best_rounds, best_mode, latest_score, latest_rounds, plays, full_clears, best_streak, friend_bumps, star_hits, throws, full_power_throws, dry_matches, stats_matches";
 
 const toEntry = (r: Row): BoardEntry => ({
   name: r.name,
@@ -74,6 +104,16 @@ const toEntry = (r: Row): BoardEntry => ({
   latest: r.latest_score,
   latestRounds: r.latest_rounds,
   plays: r.plays,
+  stats: {
+    fullClears: r.full_clears ?? 0,
+    bestStreak: r.best_streak ?? 0,
+    bumps: r.friend_bumps ?? 0,
+    stars: r.star_hits ?? 0,
+    throws: r.throws ?? 0,
+    fullPower: r.full_power_throws ?? 0,
+    dryMatches: r.dry_matches ?? 0,
+    matches: r.stats_matches ?? 0,
+  },
 });
 
 let client: SupabaseClient | null = null;
@@ -87,16 +127,24 @@ function supabase() {
 
 async function supabaseSubmit(input: ScoreInput): Promise<SubmitResult> {
   const db = supabase();
-  // One atomic upsert in the database (supabase/migrations/0001_scores.sql): keeps the best, replaces the latest.
-  const { data, error } = await db.rpc("submit_score", {
+  // One atomic upsert in the database (supabase/migrations/0001_scores.sql): keeps the best, replaces the latest; and
+  // adds the match's play-style numbers to the totals when it sent them (0004_score_stats.sql).
+  const st = input.stats;
+  const { data, error } = await db.rpc("submit_score_v2", {
     p_group: input.group,
     p_name: input.name,
     p_name_key: keyOf(input.name),
     p_score: input.score,
     p_rounds: input.rounds,
     p_mode: input.mode,
+    p_clears: st?.clears ?? null,
+    p_streak: st?.streak ?? null,
+    p_bumps: st?.bumps ?? null,
+    p_stars: st?.stars ?? null,
+    p_throws: st?.throws ?? null,
+    p_full_power: st?.fullPower ?? null,
   });
-  if (error) throw new Error(`submit_score failed: ${error.message}`);
+  if (error) throw new Error(`submit_score_v2 failed: ${error.message}`);
   const row = (Array.isArray(data) ? data[0] : data) as Row & { improved: boolean; best_at: string };
   const { count, error: rankError } = await db
     .from("scores")
@@ -104,7 +152,12 @@ async function supabaseSubmit(input: ScoreInput): Promise<SubmitResult> {
     .eq("group_id", input.group)
     .or(`best_score.gt.${row.best_score},and(best_score.eq.${row.best_score},best_at.lt."${row.best_at}")`);
   if (rankError) throw new Error(`rank failed: ${rankError.message}`);
-  return { entry: toEntry(row), rank: (count ?? 0) + 1, improved: row.improved };
+  const { count: players, error: countError } = await db
+    .from("scores")
+    .select("id", { count: "exact", head: true })
+    .eq("group_id", input.group);
+  if (countError) throw new Error(`players failed: ${countError.message}`);
+  return { entry: toEntry(row), rank: (count ?? 0) + 1, improved: row.improved, players: players ?? 1 };
 }
 
 async function supabaseTop(group: string, limit: number): Promise<BoardEntry[]> {
@@ -173,13 +226,14 @@ async function demoSubmit(input: ScoreInput): Promise<SubmitResult> {
     latest: input.score,
     latestRounds: input.rounds,
     plays: (old?.plays ?? 0) + 1,
+    stats: addStats(old?.stats ?? NO_STATS, input.stats),
     updatedAt: now,
   };
   board[key] = entry;
   trim(store, input.group);
   save(store);
   const rank = sortDemo(Object.values(board)).indexOf(entry) + 1;
-  return { entry: strip(entry), rank, improved };
+  return { entry: strip(entry), rank, improved, players: Object.keys(board).length };
 }
 
 async function demoTop(group: string, limit: number): Promise<BoardEntry[]> {
@@ -188,7 +242,22 @@ async function demoTop(group: string, limit: number): Promise<BoardEntry[]> {
 
 function strip(e: DemoEntry): BoardEntry {
   const { name, best, bestRounds, bestMode, latest, latestRounds, plays } = e;
-  return { name, best, bestRounds, bestMode, latest, latestRounds, plays };
+  return { name, best, bestRounds, bestMode, latest, latestRounds, plays, stats: e.stats ?? NO_STATS };
+}
+
+/** The demo store's version of what submit_score_v2 does with a match's numbers. */
+function addStats(old: PlayStats, m?: MatchStatsInput): PlayStats {
+  if (!m) return old;
+  return {
+    fullClears: old.fullClears + m.clears,
+    bestStreak: Math.max(old.bestStreak, m.streak),
+    bumps: old.bumps + m.bumps,
+    stars: old.stars + m.stars,
+    throws: old.throws + m.throws,
+    fullPower: old.fullPower + m.fullPower,
+    dryMatches: m.clears > 0 ? 0 : old.dryMatches + 1,
+    matches: old.matches + 1,
+  };
 }
 
 /** Keeps the demo store small: drops the least recently played names and groups past the limits. */

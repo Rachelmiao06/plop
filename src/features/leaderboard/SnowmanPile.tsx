@@ -16,6 +16,7 @@ import type { BoardEntry } from "./api";
 import { lb } from "./boardStyles";
 import { PILE, SNOWBALL, TEXT } from "./content";
 import { nameKey } from "./rules";
+import type { TitleId } from "./titles";
 
 const ART: Record<SnowmanLook, string> = {
   bucket: "/assets/scenery/thrower-bucket.webp",
@@ -114,6 +115,8 @@ export type SnowmanPileProps = {
    * hit too recently (minutes to wait), or it failed.
    */
   onThrow?: (to: BoardEntry) => Promise<ThrowOutcome>;
+  /** Each player's funny title, by `nameKey` (written small above the name on the belly). */
+  titles?: Record<string, TitleId>;
 };
 
 export type ThrowOutcome = { thrown: true } | { waitMinutes: number } | { failed: true };
@@ -121,7 +124,7 @@ export type ThrowOutcome = { thrown: true } | { waitMinutes: number } | { failed
 type Point = { x: number; y: number };
 type FlightPlan = { id: number; from: Point; to: Point; target: string; size: number };
 
-export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps) {
+export function SnowmanPile({ scores, viewer, hits, onThrow, titles }: SnowmanPileProps) {
   const box = useRef<HTMLDivElement>(null);
   const { w } = useSize(box);
   const slotW = w > 0 ? Math.min(PILE.maxSlot, w / Math.max(...(PILE.rows[Math.min(scores.length, PILE.rows.length) - 1] ?? [1]))) : 0;
@@ -380,7 +383,7 @@ export function SnowmanPile({ scores, viewer, hits, onThrow }: SnowmanPileProps)
                   </span>
                 )}
               </div>
-              <BellyName entry={s.entry} me={isMe} bottom={standing * PILE.name.lift} width={slotW * PILE.name.width} />
+              <BellyName entry={s.entry} me={isMe} bottom={standing * PILE.name.lift} width={slotW * PILE.name.width} title={titles?.[s.key]} />
               {hitCount > 0 && <StuckSnow hits={hitCount} size={slotW * PILE.stuck.size} bottom={standing * PILE.stuck.lift} left={s.x < -1} />}
               {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, shown when someone lands */}
               <img
@@ -519,12 +522,17 @@ function Cutout({ look, width, flip, style }: { look: SnowmanLook; width: number
 const CUTOUT_SHADOW = `drop-shadow(1px ${PILE.shadow.drop}px ${PILE.shadow.drop * 0.8}px color-mix(in oklab, var(--ink) 20%, transparent))`;
 
 /** The nickname and score, written by hand on the snowman's belly (no tag, no box). Yours is a touch bolder. */
-function BellyName({ entry, me, bottom, width }: { entry: BoardEntry; me: boolean; bottom: number; width: number }) {
+function BellyName({ entry, me, bottom, width, title }: { entry: BoardEntry; me: boolean; bottom: number; width: number; title?: TitleId }) {
   return (
     <span
       className="pointer-events-none absolute left-1/2 z-[2] flex flex-col items-center leading-none text-ink-deep"
       style={{ bottom, width, translate: "-50% 0", textShadow: HALO }}
     >
+      {title && (
+        <span className="block max-w-full truncate font-heading text-[9px] leading-[1.15] font-bold whitespace-nowrap text-berry-deep" title={TEXT.titles[title].en}>
+          {TEXT.titles[title].zh}
+        </span>
+      )}
       <span className={`block max-w-full truncate font-heading text-[11px] leading-[1.1] ${me ? "font-bold" : ""}`}>{entry.name}</span>
       <span className="block font-heading text-[17px] leading-[1.05] font-bold tabular-nums">{entry.best}</span>
     </span>

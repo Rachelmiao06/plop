@@ -17,6 +17,7 @@ import { CrayonHighlight, PaperSheet, RankMark } from "./Doodles";
 import { lb } from "./boardStyles";
 import { nameKey } from "./rules";
 import { lookFor, SnowmanPile, type ThrowOutcome } from "./SnowmanPile";
+import { titleFor, type TitleId } from "./titles";
 
 export type GroupBoardProps = {
   /** The invite group id (`?g=` on the link). */
@@ -119,6 +120,13 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
   const { face, rowTilt, noteIn, noteOvershoot, listTop } = BOARD.look;
   const [all, setAll] = useState(false);
   const scores = state.status === "ready" ? state.scores : [];
+  // Each player's funny title (at most one; `titles.ts`), by nickname key.
+  const titles = Object.fromEntries(
+    scores.flatMap((s, i) => {
+      const t = titleFor(s, i + 1, scores.length);
+      return t ? [[nameKey(s.name), t]] : [];
+    }),
+  ) as Record<string, TitleId>;
   // The list: the top few and your own line; the rest behind "see all".
   const rows = scores
     .map((s, i) => ({ s, i }))
@@ -146,7 +154,7 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
               {TEXT.snowball.hintZh} · {TEXT.snowball.hint}
             </p>
           )}
-          <SnowmanPile scores={state.scores} viewer={viewer} hits={hits} onThrow={onThrow} />
+          <SnowmanPile scores={state.scores} viewer={viewer} hits={hits} onThrow={onThrow} titles={titles} />
           <ol className="mt-3 flex flex-col" aria-label={TEXT.list}>
             {rows.map(({ s, i }, n) => {
               const isMe = i === mine;
@@ -171,6 +179,11 @@ export function BoardSheet({ seed, state, viewer, landed = 0, className, hits, o
                   <span className="min-w-0 flex-1 truncate">
                     <span className="font-heading text-lg leading-tight">{s.name}</span>
                     {isMe && <span className="ml-1 font-heading text-sm opacity-70">({TEXT.you})</span>}
+                    {titles[nameKey(s.name)] && (
+                      <span className="ml-1.5 font-heading text-sm text-berry-deep" title={TEXT.titles[titles[nameKey(s.name)]].en}>
+                        {TEXT.titles[titles[nameKey(s.name)]].zh}
+                      </span>
+                    )}
                     <span className="ml-1.5 font-sans text-[10px] leading-tight opacity-65">
                       {TEXT.rounds(s.bestRounds)}
                       {s.bestMode === "together" && ` · ${TEXT.together}`}

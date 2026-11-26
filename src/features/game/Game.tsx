@@ -33,6 +33,7 @@ import { track } from "@/lib/analytics";
 
 import { GAME, TEXT, type MatchLength } from "./content";
 import { CameraDirector } from "./CameraDirector";
+import { createMatchStats } from "./matchStats";
 import { applyStall, createLink, GameBridge } from "./GameBridge";
 import { CancelPull, GameHint, TurnNote } from "./GameOverlay";
 import { gameCss, styles } from "./gameStyles";
@@ -191,9 +192,13 @@ export function Game() {
     return () => window.removeEventListener("keydown", key, true);
   }, [game]);
 
+  /** The play-style numbers each match sends with its score (for the board's funny titles). */
+  const stats = useMemo(() => createMatchStats(), []);
+
   /** A new match: the first round's set comes in (the cards pop back if it is already there). */
   const begin = useCallback(
     (rounds: MatchLength, playing: 1 | 2, again: boolean, mode: PlayMode = game.getState().mode) => {
+      stats.reset();
       if (again) game.again();
       else game.start(rounds, playing, mode);
       const first = game.setFor(0, rounds);
@@ -205,7 +210,7 @@ export function Game() {
       if (getTimeOfDay() > 0) easeTimeOfDay(0, GAME.evening.back);
       saved.current = false;
     },
-    [game, pins],
+    [game, pins, stats],
   );
 
   /** "Let's roll!" (or "same as last time"): remember the choices on this device and start. */
@@ -271,7 +276,7 @@ export function Game() {
         )}
         <PinsStage pins={pins} />
         <RuleMarker game={game} pins={pins} />
-        <GameBridge game={game} pins={pins} link={link} />
+        <GameBridge game={game} pins={pins} link={link} stats={stats} />
         {/* Together: a gentle shared follow of both balls instead of a chase of one (CameraDirector decides). */}
         <CameraDirector pins={pins} link={link} />
       </SnowScene>
@@ -364,6 +369,7 @@ export function Game() {
                   score={state.scores[0] + state.scores[1]}
                   rounds={state.rounds}
                   mode="team"
+                  stats={stats.team()}
                   defaultName={teamName(names[0], names[1])}
                   remember={false}
                 />
@@ -375,6 +381,7 @@ export function Game() {
                     score={state.scores[0]}
                     rounds={state.rounds}
                     mode={state.mode}
+                    stats={stats.of(0)}
                     defaultName={typed[0] || undefined}
                     onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
                   />
@@ -384,6 +391,7 @@ export function Game() {
                       score={state.scores[1]}
                       rounds={state.rounds}
                       mode={state.mode}
+                      stats={stats.of(1)}
                       defaultName={typed[1] || undefined}
                       remember={false}
                     />

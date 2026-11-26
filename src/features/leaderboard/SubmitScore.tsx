@@ -12,7 +12,9 @@ import { announce, postScore, readNickname, saveNickname, subscribeNickname, typ
 import { BOARD, TEXT } from "./content";
 import { PaperSheet } from "./Doodles";
 import { lb } from "./boardStyles";
-import { checkName, type MatchMode, type Rounds } from "./rules";
+import { checkName, type MatchMode, type MatchStats, type Rounds } from "./rules";
+import { TitleLine } from "./TitleLine";
+import { titleFor } from "./titles";
 
 export type SubmitScoreProps = {
   /** The invite group id (`?g=` on the link). Without one there is no board, so render nothing. */
@@ -27,11 +29,13 @@ export type SubmitScoreProps = {
   remember?: boolean;
   onSubmitted?: (result: Submitted) => void;
   className?: string;
+  /** This match's play-style numbers (full clears, friends knocked, ...), for the board's funny titles. */
+  stats?: MatchStats;
 };
 
 type State = { status: "asking"; error?: string } | { status: "sending" } | { status: "done"; result: Submitted };
 
-export function SubmitScore({ group, score, rounds, mode, defaultName, remember = true, onSubmitted, className }: SubmitScoreProps) {
+export function SubmitScore({ group, score, rounds, mode, defaultName, remember = true, onSubmitted, className, stats }: SubmitScoreProps) {
   const remembered = useSyncExternalStore(subscribeNickname, readNickname, () => "");
   const [typed, setTyped] = useState<string | null>(null);
   const [state, setState] = useState<State>({ status: "asking" });
@@ -45,7 +49,7 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
     const checked = checkName(name, nameMax);
     if (!checked.ok) return setState({ status: "asking", error: checked.error });
     setState({ status: "sending" });
-    const answer = await postScore({ group, name: checked.value, score, rounds, mode });
+    const answer = await postScore({ group, name: checked.value, score, rounds, mode, ...(stats && { stats }) });
     if (!answer.ok) return setState({ status: "asking", error: answer.error });
     if (remember) saveNickname(checked.value);
     setState({ status: "done", result: answer.value });
@@ -54,7 +58,8 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
   }
 
   if (state.status === "done") {
-    const { entry, rank } = state.result;
+    const { entry, rank, players } = state.result;
+    const title = titleFor(entry, rank, players ?? rank);
     return (
       <PaperSheet seed={score + 11} label={TEXT.submit.label} className={`w-full max-w-sm text-center ${className ?? ""}`}>
         <p className="font-heading text-2xl leading-tight font-bold text-ink-deep">{TEXT.submit.done(entry.name)}</p>
@@ -65,6 +70,8 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
         >
           <span className={lb.bob}>{TEXT.youAre(rank)}</span>
         </p>
+        {/* Your funny title on this board, a beat after "you're #2!" (no badge box: a star doodle and handwriting). */}
+        {title && <TitleLine id={title} className="mt-2" big />}
       </PaperSheet>
     );
   }
