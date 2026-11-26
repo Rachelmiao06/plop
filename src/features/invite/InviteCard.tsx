@@ -169,7 +169,7 @@ export function InviteCard({ group, name, score, wager }: Invite) {
               </p>
             )}
             <Link
-              href={gamePath(name, group, wager)}
+              href={gamePath({ name, group, score, wager })}
               className="plop-invite-btn relative mx-auto mt-6 block w-[min(70vw,250px)] px-6 py-3 text-ink-deep outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
@@ -200,7 +200,7 @@ export function InviteCard({ group, name, score, wager }: Invite) {
 
       {/* Returning to this group: "you got hit" and "X just passed you", one at a time; either button goes to the game,
           challenged by that friend. */}
-      {group && shown && <GroupNotices group={group} onPlay={(name) => router.push(gamePath(name, group))} />}
+      {group && shown && <GroupNotices group={group} onPlay={(friend) => router.push(gamePath({ name: friend, group }))} />}
 
       {sendHint && shown && (
         <WeChatHint onClose={() => setSendHint(false)} hint={words.sendHint.zh} small={words.sendHint.en} />
