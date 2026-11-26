@@ -63,23 +63,49 @@ export function SplatNotice({ group, me, onThrowBack, preview }: SplatNoticeProp
 
   const look = lookFor(note.me);
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-snow-shadow/55 px-4" role="dialog" aria-modal="true" aria-labelledby="plop-splat-title">
+    // The whole screen is the snowy scene: no card, no frame (Rachel), one action.
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-snow-white px-6" role="dialog" aria-modal="true" aria-labelledby="plop-splat-title">
       <div className={`w-full max-w-xs ${lb.note}`} style={{ "--lb-note-in": "0.55s", "--lb-note-over": 0.08 } as CSSProperties}>
-        <PaperSheet seed={note.from.length * 7 + 3} className="flex flex-col items-center gap-2 pt-5 text-center">
-          <div className={`relative h-[132px] w-[110px] ${lb.splatWobble}`} aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's cut-out */}
-            <img src={ART[look]} alt="" width={96} height={136} className="absolute bottom-0 left-1/2 w-24 -translate-x-1/2 select-none" draggable={false} />
-            {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, as a splat on the face */}
-            <img
-              src="/assets/effects/snow-puff.webp"
-              alt=""
-              width={84}
-              height={64}
-              className={`absolute top-[38px] left-1/2 w-[84px] -translate-x-1/2 select-none ${lb.splat}`}
-              draggable={false}
+        <PaperSheet className="flex flex-col items-center gap-3 text-center">
+          <div className="relative flex h-[200px] w-full justify-center" aria-hidden>
+            {/* Rachel's far hills behind, the snowman standing on their ground line. */}
+            <div
+              className="absolute inset-x-[-24px] bottom-0 h-[84px] bg-repeat-x opacity-70"
+              style={{
+                backgroundImage: "url(/assets/scenery/far-hills.webp)",
+                backgroundSize: "auto 84px",
+                backgroundPosition: "center bottom",
+                maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
+                WebkitMaskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
+              }}
             />
-            {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's surprise lines */}
-            <img src="/assets/effects/surprise-lines.webp" alt="" width={34} height={19} className="absolute -top-1 right-0 rotate-[24deg] select-none" draggable={false} />
+            <span
+              className="absolute bottom-[4px] left-1/2 h-4 w-28 -translate-x-1/2 rounded-[50%]"
+              style={{ background: "color-mix(in oklab, var(--ink) 22%, transparent)", filter: "blur(3px)" }}
+            />
+            <div className={`relative h-[190px] w-[134px] ${lb.splatWobble}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's cut-out */}
+              <img
+                src={ART[look]}
+                alt=""
+                width={134}
+                height={190}
+                className="absolute bottom-[8px] left-0 w-[134px] select-none"
+                style={{ filter: "drop-shadow(1px 3px 2px color-mix(in oklab, var(--ink) 20%, transparent))" }}
+                draggable={false}
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's snow puff, as a splat on the face */}
+              <img
+                src="/assets/effects/snow-puff.webp"
+                alt=""
+                width={112}
+                height={86}
+                className={`absolute top-[54px] left-1/2 w-[112px] -translate-x-1/2 select-none ${lb.splat}`}
+                draggable={false}
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element -- Rachel's surprise lines */}
+              <img src="/assets/effects/surprise-lines.webp" alt="" width={40} height={22} className="absolute top-2 -right-3 rotate-[24deg] select-none" draggable={false} />
+            </div>
           </div>
           <h2 id="plop-splat-title" className="text-balance">
             <span className="block font-heading text-2xl leading-tight font-bold text-ink-deep">{TEXT.snowball.gotYouZh(note.from, note.more)}</span>
@@ -94,7 +120,7 @@ export function SplatNotice({ group, me, onThrowBack, preview }: SplatNoticeProp
             <span className="text-3xl leading-tight font-bold">{TEXT.snowball.back.zh}</span>
             <span className="font-sans text-xs opacity-80">{TEXT.snowball.back.en}</span>
           </Button>
-          <button type="button" onClick={() => close(false)} className="font-sans text-xs underline decoration-dotted underline-offset-4 opacity-70">
+          <button type="button" onClick={() => close(false)} className="font-sans text-xs text-ink underline decoration-dotted underline-offset-4 opacity-70">
             {TEXT.snowball.later}
           </button>
         </PaperSheet>

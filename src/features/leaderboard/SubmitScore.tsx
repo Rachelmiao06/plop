@@ -59,7 +59,7 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
       <PaperSheet seed={score + 11} label={TEXT.submit.label} className={`w-full max-w-sm text-center ${className ?? ""}`}>
         <p className="font-heading text-2xl leading-tight font-bold text-ink-deep">{TEXT.submit.done(entry.name)}</p>
         <p
-          className={`mx-auto mt-1 w-fit rounded-full bg-butter/60 px-3 py-0.5 font-heading text-xl leading-tight font-bold text-ink-deep ${lb.note}`}
+          className={`mx-auto mt-1 w-fit font-heading text-xl leading-tight font-bold text-ink-deep ${lb.note}`}
           style={{ "--lb-note-in": `${BOARD.look.noteIn}s`, "--lb-note-over": BOARD.look.noteOvershoot } as CSSProperties}
           role="status"
         >
