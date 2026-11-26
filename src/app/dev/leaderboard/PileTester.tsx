@@ -9,6 +9,9 @@ import { nameKey } from "@/features/leaderboard/rules";
 import { TitleLine } from "@/features/leaderboard/TitleLine";
 import { TITLES } from "@/features/leaderboard/titles";
 
+/** Fake "今日最惨" (players who opted in): today's lowest throw. */
+const TODAY = (low: number) => ({ day: "today", low });
+
 /** Fake play-style totals: three ordinary matches, then whatever makes a title fit. */
 const played = (more: Partial<PlayStats> = {}): PlayStats => ({
   fullClears: 1,
@@ -44,8 +47,8 @@ const GROUPS: { title: string; me: string; scores: BoardEntry[] }[] = [
       entry("豆豆", 29),
       entry("Juniper", 24, { bestRounds: 5, latest: 11, stats: played({ bestStreak: 2, fullClears: 3 }) }),
       entry("Bao", 19, { latest: 15, stats: played({ fullClears: 0, bestStreak: 0, dryMatches: 3 }) }),
-      entry("Pip", 12, { latest: 9 }),
-      entry("Mimi", 7, { latest: 4 }),
+      entry("Pip", 12, { latest: 9, oops: TODAY(2) }),
+      entry("Mimi", 7, { latest: 4, oops: TODAY(1) }),
     ],
   },
   {
@@ -56,12 +59,12 @@ const GROUPS: { title: string; me: string; scores: BoardEntry[] }[] = [
       entry("小美 & 阿雪", 30, { bestMode: "team", latest: 22, stats: played({ bestStreak: 2, fullClears: 2 }) }),
       entry("Bao", 27, { bestRounds: 5, latest: 20, stats: played({ bumps: 4 }) }),
       entry("豆豆", 24, { latest: 19, stats: played({ throws: 9, fullPower: 9 }) }),
-      entry("Pip", 21, { bestMode: "together", latest: 17, stats: played({ stars: 5 }) }),
+      entry("Pip", 21, { bestMode: "together", latest: 17, stats: played({ stars: 5 }), oops: TODAY(0) }),
       entry("Mimi", 18, { latest: 10, stats: played({ fullClears: 0, bestStreak: 0, dryMatches: 3 }) }),
       entry("小雪", 15, { latest: 9, plays: 11 }),
       entry("Clementine", 11, { plays: 4 }),
       entry("团团", 8, { plays: 1, stats: played({ matches: 1, throws: 3 }) }),
-      entry("Oz", 3, { latest: 2 }),
+      entry("Oz", 3, { latest: 2, oops: TODAY(1) }),
     ],
   },
 ];

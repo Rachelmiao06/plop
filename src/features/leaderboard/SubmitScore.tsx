@@ -39,6 +39,8 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
   const remembered = useSyncExternalStore(subscribeNickname, readNickname, () => "");
   const [typed, setTyped] = useState<string | null>(null);
   const [state, setState] = useState<State>({ status: "asking" });
+  /** "让大家笑一下我最惨的一球": unticked every time; only a tick puts today's worst throw on the board. */
+  const [oops, setOops] = useState(false);
   const id = useId();
   // A team's name is both nicknames joined, so it may be longer.
   const nameMax = mode === "team" ? BOARD.teamNameMax : BOARD.nameMax;
@@ -49,7 +51,7 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
     const checked = checkName(name, nameMax);
     if (!checked.ok) return setState({ status: "asking", error: checked.error });
     setState({ status: "sending" });
-    const answer = await postScore({ group, name: checked.value, score, rounds, mode, ...(stats && { stats }) });
+    const answer = await postScore({ group, name: checked.value, score, rounds, mode, ...(stats && { stats }), oops });
     if (!answer.ok) return setState({ status: "asking", error: answer.error });
     if (remember) saveNickname(checked.value);
     setState({ status: "done", result: answer.value });
@@ -104,6 +106,21 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
           <p id={`${id}-error`} role="alert" className="text-center font-heading text-lg leading-tight text-berry-deep">
             {TEXT.errors[error] ?? TEXT.errors.server}
           </p>
+        )}
+        {stats?.worst !== undefined && (
+          <label className="flex cursor-pointer items-start justify-center gap-2 text-left">
+            <input
+              type="checkbox"
+              checked={oops}
+              onChange={(e) => setOops(e.target.checked)}
+              disabled={sending}
+              className="mt-1 size-4 shrink-0 accent-[var(--berry)]"
+            />
+            <span className="leading-tight">
+              <span className="block font-heading text-sm text-ink-deep">{TEXT.oops.optIn.zh}</span>
+              <span className="block font-sans text-[10px] opacity-70">{TEXT.oops.optIn.en}</span>
+            </span>
+          </label>
         )}
         <Button
           type="submit"

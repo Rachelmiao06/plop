@@ -27,6 +27,12 @@ each line in **scores** for the board's funny titles: `full_clears`, `best_strea
 `throws`, `full_power_throws`, `dry_matches` (matches in a row without a full clear), `stats_matches`. Only numbers
 about play. The game's server writes them through `submit_score_v2`.
 
+## Today's oops
+
+[`migrations/0006_todays_oops.sql`](migrations/0006_todays_oops.sql) (applied 2026-11-25) adds to **scores**: `oops_opt_in`
+(the player ticked "laugh at my worst throw today"), `oops_day` and `oops_low` (that day's fewest cards down in one
+throw). Unticking clears them. Written through `submit_score_v3`.
+
 ## Stickers
 
 Table **reactions** ([`migrations/0005_reactions.sql`](migrations/0005_reactions.sql), created 2026-11-25): one row per

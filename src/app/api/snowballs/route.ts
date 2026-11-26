@@ -10,18 +10,13 @@ import { SNOWBALL } from "@/features/leaderboard/content";
 import { allowThrow, ipOf } from "@/features/leaderboard/rateLimit";
 import { isGroup, nameKey } from "@/features/leaderboard/rules";
 import { checkSnowball } from "@/features/leaderboard/snowballRules";
+import { startOfDay } from "@/features/leaderboard/day";
 import { backend, hitsSince, markSnowballsSeen, onBoard, snowballInbox, throwSnowball } from "@/lib/db";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const COOLDOWN = SNOWBALL.cooldownMinutes * 60;
 
 const fail = (error: string, status: number) => Response.json({ error }, { status, headers: NO_STORE });
-
-/** Midnight today in the game's day (`SNOWBALL.dayUtcOffsetHours`). */
-function startOfDay(now = Date.now()) {
-  const offset = SNOWBALL.dayUtcOffsetHours * 3_600_000;
-  return new Date(Math.floor((now + offset) / 86_400_000) * 86_400_000 - offset);
-}
 
 export async function GET(request: Request) {
   const group = new URL(request.url).searchParams.get("g");

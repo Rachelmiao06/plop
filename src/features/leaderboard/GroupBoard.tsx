@@ -201,6 +201,11 @@ export function BoardSheet({ state, viewer, className, hits, onThrow, hint = tru
     }),
   ) as Record<string, TitleId>;
   const top = scores[0];
+  // "今日最惨": the lowest throw today among those who opted in (the server sends today's only); a tie goes to the
+  // one higher on the board.
+  const oops = scores
+    .filter((s) => s.oops)
+    .reduce<{ entry: BoardEntry; low: number } | undefined>((low, s) => (!low || s.oops!.low < low.low ? { entry: s, low: s.oops!.low } : low), undefined);
 
   return (
     <PaperSheet label={TEXT.title} className={`w-full max-w-sm ${className ?? ""}`}>
@@ -233,6 +238,7 @@ export function BoardSheet({ state, viewer, className, hits, onThrow, hint = tru
               reactions={reactions}
               given={given}
               onReact={onReact}
+              oops={oops}
             />
           </div>
         </>

@@ -32,6 +32,9 @@ export const lb = {
   twinkle: "plop-lb-twinkle",
   rowTap: "plop-lb-row-tap",
   stickerPop: "plop-lb-sticker-pop",
+  dizzy: "plop-lb-dizzy",
+  orbit: "plop-lb-orbit",
+  dizzyFace: "plop-lb-dizzy-face",
 } as const;
 
 /** content.ts motion numbers as CSS variables; put them on the sheet. */
@@ -250,12 +253,23 @@ export const boardCss = `
   to { opacity: 1; scale: 1; }
 }
 
+/* "今日最惨": the dizzy avatar. The wind curl spins over the head, a star goes round, the face wobbles. */
+.plop-lb-dizzy { animation: plop-lb-dizzy 1.6s linear infinite; }
+@keyframes plop-lb-dizzy { from { rotate: 0deg; } to { rotate: 360deg; } }
+.plop-lb-orbit { width: 0; height: 0; animation: plop-lb-dizzy 2.2s linear infinite; }
+.plop-lb-dizzy-face { animation: plop-lb-dizzy-face 2.4s ease-in-out infinite; }
+@keyframes plop-lb-dizzy-face {
+  0%, 100% { rotate: -6deg; }
+  50% { rotate: 6deg; }
+}
+
 .plop-lb-input::placeholder { color: color-mix(in oklab, var(--ink) 45%, var(--paper)); }
 .plop-lb-input:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .plop-lb-note, .plop-lb-bob, .plop-lb-row, .plop-lb-crown, .plop-lb-podium, .plop-lb-star,
   .plop-lb-scribble, .plop-lb-pile-in, .plop-lb-oof, .plop-lb-glow, .plop-lb-splat, .plop-lb-splat-wobble, .plop-lb-hop-on, .plop-lb-squashed,
-  .plop-lb-sway, .plop-lb-smug, .plop-lb-drop-keep, .plop-lb-drop-fade, .plop-lb-glint, .plop-lb-twinkle, .plop-lb-sticker-pop { animation: none; }
+  .plop-lb-sway, .plop-lb-smug, .plop-lb-drop-keep, .plop-lb-drop-fade, .plop-lb-glint, .plop-lb-twinkle, .plop-lb-sticker-pop,
+  .plop-lb-dizzy, .plop-lb-orbit, .plop-lb-dizzy-face { animation: none; }
   .plop-lb-squash { transition: none; }
 }
 `;
