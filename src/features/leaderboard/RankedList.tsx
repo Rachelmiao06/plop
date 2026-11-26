@@ -134,7 +134,7 @@ export function RankedList({ scores, viewer, hits, titles, onThrow, reactions, g
         ? TEXT.toPass(above.best - s.best + 1, above.name)
         : TEXT.onTop
       : title
-        ? TEXT.titles[title]
+        ? TEXT.titles[title].zh
         : null;
     return (
       <li

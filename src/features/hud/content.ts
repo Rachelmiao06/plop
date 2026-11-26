@@ -96,7 +96,7 @@ export const content = {
       tiedRival: (name: string) => `just like ${name}!`,
       underRival: (name: string, score: number) => `${name} has ${score} · so close!`,
       again: "Play again",
-      choose: "change how we play",
+      choose: "change how we play · 换个玩法",
       points: (n: number) => `${n} points`,
     },
   },

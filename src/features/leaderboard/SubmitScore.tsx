@@ -116,7 +116,10 @@ export function SubmitScore({ group, score, rounds, mode, defaultName, remember 
               disabled={sending}
               className="mt-1 size-4 shrink-0 accent-[var(--berry)]"
             />
-            <span className="font-heading text-sm leading-tight text-ink-deep">{TEXT.oops.optIn}</span>
+            <span className="leading-tight">
+              <span className="block font-heading text-sm text-ink-deep">{TEXT.oops.optIn.zh}</span>
+              <span className="block font-sans text-[10px] opacity-70">{TEXT.oops.optIn.en}</span>
+            </span>
           </label>
         )}
         <Button

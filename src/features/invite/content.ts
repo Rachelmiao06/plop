@@ -21,15 +21,15 @@ export const INVITE = {
     none: "no wager",
     /** On the invite page, under "X invites you": "赌注：输的人请喝热可可 ☕" (the lines are Chinese: the fun is there). */
     stake: "赌注",
-    /** A tie: nobody pays. */
-    tie: "平手！赌注留到下一局",
+    /** A tie: nobody pays (the end card shows both lines until its redesign). */
+    tie: { zh: "平手！赌注留到下一局", en: "a tie: the wager waits for the next match" },
     lines: [
-      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", loserZh: "要请喝热可可啦" },
-      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", loserZh: "要唱一首歌啦" },
-      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", loserZh: "要学企鹅走路啦" },
-      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", loserZh: "要发一张丑照啦" },
-      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", loserZh: "要请吃冰淇淋啦" },
-      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", loserZh: "要夸赢家三句啦" },
+      { code: "cocoa", emoji: "☕", zh: "输的人请喝热可可", loserZh: "要请喝热可可啦", loserEn: "buys the hot cocoa" },
+      { code: "song", emoji: "🎤", zh: "输的人唱一首歌", loserZh: "要唱一首歌啦", loserEn: "sings a song" },
+      { code: "penguin", emoji: "🐧", zh: "输的人学企鹅走路", loserZh: "要学企鹅走路啦", loserEn: "waddles like a penguin" },
+      { code: "selfie", emoji: "📸", zh: "输的人发一个丑照", loserZh: "要发一张丑照啦", loserEn: "posts a silly selfie" },
+      { code: "icecream", emoji: "🍦", zh: "输的人请吃冰淇淋", loserZh: "要请吃冰淇淋啦", loserEn: "buys the ice cream" },
+      { code: "praise", emoji: "💐", zh: "输的人夸赢家三句", loserZh: "要夸赢家三句啦", loserEn: "gives the winner 3 compliments" },
     ],
   },
 

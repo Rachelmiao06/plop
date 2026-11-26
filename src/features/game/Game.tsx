@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { BowlingStage, FEEL, type Bowling } from "@/features/bowling";
 import { HowToCard, MatchEnd, ScoreHud, StartFlow, type PlayMode, type StartChoice } from "@/features/hud";
 import { cleanName, cleanScore, cleanWager, INVITE, wagerResult } from "@/features/invite";
-import { GroupBoard, GroupNotices, SubmitScore, SubmitScores, teamName } from "@/features/leaderboard";
+import { GroupBoard, GroupNotices, SubmitScore, teamName } from "@/features/leaderboard";
 // The group id lives in the share feature's `group.ts`; imported directly because the share index imports this
 // feature (its invite sheet reads the names), and a cycle through the index is not worth the risk.
 import { getGroupId } from "@/features/share/group";
@@ -382,8 +382,8 @@ export function Game() {
                   remember={false}
                 />
               ) : (
-                solo ? (
-                  // Alone: one prompt, under the name from the start card (one tap).
+                <>
+                  {/* Each player's score goes on the group's board under the name from the start card (one tap). */}
                   <SubmitScore
                     group={group}
                     score={state.scores[0]}
@@ -393,19 +393,18 @@ export function Game() {
                     defaultName={typed[0] || undefined}
                     onSubmitted={(r) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
                   />
-                ) : (
-                  // Taking turns: ONE prompt with a row per player (their face, their start-card name, their score).
-                  <SubmitScores
-                    group={group}
-                    rounds={state.rounds}
-                    mode={state.mode}
-                    players={[
-                      { ...players[0], score: state.scores[0], stats: stats.of(0) },
-                      { ...players[1], score: state.scores[1], stats: stats.of(1) },
-                    ]}
-                    onSubmitted={([r]) => r.entry.name !== typed[0] && savePlayerOne(r.entry.name)}
-                  />
-                )
+                  {!solo && (
+                    <SubmitScore
+                      group={group}
+                      score={state.scores[1]}
+                      rounds={state.rounds}
+                      mode={state.mode}
+                      stats={stats.of(1)}
+                      defaultName={typed[1] || undefined}
+                      remember={false}
+                    />
+                  )}
+                </>
               )}
               <GroupBoard group={group} me={together ? teamName(names[0], names[1]) : typed[0] || undefined} limit={GAME.board.limit} />
             </>

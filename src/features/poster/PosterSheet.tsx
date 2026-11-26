@@ -128,7 +128,7 @@ export function PosterSheet({ src, failed, onRetry, onClose }: Props) {
             ×
           </button>
           <h2 id={`${id}-title`} className="pr-6 font-heading text-2xl leading-tight font-bold text-ink-deep">
-            {words.title}
+            {words.title.zh} <span className="text-lg font-normal text-ink">· {words.title.en}</span>
           </h2>
 
           <div className="mt-2 grid aspect-[3/4] max-h-[62dvh] w-full min-h-0 place-items-center">
@@ -138,11 +138,12 @@ export function PosterSheet({ src, failed, onRetry, onClose }: Props) {
               <img src={src} alt={words.alt} className="max-h-full max-w-full object-contain" />
             ) : failed ? (
               <button type="button" onClick={onRetry} className="font-heading text-xl underline decoration-wavy underline-offset-4">
-                {words.failed}
+                {words.failed.zh}
+                <span className="block text-base">{words.failed.en}</span>
               </button>
             ) : (
               <p role="status" className="plop-poster-wait font-heading text-xl">
-                {words.drawing}
+                {words.drawing.zh} <span className="text-base">· {words.drawing.en}</span>
               </p>
             )}
           </div>
@@ -150,16 +151,17 @@ export function PosterSheet({ src, failed, onRetry, onClose }: Props) {
           {src &&
             (wechat ? (
               <p className="mt-3 text-center font-heading text-xl leading-tight font-bold text-ink-deep">
-                {words.wechat}
+                {words.wechat.zh}
+                <span className="block text-base font-normal text-ink">{words.wechat.en}</span>
               </p>
             ) : (
               <div className="mt-3 flex w-full gap-2">
                 <Pill fill="fill-pine" href={src} download={words.file}>
-                  {words.save}
+                  {words.save.zh} <span className="text-sm font-normal">· {words.save.en}</span>
                 </Pill>
                 {file && (
                   <Pill fill="fill-sky-blue" onClick={share}>
-                    {words.share}
+                    {words.share.zh} <span className="text-sm font-normal">· {words.share.en}</span>
                   </Pill>
                 )}
               </div>

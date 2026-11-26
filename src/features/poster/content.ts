@@ -33,29 +33,27 @@ export const POSTER = {
 
   text: {
     title: "Plop!",
-    /** On the picture itself, Chinese only: it goes to WeChat Moments, and one language per line (Rachel). */
-    solo: (name: string, score: number) => `${name} 打了 ${score} 分`,
-    team: (a: string, b: string, total: number) => `${a} & ${b} 一起打了 ${total} 分`,
-    wins: (name: string) => `${name} 赢啦！`,
-    tie: "平手！",
-    invite: "来跟我打一局雪仗 ❄️",
-    scan: "扫码接受挑战",
+    solo: (name: string, score: number) => ({ zh: `${name} 打了 ${score} 分`, en: `${name} scored ${score}` }),
+    team: (a: string, b: string, total: number) => ({ zh: `${a} & ${b} 一起打了 ${total} 分`, en: `team total ${total}` }),
+    wins: (name: string) => ({ zh: `${name} 赢啦！`, en: `${name} wins!` }),
+    tie: { zh: "平手！", en: "a tie!" },
+    invite: { zh: "来跟我打一局雪仗 ❄️", en: "Come snowball with me" },
+    scan: { zh: "扫码接受挑战", en: "scan to play" },
     meta: (rounds: number | null, date: Date) => {
       const d = `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
-      return rounds ? `${rounds} 局 · ${d}` : d;
+      return rounds ? `${rounds} 局 · ${rounds} rounds · ${d}` : d;
     },
   },
 
   /** The sheet that shows the poster. */
   sheet: {
-    /** Simple English; the WeChat line in Chinese (it is about WeChat's own press-and-hold menu). */
-    button: "Make a poster",
-    title: "my poster",
-    drawing: "drawing…",
-    failed: "the poster didn't draw, try again?",
-    wechat: "长按图片保存，发朋友圈",
-    save: "save",
-    share: "share",
+    button: { zh: "生成海报", en: "Make a poster" },
+    title: { zh: "我的海报", en: "my poster" },
+    drawing: { zh: "正在画海报…", en: "drawing…" },
+    failed: { zh: "海报没画出来，再试一次？", en: "the poster didn't draw, try again?" },
+    wechat: { zh: "长按图片保存，发朋友圈", en: "Press and hold to save" },
+    save: { zh: "保存图片", en: "save" },
+    share: { zh: "分享", en: "share" },
     close: "close",
     alt: "Plop! poster with my score and a QR code to play",
     file: "plop-poster.png",

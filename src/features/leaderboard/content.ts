@@ -190,9 +190,8 @@ export const TEXT = {
    */
   /** The opt-in "今日最惨". Gentle: only for those who asked to be laughed at. */
   oops: {
-    optIn: "Let the group laugh at my worst throw today",
-    /** The same, small, in each player's row when two put their scores on together. */
-    optInShort: "laugh at my worst throw today",
+    /** On the end card's score prompt (left as it was: the end card is being redesigned on its own). */
+    optIn: { zh: "让大家笑一下我最惨的一球", en: "Let the group laugh at my worst throw today" },
     heading: "今日最惨",
     line: (name: string, n: number) => `${name}今天有一球只倒了${n}个 😵`,
   },
@@ -214,18 +213,21 @@ export const TEXT = {
     revenge: "复仇",
     later: "later",
   },
-  /** The funny titles, in Chinese. Always kind. */
+  /**
+   * The funny titles: the board shows the Chinese only; the end card (being redesigned on its own) still shows the
+   * short English line under it. Always kind.
+   */
   titles: {
-    king: "雪球大王",
-    bowlingGod: "保龄球之神",
-    bunnyBane: "兔子杀手",
-    bigPower: "大力出奇迹",
-    starCatcher: "星星收集家",
-    gentle: "温柔的人",
-    littleOne: "雪地小可怜",
-    newBest: "刚刚破纪录",
-    regular: "雪地常客",
-    newcomer: "新来的小雪人",
+    king: { zh: "雪球大王", en: "king of the snowballs" },
+    bowlingGod: { zh: "保龄球之神", en: "two full clears in a row!" },
+    bunnyBane: { zh: "兔子杀手", en: "sorry, bunny (×3)" },
+    bigPower: { zh: "大力出奇迹", en: "every throw at full power" },
+    starCatcher: { zh: "星星收集家", en: "loves the star friends" },
+    gentle: { zh: "温柔的人", en: "too kind to clear them all" },
+    littleOne: { zh: "雪地小可怜", en: "cheer up, little snowman" },
+    newBest: { zh: "刚刚破纪录", en: "just beat their best" },
+    regular: { zh: "雪地常客", en: "always out in the snow" },
+    newcomer: { zh: "新来的小雪人", en: "just rolled in" },
   },
   snowball: {
     hint: "tap a friend to throw a snowball ❄",
@@ -245,10 +247,6 @@ export const TEXT = {
     ask: "your nickname for the board",
     placeholder: "snowy friend",
     button: "pop it on!",
-    /** Two players on one phone: one prompt for both. */
-    askBoth: "your names for the board",
-    buttonBoth: "pop us on!",
-    nameFor: (player: string) => `${player}'s nickname for the board`,
     sending: "rolling it over…",
     done: (name: string) => `nice one, ${name}!`,
     again: "change name",
@@ -265,7 +263,6 @@ export const TEXT = {
     bad_mode: "a match is turns, together or a team",
     bad_stats: "those match numbers look off. try again?",
     bad_kind: "that sticker isn't one of ours",
-    same_names: "two different names, please",
     rate_limited: "slow down a little, snow takes time ✿",
     server: "the board is napping. try again in a moment",
   } as Record<string, string>,
